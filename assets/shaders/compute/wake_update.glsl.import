@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://d1euoaqoe2b5t"
+path="res://.godot/imported/wake_update.glsl-5dab66b3db0f105d98e8ceecd7047907.res"
+
+[deps]
+
+source_file="res://assets/shaders/compute/wake_update.glsl"
+dest_files=["res://.godot/imported/wake_update.glsl-5dab66b3db0f105d98e8ceecd7047907.res"]
+
+[params]
+

@@ -61,6 +61,30 @@ group_uniforms;
 // they live here so the whole water look is tuned in one material.
 // Pale churned water where the surface meets anything poking through it (hulls, creatures,
 // rocks, the shore), with a lighter band of "shallow" water around it.
+// Ship wakes: world-space trail map (r = foam, g = churn) around the camera, from wake_map.gd.
+group_uniforms wake;
+uniform sampler2D wake_map : filter_linear, repeat_disable;
+uniform vec4 wake_map_rect = vec4(0.0); // xz of the map corner, map size (m), 1 = active
+/** Opacity of wake foam. */
+uniform float wake_foam_strength : hint_range(0.0, 1.0, 0.01) = 0.9;
+/** Breaks the wake foam into patches and streaks. */
+uniform float wake_foam_breakup : hint_range(0.0, 1.0, 0.01) = 0.75;
+/** How much churned wake water flattens the waves (a ship leaves a smoother lane behind it). */
+uniform float wake_flatten : hint_range(0.0, 1.0, 0.01) = 0.35;
+/** Colour of churned wake water. */
+uniform vec3 wake_tint_color : source_color = vec3(0.2, 0.42, 0.4);
+/** Strength of the churned-water tint. */
+uniform float wake_tint_strength : hint_range(0.0, 1.0, 0.01) = 0.45;
+group_uniforms;
+
+vec2 wake_sample(vec2 world_xz) {
+	if (wake_map_rect.w < 0.5) return vec2(0.0);
+	vec2 uv = (world_xz - wake_map_rect.xy) / wake_map_rect.z;
+	if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return vec2(0.0);
+	vec2 edge = smoothstep(vec2(0.0), vec2(0.05), uv) * smoothstep(vec2(0.0), vec2(0.05), 1.0 - uv);
+	return textureLod(wake_map, uv, 0.0).rg * edge.x * edge.y;
+}
+
 group_uniforms contact_foam;
 uniform bool contact_foam_enabled = true;
 /** How far from the contact line the foam reaches (m). */
@@ -262,6 +286,7 @@ vec2 contact_foam_eval(float gap, vec2 world_xz, float time) {
 
 void vertex() {
 	UV = VERTEX.xz;
+	float wake_churn = 0.0;
 	float shape_foam;
 	vec4 shape = water_shapes_eval(VERTEX.xz, shape_foam);
 	vec2 blocker = wave_blocker_eval(VERTEX.xz);
@@ -280,7 +305,9 @@ void vertex() {
 			vec4 scales = map_scales[i];
 			displacement += texture(displacements, vec3(UV*scales.xy, float(i))).xyz * scales.z;
 		}
-		float wave_scale = blocker_mask * (1.0 - shape.w); // Domes smooth out the waves riding on them.
+		wake_churn = wake_sample(VERTEX.xz).y; // world_vertex_coords: VERTEX is in world space.
+		// Domes smooth out the waves riding on them; churned wake water is flatter too.
+		float wave_scale = blocker_mask * (1.0 - shape.w) * (1.0 - wake_flatten * wake_churn);
 		VERTEX += displacement * distance_factor * wave_scale;
 		wave_height = displacement.y * wave_scale;
 	}
@@ -424,6 +451,13 @@ void fragment() {
 	}
 	vec2 contact = contact_foam_eval(contact_gap, world_frag.xz, TIME);
 
+	// Ship wake: foam broken into streaks by noise, plus lighter churned water.
+	vec2 wake = wake_sample(world_frag.xz);
+	float wake_noise = foam_fbm(world_frag.xz * 0.7, TIME * 0.25) * 0.7 + foam_fbm(world_frag.xz * 2.3, TIME * 0.4) * 0.3;
+	float wake_foam = smoothstep(wake_noise * wake_foam_breakup, wake_noise * wake_foam_breakup + 0.25, wake.x) * wake_foam_strength;
+	contact.x = max(contact.x, wake_foam);
+	gradient.xy *= 1.0 - wake_flatten * wake.y;
+
 	if (underside > 0.5) {
 		gradient *= mix(0.015, normal_strength, exp(-length(VERTEX)*0.0175));
 		gradient.xy += shape.yz; // Water shapes are large and smooth, never faded with distance.
@@ -472,6 +506,7 @@ void fragment() {
 	depth_water_color = mix(color_shallow, water_color.rgb, factor_translucency);
 	// ===================== shine through ===================================#
 	depth_water_color = mix(depth_water_color, contact_tint_color, contact.y);
+	depth_water_color = mix(depth_water_color, wake_tint_color, wake.y * wake_tint_strength);
 	ALBEDO = mix(depth_water_color, foam_color.rgb, foam_factor * foam_alpha * foam_alpha);
 	ALBEDO = mix(ALBEDO, foam_color.rgb, contact.x);
 	foam_factor = max(foam_factor, contact.x); // Contact foam is matte and lit like foam too.

@@ -104,6 +104,19 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 		water_shadow_layers = value
 		if _shadow_camera: _shadow_camera.cull_mask = value & ~WATER_LAYER_BIT
 
+## Foam trails behind boats (see WakeEmitter). A world-space map around the camera.
+@export_group('Wakes')
+@export var wakes_enabled := true
+## Seconds for a wake to fade away.
+@export_range(1.0, 120.0, 0.5) var wake_lifetime := 20.0
+## How fast a wake widens as it ages (m/s). This is what opens it into a V behind the boat.
+@export_range(0.0, 10.0, 0.05) var wake_spread := 1.2
+## Width of the square around the camera that keeps wakes (m). Map resolution is fixed at 512.
+@export_range(64.0, 1024.0, 1.0) var wake_coverage := 256.0 :
+	set(value):
+		wake_coverage = value
+		if _wake_map: _wake_map.free_resources(); _wake_map = null
+
 # ----- Bookkeeping Variables ----- #
 var wave_generator : WaveGenerator :
 	set(value):
@@ -120,6 +133,8 @@ var _sun : DirectionalLight3D
 var _shadow_viewport : SubViewport
 var _shadow_camera : Camera3D
 var _shadow_capture : WaterShadowCapture
+var _wake_map : WakeMap
+const WAKE_MAP_RESOLUTION := 512
 
 var displacement_maps := Texture2DArrayRD.new()
 var normal_maps := Texture2DArrayRD.new()
@@ -222,6 +237,7 @@ func _process(delta : float) -> void:
 	_update_wave_blockers()
 	_update_water_shapes(delta)
 	_update_underwater_effect()
+	_update_wakes(delta)
 	# TODO: These should probably be the same update
 	# Update waves once every 1.0/updates_per_second.
 	if updates_per_second == 0 or time >= next_update_time:
@@ -485,6 +501,27 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		displacement_maps.texture_rd_rid = RID()
 		normal_maps.texture_rd_rid = RID()
+		if _wake_map: _wake_map.free_resources()
+
+## Stamps every WakeEmitter's path into the wake map and hands it to the water material.
+func _update_wakes(delta : float) -> void:
+	if not wakes_enabled:
+		WATER_MAT.set_shader_parameter(&'wake_map_rect', Vector4.ZERO)
+		return
+	if not _wake_map:
+		_wake_map = WakeMap.new(WAKE_MAP_RESOLUTION, wake_coverage)
+		WATER_MAT.set_shader_parameter(&'wake_map', _wake_map.texture)
+	var view_camera := get_viewport().get_camera_3d()
+	if Engine.is_editor_hint() and Engine.has_singleton(&'EditorInterface'):
+		var editor_vp = Engine.get_singleton(&'EditorInterface').get_editor_viewport_3d(0)
+		if editor_vp: view_camera = editor_vp.get_camera_3d()
+	var center := view_camera.global_position if view_camera else global_position
+	var stamps := []
+	for emitter in get_tree().get_nodes_in_group(&'wake_emitter'):
+		var stamp : Array = emitter.get_stamp(delta, get_wave_height(emitter.global_position, false))
+		if not stamp.is_empty(): stamps.append(stamp)
+	_wake_map.update(delta, center, stamps, wake_lifetime, wake_spread)
+	WATER_MAT.set_shader_parameter(&'wake_map_rect', _wake_map.rect)
 
 func _sample_displacement(cascade: int, uv: Vector2) -> Vector3:
 	# Wrap UVs

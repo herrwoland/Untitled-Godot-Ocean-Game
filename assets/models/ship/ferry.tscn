@@ -9,6 +9,8 @@
 [ext_resource type="Script" uid="uid://cs2x7rmusrtt6" path="res://assets/scripts/interactables/ship_ladder.gd" id="6_ladder"]
 [ext_resource type="PackedScene" uid="uid://bs7x4dgp16lr5" path="res://assets/models/boat/boat_0.1.glb" id="8_2ib73"]
 [ext_resource type="PackedScene" uid="uid://d327mym4cwyr7" path="res://assets/models/boat/ladder.glb" id="9_4dvsp"]
+[ext_resource type="Script" path="res://assets/scripts/world/wake_emitter.gd" id="20_wake"]
+[ext_resource type="Script" path="res://assets/scripts/world/bow_spray.gd" id="21_spray"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_82xsv"]
 size = Vector3(44, 8.062927, 13.075356)
@@ -273,6 +275,30 @@ max_distance = 40.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 autoplay = true
 max_distance = 25.0
+
+[node name="WakeStern" type="Node3D" parent="." unique_id=1570342201]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, -2.5, 0)
+script = ExtResource("20_wake")
+half_width = 6.0
+foam = 0.65
+edge_bias = 0.5
+
+[node name="WakeBow" type="Node3D" parent="." unique_id=1570342202]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, -2.5, 0)
+script = ExtResource("20_wake")
+half_width = 4.5
+foam = 0.7
+churn = 0.4
+edge_bias = 0.85
+
+[node name="BowSprayPort" type="GPUParticles3D" parent="." unique_id=1570342203]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, -2.2, 3.8)
+script = ExtResource("21_spray")
+
+[node name="BowSprayStarboard" type="GPUParticles3D" parent="." unique_id=1570342204]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, -2.2, -3.8)
+script = ExtResource("21_spray")
+throw_direction = Vector3(0, 1, -0.7)
 
 [editable path="boat"]
 [editable path="LadderPort/StairsModel/ladder"]
