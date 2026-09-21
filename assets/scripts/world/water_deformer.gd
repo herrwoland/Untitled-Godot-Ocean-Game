@@ -72,6 +72,10 @@ const MAX_RINGS := 3
 @export_range(0.5, 50.0, 0.1) var ring_speed := 10.0
 ## Width of a swell (m).
 @export_range(0.5, 50.0, 0.1) var ring_width := 6.0
+## Seconds to wait after the breach (or going under) before the swell starts.
+@export_range(0.0, 10.0, 0.05) var ring_delay := 0.0
+## Seconds for a new swell to grow to full height, so it doesn't pop into existence.
+@export_range(0.0, 5.0, 0.05) var ring_fade_in := 0.5
 ## Seconds before a swell has died out.
 @export_range(0.5, 60.0, 0.1) var ring_lifetime := 8.0
 ## Foam on the swell crests.
@@ -83,7 +87,7 @@ var _lift := 0.0
 var _foam_level := 0.0 # 0..1, how broken/white the dome's water currently is.
 var _breached := false
 var _time_breached := 0.0
-var _rings : Array[Vector2] = [] # (age in seconds, amplitude scale)
+var _rings : Array[Vector2] = [] # (age in seconds, amplitude scale). Age < 0 = still delayed.
 var _last_y := NAN
 var _velocity_y := 0.0 # Smoothed vertical speed (m/s), tells rising from sinking.
 var _time_sunk := -1.0 # Seconds since the top went under while sinking (< 0 = not active).
@@ -91,9 +95,10 @@ var _time_sunk := -1.0 # Seconds since the top went under while sinking (< 0 = n
 func _ready() -> void:
 	add_to_group(&'water_deformer')
 
-## Sends out an extra ring swell from the body. `scale` multiplies ring_amplitude.
-func emit_ring(scale := 1.0) -> void:
-	_rings.push_back(Vector2(0.0, scale))
+## Sends out an extra ring swell from the body. `scale` multiplies ring_amplitude; `delay` is
+## seconds before it starts (negative = use ring_delay).
+func emit_ring(scale := 1.0, delay := -1.0) -> void:
+	_rings.push_back(Vector2(-(ring_delay if delay < 0.0 else delay), scale))
 	if _rings.size() > MAX_RINGS:
 		_rings.pop_front()
 
@@ -187,9 +192,12 @@ func pack_shapes() -> Array:
 			shapes.append([Vector4(x, z, radius * spread * 0.8, 0.0), Vector4(0.0, 0.0, 2.0, boil)])
 	for ring in _rings:
 		var age := ring.x
+		if age < 0.0: continue # Still waiting out its delay.
 		var ring_radius := radius + ring_speed * age
-		# Energy spreads over a growing circle, and the swell dies out over its lifetime.
-		var amplitude := ring_amplitude * ring.y * strength * sqrt(radius / ring_radius) \
+		# Grows in over ring_fade_in, spreads its energy over a growing circle and dies out over
+		# its lifetime.
+		var fade_in := smoothstep(0.0, ring_fade_in, age) if ring_fade_in > 0.0 else 1.0
+		var amplitude := ring_amplitude * ring.y * strength * sqrt(radius / ring_radius) * fade_in \
 				* (1.0 - smoothstep(0.5 * ring_lifetime, ring_lifetime, age))
 		if amplitude > 0.001:
 			shapes.append([Vector4(global_position.x, global_position.z, ring_radius, amplitude),
