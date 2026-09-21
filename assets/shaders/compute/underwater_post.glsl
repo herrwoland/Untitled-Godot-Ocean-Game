@@ -33,7 +33,7 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 fog_color;       // rgb in-scattered colour, a = light loss per meter of depth
 	vec4 absorption;      // rgb extinction per meter, a = number of cascades
 	vec4 effect;          // x time, y distortion, z blur (px), w waterline width (px)
-	vec4 effect2;         // x vignette, y water level (world y), zw unused
+	vec4 effect2;         // x vignette, y water level (world y), z silhouette range (m), w unused
 	vec4 sun_dir;         // xyz direction towards the sun (world), w = shaft strength
 	vec4 sun_color;       // rgb light colour * energy, w = max shaft march distance (m)
 	vec4 shafts;          // x focus map uv scale, y march steps, z forward scattering g, w contrast
@@ -46,6 +46,7 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 shadow_right;
 	vec4 shadow_up;
 	vec4 shadow_fwd;
+	vec4 fog_gradient;    // x brightness looking straight down, y looking straight up
 } p;
 
 #include "water_shapes.glsli"
@@ -201,10 +202,19 @@ void main() {
 		float dist = depth <= 0.0 ? 1e4 : length(view_pos(suv, depth)); // depth 0 = far plane (sky).
 
 		vec3 under = blurred(suv, p.effect.z);
-		// Light fades with depth, so the water column gets darker the deeper the camera sinks.
-		vec3 fog = p.fog_color.rgb * exp(-p.fog_color.a * max(submersion, 0.0));
+		// Light fades with depth. The scattered light you see along a view comes from the water
+		// it passes through (out to about the silhouette range), so looking up you see shallower,
+		// brighter water - a faint glow overhead even when deep - and looking down, only black.
+		vec3 view_dir = normalize(mat3(p.cam_to_world) * view_pos(suv, 1.0));
+		float seen_depth = max(submersion - view_dir.y * min(dist, p.effect2.z), 0.0);
+		vec3 fog = p.fog_color.rgb * exp(-p.fog_color.a * seen_depth);
+		fog *= mix(p.fog_gradient.x, p.fog_gradient.y, view_dir.y * 0.5 + 0.5);
+		// Detail and colour are absorbed quickly (absorption), but the light scattered into the
+		// view builds up over a much longer range (silhouette range). So a distant creature is
+		// lost as a lit object yet still blocks the glow behind it: a dark shape in the murk.
 		vec3 transmittance = exp(-p.absorption.rgb * dist);
-		under = under * transmittance + fog * (1.0 - transmittance);
+		float scattered = 1.0 - exp(-dist / max(p.effect2.z, 1.0));
+		under = under * transmittance + fog * scattered;
 
 		under += shafts_filtered(suv);
 

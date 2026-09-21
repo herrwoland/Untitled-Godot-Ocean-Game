@@ -7,7 +7,7 @@ class_name UnderwaterEffect extends CompositorEffect
 const SHADER_PATH := 'res://assets/shaders/compute/underwater_post.glsl'
 const COPY_SHADER_PATH := 'res://assets/shaders/compute/image_copy.glsl'
 const CAUSTICS_SHADER_PATH := 'res://assets/shaders/compute/caustics.glsl'
-const PARAMS_SIZE := 928 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow, std140.
+const PARAMS_SIZE := 944 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow + fog gradient, std140.
 const MAX_WATER_SHAPES := 16
 const FOCUS_MAP_SIZE := 256
 const WATER_IOR := 1.333
@@ -24,6 +24,9 @@ var distortion := 0.0025
 var blur := 1.5
 var waterline_width := 2.5
 var vignette := 0.35
+var silhouette_range := 45.0
+var fog_down := 0.35
+var fog_up := 1.6
 var sun_direction := Vector3.ZERO # Towards the sun. Zero = no shafts.
 var sun_color := Color.WHITE      # Already multiplied by energy.
 var shaft_strength := 0.2
@@ -234,7 +237,7 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 	data.append_array([fog_color.r, fog_color.g, fog_color.b, depth_darkening])
 	data.append_array([absorption.x, absorption.y, absorption.z, float(cascades)])
 	data.append_array([Time.get_ticks_msec() / 1000.0, distortion, blur, waterline_width])
-	data.append_array([vignette, water_level, 0.0, 0.0])
+	data.append_array([vignette, water_level, silhouette_range, 0.0])
 	var sun := sun_direction.normalized()
 	data.append_array([sun.x, sun.y, sun.z, shaft_strength if sun != Vector3.ZERO else 0.0])
 	data.append_array([sun_color.r, sun_color.g, sun_color.b, shaft_max_distance])
@@ -253,6 +256,7 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 	data.append_array([sb.x.x, sb.x.y, sb.x.z, shadow_half_size])
 	data.append_array([sb.y.x, sb.y.y, sb.y.z, shadow_softness])
 	data.append_array([-sb.z.x, -sb.z.y, -sb.z.z, shadow_bias])
+	data.append_array([fog_down, fog_up, 0.0, 0.0])
 	var bytes := data.to_byte_array()
 	_rd.buffer_update(_params_buffer, 0, bytes.size(), bytes)
 

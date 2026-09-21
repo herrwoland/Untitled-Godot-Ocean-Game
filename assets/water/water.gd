@@ -79,6 +79,16 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 ## Width of the dark meniscus line where a wave crosses the lens, in pixels.
 @export_range(0.0, 12.0, 0.1) var waterline_width := 2.5
 @export_range(0.0, 1.0, 0.01) var underwater_vignette := 0.35
+## How far away big shapes can still be made out as dark silhouettes against the water (m).
+## Detail and colour are lost much sooner (the material's underwater_absorption).
+@export_range(5.0, 300.0, 1.0) var silhouette_range := 45.0
+## Water brightness looking straight down vs straight up (light comes from above, so things
+## below you are hidden in the dark and things above you are black shapes against the glow).
+@export_range(0.0, 2.0, 0.01) var fog_brightness_down := 0.35
+@export_range(0.0, 4.0, 0.01) var fog_brightness_up := 1.6
+## Dim the sun and sky light as the camera goes deeper (same rate as depth_darkening), so
+## everything around you is lit like it is that deep. Lamps and other local lights stay bright.
+@export var dim_sunlight_underwater := true
 
 ## Shadows of things above the water (boats, creatures, cliffs) cut through the underwater light
 ## shafts and caustics. A small hidden camera renders the scene from the sun, depth only.
@@ -155,6 +165,11 @@ var _shadow_camera : Camera3D
 var _shadow_capture : WaterShadowCapture
 var _wake_map : WakeMap
 var _marine_snow : GPUParticles3D
+# Sunlight dimming underwater: the sun's and environment's own values, restored at the surface.
+var _sun_energy_base := -1.0
+var _env : Environment
+var _env_ambient_base := -1.0
+var _env_sky_energy_base := -1.0
 const WAKE_MAP_RESOLUTION := 512
 
 var displacement_maps := Texture2DArrayRD.new()
@@ -260,6 +275,7 @@ func _process(delta : float) -> void:
 	_update_underwater_effect()
 	_update_wakes(delta)
 	_update_marine_snow()
+	_update_depth_lighting()
 	# TODO: These should probably be the same update
 	# Update waves once every 1.0/updates_per_second.
 	if updates_per_second == 0 or time >= next_update_time:
@@ -417,9 +433,12 @@ func _update_underwater_effect() -> void:
 	fx.blur = underwater_blur
 	fx.waterline_width = waterline_width
 	fx.vignette = underwater_vignette
+	fx.silhouette_range = silhouette_range
+	fx.fog_down = fog_brightness_down
+	fx.fog_up = fog_brightness_up
 	if is_instance_valid(_sun) and _sun.visible:
 		fx.sun_direction = _sun.global_basis.z # A DirectionalLight3D shines along -Z.
-		fx.sun_color = _sun.light_color * _sun.light_energy
+		fx.sun_color = _sun.light_color * _sun_base_energy()
 	else:
 		fx.sun_direction = Vector3.ZERO
 	# Light shaft controls live in the water material's "Light Shafts" uniform group.
@@ -524,6 +543,31 @@ func _notification(what: int) -> void:
 		displacement_maps.texture_rd_rid = RID()
 		normal_maps.texture_rd_rid = RID()
 		if _wake_map: _wake_map.free_resources()
+
+func _sun_base_energy() -> float:
+	return _sun_energy_base if _sun_energy_base >= 0.0 else _sun.light_energy
+
+## Sunlight and skylight only reach the depth through the water: dim them as the camera sinks.
+## The originals are remembered and put back when the camera surfaces (and in the editor).
+func _update_depth_lighting() -> void:
+	if Engine.is_editor_hint() or not is_instance_valid(_sun): return
+	if not _env:
+		var envs := (owner if owner else get_parent()).find_children('*', 'WorldEnvironment', true, false)
+		if not envs.is_empty(): _env = envs[0].environment
+	if _sun_energy_base < 0.0:
+		_sun_energy_base = _sun.light_energy
+		if _env:
+			_env_ambient_base = _env.ambient_light_energy
+			_env_sky_energy_base = _env.background_energy_multiplier
+	var cam := _view_camera()
+	var depth := 0.0
+	if dim_sunlight_underwater and cam:
+		depth = maxf(get_wave_height(cam.global_position, false) - cam.global_position.y, 0.0)
+	var light := exp(-depth_darkening * depth)
+	_sun.light_energy = _sun_energy_base * light
+	if _env:
+		_env.ambient_light_energy = _env_ambient_base * light
+		_env.background_energy_multiplier = _env_sky_energy_base * light
 
 func _view_camera() -> Camera3D:
 	var cam := get_viewport().get_camera_3d()
