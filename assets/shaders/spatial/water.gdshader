@@ -44,9 +44,9 @@ uniform float window_refraction_strength : hint_range(0.0, 1.5) = 0.6;
 uniform float window_brightness : hint_range(0.0, 4.0) = 1.0;
 /** Blur toward the edge of the window, where the whole horizon gets squeezed together. */
 uniform float window_edge_blur : hint_range(0.0, 6.0) = 3.0;
-/** Colour of the lit water column. Seen through total internal reflection and in the distance. */
+/** Colour of the lit water column, seen through total internal reflection. Also the underwater fog colour. */
 uniform vec3 underwater_color : source_color = vec3(0.04, 0.13, 0.14);
-/** Per-meter extinction (r, g, b). Red dies first, which is what makes water look like water. */
+/** Per-meter extinction (r, g, b) used by the underwater screen effect. Red dies first. */
 uniform vec3 underwater_absorption = vec3(0.22, 0.06, 0.05);
 group_uniforms;
 
@@ -154,7 +154,7 @@ vec3 screen_mirrored(in sampler2D tex, vec2 uv, float lod) {
  * All vectors in view space. `n` is the surface normal facing the (underwater) camera.
  * Returns rgb = colour, a = average transmittance (how much of the air world is visible).
  */
-vec4 shade_underside(vec3 view, vec3 n, vec3 vertex, vec2 screen_uv, float foam) {
+vec4 shade_underside(vec3 view, vec3 n, vec2 screen_uv, float foam) {
 	vec3 incident = -view;
 	vec3 etas = water_ior + vec3(-1.0, 0.0, 1.0) * ior_dispersion;
 	vec3 transmitted = vec3(0.0);
@@ -181,9 +181,8 @@ vec4 shade_underside(vec3 view, vec3 n, vec3 vertex, vec2 screen_uv, float foam)
 	float avg_t = dot(transmittance, vec3(1.0 / 3.0));
 	color = mix(color, foam_color.rgb * mix(0.35, 0.12, avg_t), clamp(foam, 0.0, 1.0));
 
-	// The whole path from camera to surface is underwater, absorb along it.
-	vec3 extinction = exp(-underwater_absorption * length(vertex));
-	color = mix(underwater_color, color, extinction);
+	// Absorption between the camera and the surface is applied by the underwater screen effect
+	// (underwater_effect.gd), which also covers everything else seen underwater.
 	return vec4(color, avg_t);
 }
 
@@ -219,7 +218,7 @@ void fragment() {
 	if (underside > 0.5) {
 		gradient *= mix(0.015, normal_strength, exp(-length(VERTEX)*0.0175));
 		vec3 n_down = (VIEW_MATRIX * vec4(-normalize(vec3(-gradient.x, 1.0, -gradient.y)), 0.0)).xyz;
-		vec4 under = shade_underside(VIEW, n_down, VERTEX, SCREEN_UV, foam_factor * foam_alpha * foam_alpha);
+		vec4 under = shade_underside(VIEW, n_down, SCREEN_UV, foam_factor * foam_alpha * foam_alpha);
 
 		// Unlit: everything comes from the refracted/reflected light computed above.
 		NORMAL = n_down;

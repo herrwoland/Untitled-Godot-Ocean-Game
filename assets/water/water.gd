@@ -63,6 +63,23 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 
 @export var displacement_updates_per_second := 10
 
+## Full-screen underwater effect (see underwater_effect.gd). Fog colour and absorption are
+## taken from the water material's "Underwater" uniforms so they match the surface.
+@export_group('Underwater Effect')
+@export var underwater_effect_enabled := true :
+	set(value):
+		underwater_effect_enabled = value
+		if underwater_effect: underwater_effect.enabled = value
+## How fast light fades per meter of depth. Higher = darker the deeper you sink.
+@export_range(0.0, 0.5, 0.005) var depth_darkening := 0.04
+## Screen wobble strength (UV units).
+@export_range(0.0, 0.02, 0.0005) var underwater_distortion := 0.0025
+## Blur radius in pixels.
+@export_range(0.0, 6.0, 0.1) var underwater_blur := 1.5
+## Width of the dark meniscus line where a wave crosses the lens, in pixels.
+@export_range(0.0, 12.0, 0.1) var waterline_width := 2.5
+@export_range(0.0, 1.0, 0.01) var underwater_vignette := 0.35
+
 # ----- Bookkeeping Variables ----- #
 var wave_generator : WaveGenerator :
 	set(value):
@@ -72,6 +89,8 @@ var wave_generator : WaveGenerator :
 var rng = RandomNumberGenerator.new()
 var time := 0.0
 var next_update_time := 0.0
+
+var underwater_effect : UnderwaterEffect
 
 var displacement_maps := Texture2DArrayRD.new()
 var normal_maps := Texture2DArrayRD.new()
@@ -135,9 +154,11 @@ func _ready() -> void:
 	_img_height = _img.get_height()
 	_img_width = _img.get_width()
 	_displacement_update_rate = (1 / displacement_updates_per_second)
+	_setup_underwater_effect()
 
 func _process(delta : float) -> void:
 	_update_wave_blockers()
+	_update_underwater_effect()
 	# TODO: These should probably be the same update
 	# Update waves once every 1.0/updates_per_second.
 	if updates_per_second == 0 or time >= next_update_time:
@@ -184,6 +205,52 @@ func _setup_wave_generator() -> void:
 	RenderingServer.global_shader_parameter_set(&'num_cascades', parameters.size())
 	RenderingServer.global_shader_parameter_set(&'displacements', displacement_maps)
 	RenderingServer.global_shader_parameter_set(&'normals', normal_maps)
+
+## Adds the underwater effect to the scene's WorldEnvironment compositor (reusing one that is
+## already there, eg. saved into the scene by the editor).
+func _setup_underwater_effect() -> void:
+	var scene_root := owner if owner else get_parent()
+	if not scene_root: return
+	var envs := scene_root.find_children('*', 'WorldEnvironment', true, false)
+	if envs.is_empty():
+		push_warning('Water: no WorldEnvironment found, underwater effect disabled.')
+		return
+	var env : WorldEnvironment = envs[0]
+	if not env.compositor: env.compositor = Compositor.new()
+	for effect in env.compositor.compositor_effects:
+		if effect is UnderwaterEffect:
+			underwater_effect = effect
+	if not underwater_effect:
+		underwater_effect = UnderwaterEffect.new()
+		var effects := env.compositor.compositor_effects
+		effects.append(underwater_effect)
+		env.compositor.compositor_effects = effects
+	underwater_effect.enabled = underwater_effect_enabled
+
+func _update_underwater_effect() -> void:
+	if not underwater_effect or not wave_generator: return
+	var fx := underwater_effect
+	fx.displacement_map = wave_generator.descriptors[&'displacement_map'].rid
+	fx.map_scales = map_scales
+	fx.water_level = global_position.y
+	var fog = _water_mat_param(&'underwater_color')
+	var absorb = _water_mat_param(&'underwater_absorption')
+	if fog is Vector3: fog = Color(fog.x, fog.y, fog.z)
+	if absorb is Color: absorb = Vector3(absorb.r, absorb.g, absorb.b)
+	if fog is Color: fx.fog_color = fog
+	if absorb is Vector3: fx.absorption = absorb
+	fx.depth_darkening = depth_darkening
+	fx.distortion = underwater_distortion
+	fx.blur = underwater_blur
+	fx.waterline_width = waterline_width
+	fx.vignette = underwater_vignette
+
+## Material value, falling back to the shader default when it was never changed.
+func _water_mat_param(param : StringName) -> Variant:
+	var value = WATER_MAT.get_shader_parameter(param)
+	if value == null:
+		value = RenderingServer.shader_get_parameter_default(WATER_MAT.shader.get_rid(), param)
+	return value
 
 ## Uploads all WaveBlocker nodes to the water shader (they can move each frame,
 ## eg. a calm zone parented to the ship) and caches them for CPU sampling.
