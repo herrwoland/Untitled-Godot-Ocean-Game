@@ -38,7 +38,7 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 		_update_scales_uniform()
 
 @export_group('Performance Parameters')
-@export_enum('128x128:128', '256x256:256', '512x512:512', '1024x1024:1024') var map_size := 1024 :
+@export_enum('256x256:256', '512x512:512', '1024x1024:1024') var map_size := 1024 : # 128 breaks the ocean.
 	set(value):
 		map_size = value
 		_setup_wave_generator()

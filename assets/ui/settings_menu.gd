@@ -7,7 +7,7 @@ extends CanvasLayer
 signal closed
 
 const SETTINGS_PATH := "user://settings.cfg"
-const WAVE_RESOLUTIONS: Array[int] = [128, 256, 512, 1024]
+const WAVE_RESOLUTIONS: Array[int] = [256, 512, 1024] # 128 breaks the ocean, so it's not offered.
 const MESH_QUALITY_NAMES: Array[String] = ["Low", "High", "High 8K"]
 const EFFECTS_QUALITY_NAMES: Array[String] = ["Low", "Medium", "High"]
 
@@ -170,7 +170,8 @@ func _load_settings() -> void:
 	if not config.get_value("display", "vsync", false):
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	get_viewport().scaling_3d_scale = config.get_value("graphics", "render_scale", 1.0)
-	water.map_size = config.get_value("graphics", "wave_resolution", 512)
+	var wave_res: int = config.get_value("graphics", "wave_resolution", 512)
+	water.map_size = wave_res if wave_res in WAVE_RESOLUTIONS else 256 # eg. an old saved 128
 	water.mesh_quality = config.get_value("graphics", "mesh_quality", 0)
 	retro_post.visible = config.get_value("graphics", "ps1_mode", true)
 	_apply_effects_quality(config.get_value("graphics", "water_effects", 2))
