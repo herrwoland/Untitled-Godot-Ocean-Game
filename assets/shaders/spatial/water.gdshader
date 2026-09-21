@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode world_vertex_coords, depth_draw_always;
+render_mode world_vertex_coords, depth_draw_always, cull_disabled;
 /**
  * Water lighting model roughly follows the 2019 GDC talk: "Wakes, Explosions and Lighting: Interactive Water Simulation in Atlas".
  * Source: https://gpuopen.com/gdc-presentations/2019/gdc-2019-agtd6-interactive-water-simulation-in-atlas.pdf
@@ -10,7 +10,14 @@ render_mode world_vertex_coords, depth_draw_always;
 
 global uniform vec4 water_color : source_color;
 global uniform vec4 foam_color : source_color;
+uniform bool backface_culling = true; // Toggle in the material inspector: discards back faces when on.
 uniform vec3 depth_color_consumption = vec3(7.5, 22.0, 38.0);
+
+group_uniforms wave_blockers;
+uniform int wave_blocker_count = 0;
+uniform vec4 wave_blocker_a[8]; // (pos.x, pos.z, cos yaw, sin yaw)
+uniform vec4 wave_blocker_b[8]; // (half x / radius, half z, fade width, flags: +1 box, +2 hole)
+group_uniforms;
 
 
 uniform float roughness : hint_range(0.0, 1.0) = 0.4;
@@ -26,13 +33,63 @@ global uniform uint num_cascades;
 global uniform sampler2DArray displacements;         // Each layer represents one wave cascade.
 global uniform sampler2DArray normals : hint_normal; // Each layer represents one wave cascade.
 
+group_uniforms underwater;
+/** Index of refraction of water. Sets the size of Snell's window (~97 degree cone at 1.333). */
+uniform float water_ior : hint_range(1.0, 2.0) = 1.333;
+/** Per-channel IOR spread, gives the edge of Snell's window a faint rainbow fringe. */
+uniform float ior_dispersion : hint_range(0.0, 0.05) = 0.01;
+/** How strongly the refracted ray bends the screen sample. 1.0 = physically based offset. */
+uniform float window_refraction_strength : hint_range(0.0, 1.5) = 0.6;
+/** Brightness of the world seen through Snell's window. */
+uniform float window_brightness : hint_range(0.0, 4.0) = 1.0;
+/** Blur toward the edge of the window, where the whole horizon gets squeezed together. */
+uniform float window_edge_blur : hint_range(0.0, 6.0) = 3.0;
+/** Colour of the lit water column. Seen through total internal reflection and in the distance. */
+uniform vec3 underwater_color : source_color = vec3(0.04, 0.13, 0.14);
+/** Per-meter extinction (r, g, b). Red dies first, which is what makes water look like water. */
+uniform vec3 underwater_absorption = vec3(0.22, 0.06, 0.05);
+group_uniforms;
 
 varying float wave_height;
 varying float foam_factor;
 varying float fresnel;
+varying float blocker_mask;
+varying float blocker_hole;
+varying float underside; // 1.0 when this fragment is the water surface seen from below.
+
+// Wave-blocker attenuation at a rest position (pre-displacement). Returns
+// (mask, hole): mask 0 inside a blocker rising to 1 across its fade width;
+// hole 1 inside a HOLE blocker (surface discarded there).
+// Must mirror distance_xz() in wave_blocker.gd exactly.
+vec2 wave_blocker_eval(vec2 p) {
+	float mask = 1.0;
+	float hole = 0.0;
+	for (int i = 0; i < wave_blocker_count; i++) {
+		vec4 a = wave_blocker_a[i];
+		vec4 b = wave_blocker_b[i];
+		vec2 rel = p - a.xy;
+		int flags = int(b.w + 0.5);
+		float d;
+		if ((flags & 1) == 1) { // box footprint, rotated by yaw
+			vec2 lp = vec2(a.z*rel.x + a.w*rel.y, -a.w*rel.x + a.z*rel.y);
+			vec2 q = abs(lp) - b.xy;
+			d = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0);
+		} else { // circle footprint
+			d = length(rel) - b.x;
+		}
+		mask = min(mask, smoothstep(0.0, max(b.z, 0.001), d));
+		if (flags >= 2 && d <= 0.0) {
+			hole = 1.0;
+		}
+	}
+	return vec2(mask, hole);
+}
 
 void vertex() {
 	UV = VERTEX.xz;
+	vec2 blocker = wave_blocker_eval(VERTEX.xz);
+	blocker_mask = blocker.x;
+	blocker_hole = blocker.y;
 	// is optimized: first check if the distance is greater than 150 meters.
 	// if so, then don't calculate the displacement.
 	float distance_cam = length(VERTEX.xz - CAMERA_POSITION_WORLD.xz);
@@ -46,8 +103,8 @@ void vertex() {
 			vec4 scales = map_scales[i];
 			displacement += texture(displacements, vec3(UV*scales.xy, float(i))).xyz * scales.z;
 		}
-		VERTEX += displacement * distance_factor;
-		wave_height = displacement.y;
+		VERTEX += displacement * distance_factor * blocker_mask;
+		wave_height = displacement.y * blocker_mask;
 	}
 	else
 	{
@@ -86,7 +143,57 @@ vec4 texture_bicubic(in sampler2DArray sampler, in vec3 uvw) {
 		mix(texture(sampler, vec3(h.yz, uvw.z)), texture(sampler, vec3(h.xz, uvw.z)), w.x), w.y);
 }
 
+/** Samples the screen with mirrored edges, so strongly bent rays don't smear the border pixels. */
+vec3 screen_mirrored(in sampler2D tex, vec2 uv, float lod) {
+	uv = 1.0 - abs(1.0 - abs(uv)); // Mirror into [0, 1] (valid for uv in [-1, 2]).
+	return textureLod(tex, clamp(uv, vec2(0.001), vec2(0.999)), lod).rgb;
+}
+
+/**
+ * Shades the water surface as seen from below: Snell's window + total internal reflection.
+ * All vectors in view space. `n` is the surface normal facing the (underwater) camera.
+ * Returns rgb = colour, a = average transmittance (how much of the air world is visible).
+ */
+vec4 shade_underside(vec3 view, vec3 n, vec3 vertex, vec2 screen_uv, float foam) {
+	vec3 incident = -view;
+	vec3 etas = water_ior + vec3(-1.0, 0.0, 1.0) * ior_dispersion;
+	vec3 transmitted = vec3(0.0);
+	vec3 transmittance = vec3(0.0);
+	for (int c = 0; c < 3; c++) {
+		vec3 t = refract(incident, n, etas[c]);
+		if (dot(t, t) < 1e-6) continue; // Total internal reflection: nothing from above gets through.
+
+		// Fresnel for the water->air interface must use the angle on the air side.
+		float cos_t = clamp(dot(t, -n), 0.0, 1.0);
+		float tr = 1.0 - (REFLECTANCE + (1.0 - REFLECTANCE) * pow(1.0 - cos_t, 5.0));
+		// Bend the screen lookup by how far the refracted ray deviates from the straight one.
+		vec2 bend = (t - incident).xy * window_refraction_strength;
+		vec2 uv = screen_uv + vec2(bend.x, -bend.y);
+		transmitted[c] = screen_mirrored(screen_texture, uv, (1.0 - cos_t) * window_edge_blur)[c];
+		transmittance[c] = tr;
+	}
+
+	// Outside the window the surface is a mirror of the water column below it.
+	vec3 color = transmitted * transmittance * window_brightness + underwater_color * (1.0 - transmittance);
+
+	// Foam blocks the window: dark silhouettes against the sky, pale against the depths.
+	// (foam can exceed 1 since foam_alpha sums over cascades; clamp so mix() can't overshoot.)
+	float avg_t = dot(transmittance, vec3(1.0 / 3.0));
+	color = mix(color, foam_color.rgb * mix(0.35, 0.12, avg_t), clamp(foam, 0.0, 1.0));
+
+	// The whole path from camera to surface is underwater, absorb along it.
+	vec3 extinction = exp(-underwater_absorption * length(vertex));
+	color = mix(underwater_color, color, extinction);
+	return vec4(color, avg_t);
+}
+
 void fragment() {
+	if (backface_culling && !FRONT_FACING) {
+		discard;
+	}
+	if (blocker_hole > 0.5) {
+		discard; // inside a HOLE wave blocker there is no water surface at all
+	}
 	float map_size = float(textureSize(normals, 0).x);
 	float dist = length(VERTEX.xz);
 	// Read foam and normal information from normal maps.
@@ -101,8 +208,30 @@ void fragment() {
 		gradient += mix(texture_bicubic(normals, coords), texture(normals, coords), min(1.0, ppm*0.1)).xyw * vec3(scales.ww, 1.0);
 		foam_alpha += texture(foam_noise_tex, UV * scales.xy * 1.0).r;
 	}
+	gradient *= blocker_mask; // calm zones lose their wave normals and foam too
 	foam_factor = smoothstep(0.0, 1.0, gradient.z*0.75) * exp(-dist*0.0075);
 
+	// A back face is only the underside if the camera is actually below it. Otherwise it's a
+	// folding storm crest seen from above, which should keep the regular top shading.
+	vec3 world_frag = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	underside = (!FRONT_FACING && CAMERA_POSITION_WORLD.y < world_frag.y) ? 1.0 : 0.0;
+
+	if (underside > 0.5) {
+		gradient *= mix(0.015, normal_strength, exp(-length(VERTEX)*0.0175));
+		vec3 n_down = (VIEW_MATRIX * vec4(-normalize(vec3(-gradient.x, 1.0, -gradient.y)), 0.0)).xyz;
+		vec4 under = shade_underside(VIEW, n_down, VERTEX, SCREEN_UV, foam_factor * foam_alpha * foam_alpha);
+
+		// Unlit: everything comes from the refracted/reflected light computed above.
+		NORMAL = n_down;
+		ALBEDO = vec3(0.0);
+		EMISSION = under.rgb;
+		SPECULAR = 0.0;
+		ROUGHNESS = 1.0;
+		RADIANCE = vec4(0.0, 0.0, 0.0, 1.0);
+		IRRADIANCE = vec4(0.0, 0.0, 0.0, 1.0);
+		ALPHA = 1.0;
+		fresnel = 0.0;
+	} else {
 	// ===================== shine through ===================================#
 	// Proximity Fade
 	float depth_tex = texture(depth_texture, SCREEN_UV).r;
@@ -116,30 +245,30 @@ void fragment() {
 	if (ALPHA < 0.9){
 		foam_factor = clamp(foam_factor + 0.5 - ALPHA, 0.0, 1.0);
 	}
-	
+
 	// Depth color tinting of submerged objects
 	float depth_visibility_range = clamp(max(depth_color_consumption.r, max(depth_color_consumption.g,depth_color_consumption.b)),0.0,200.0);
 	float factor_translucency =  1.0 - smoothstep(world_pos.z + depth_visibility_range, world_pos.z, VERTEX.z);
 	factor_translucency = clamp(factor_translucency,0.35,1.0);
 	vec3 screen_albedo = texture(screen_texture, SCREEN_UV, 0.0).rgb;
 	vec3 depth_water_color = mix(screen_albedo, water_color.rgb, factor_translucency);
-	
+
 	float smooth_red = 0.0 + smoothstep(world_pos.z + depth_color_consumption.r, world_pos.z, VERTEX.z);
 	float smooth_green = 0.0 + smoothstep(world_pos.z + depth_color_consumption.g, world_pos.z, VERTEX.z);
 	float smooth_blue = 0.0 + smoothstep(world_pos.z + depth_color_consumption.b, world_pos.z, VERTEX.z);
 	vec3 color_shallow = max(vec3(smooth_red, smooth_green, smooth_blue) * depth_water_color, water_color.rgb);
 	//vec3 color_shallow = vec3(smooth_red, smooth_green, smooth_blue) * depth_water_color;
-	
-	
+
+
 	depth_water_color = mix(color_shallow, water_color.rgb, factor_translucency);
 	// ===================== shine through ===================================#
 	ALBEDO = mix(depth_water_color, foam_color.rgb, foam_factor * foam_alpha * foam_alpha);
 	fresnel = mix(pow(1.0 - dot(VIEW, NORMAL), 5.0*exp(-2.69*roughness)) / (1.0 + 22.7*pow(roughness, 1.5)), 1.0, REFLECTANCE);
 	ROUGHNESS = (1.0 - fresnel) * foam_factor + 0.4; // Roughness is proportional to foam/fog amount and fresnel.
-	
+
 	gradient *= mix(0.015, normal_strength, exp(-dist*0.0175)); // Blend normal with terrain normal as distance increases.
 	NORMAL = (VIEW_MATRIX * vec4(normalize(vec3(-gradient.x, 1.0, -gradient.y)), 0.0)).xyz;
-
+	}
 }
 
 float smith_masking_shadowing(in float cos_theta, in float alpha) {
@@ -156,21 +285,23 @@ float ggx_distribution(in float cos_theta, in float alpha) {
 }
 
 void light() {
-	vec3 halfway = normalize(LIGHT + VIEW);
-	float dot_nl = max(dot(NORMAL, LIGHT), 2e-5);
-	float dot_nv = max(dot(NORMAL, VIEW), 2e-5);
+	if (underside < 0.5) { // Underside is fully shaded in fragment().
+		vec3 halfway = normalize(LIGHT + VIEW);
+		float dot_nl = max(dot(NORMAL, LIGHT), 2e-5);
+		float dot_nv = max(dot(NORMAL, VIEW), 2e-5);
 
-	// --- SPECULAR ---
-	float light_mask = smith_masking_shadowing(roughness, dot_nv);
-	float view_mask = smith_masking_shadowing(roughness, dot_nl);
-	float microfacet_distribution = ggx_distribution(dot(NORMAL, halfway), roughness);
-	float geometric_attenuation = 1.0 / (1.0 + light_mask + view_mask);
-	SPECULAR_LIGHT += fresnel * microfacet_distribution * geometric_attenuation / (4.0 * dot_nv + 0.1) * ATTENUATION;
+		// --- SPECULAR ---
+		float light_mask = smith_masking_shadowing(roughness, dot_nv);
+		float view_mask = smith_masking_shadowing(roughness, dot_nl);
+		float microfacet_distribution = ggx_distribution(dot(NORMAL, halfway), roughness);
+		float geometric_attenuation = 1.0 / (1.0 + light_mask + view_mask);
+		SPECULAR_LIGHT += fresnel * microfacet_distribution * geometric_attenuation / (4.0 * dot_nv + 0.1) * ATTENUATION;
 
-	// --- DIFFUSE ---
-	const vec3 sss_modifier = vec3(0.9,1.15,0.85); // Subsurface scattering produces a 'greener' color.
-	float sss_height = 1.0*max(0.0, wave_height + 2.5) * pow(max(dot(LIGHT, -VIEW), 0.0), 4.0) * pow(0.5 - 0.5 * dot(LIGHT, NORMAL), 3.0);
-	float sss_near = 0.5*pow(dot_nv, 2.0);
-	float lambertian = 0.5*dot_nl;
-	DIFFUSE_LIGHT += mix((sss_height + sss_near) * sss_modifier / (1.0 + light_mask) + lambertian, foam_color.rgb, foam_factor) * (1.0 - fresnel) * ATTENUATION * LIGHT_COLOR;
+		// --- DIFFUSE ---
+		const vec3 sss_modifier = vec3(0.9,1.15,0.85); // Subsurface scattering produces a 'greener' color.
+		float sss_height = 1.0*max(0.0, wave_height + 2.5) * pow(max(dot(LIGHT, -VIEW), 0.0), 4.0) * pow(0.5 - 0.5 * dot(LIGHT, NORMAL), 3.0);
+		float sss_near = 0.5*pow(dot_nv, 2.0);
+		float lambertian = 0.5*dot_nl;
+		DIFFUSE_LIGHT += mix((sss_height + sss_near) * sss_modifier / (1.0 + light_mask) + lambertian, foam_color.rgb, foam_factor) * (1.0 - fresnel) * ATTENUATION * LIGHT_COLOR;
+	}
 }
