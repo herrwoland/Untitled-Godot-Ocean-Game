@@ -173,6 +173,10 @@ func is_water_hole(global_position: Vector3) -> bool:
 func _init() -> void:
 	rng.set_seed(1234) # This seed gives big waves!
 
+func _enter_tree() -> void:
+	# Lets floating things find the ocean without a hand-wired NodePath (see ferry.gd).
+	add_to_group(&'water')
+
 func _ready() -> void:
 	map_scales.resize(len(parameters))
 
