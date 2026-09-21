@@ -36,7 +36,9 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 effect2;         // x vignette, y water level (world y), zw unused
 	vec4 sun_dir;         // xyz direction towards the sun (world), w = shaft strength
 	vec4 sun_color;       // rgb light colour * energy, w = max shaft march distance (m)
-	vec4 shafts;          // x focus map uv scale, y march steps, z forward scattering g, w unused
+	vec4 shafts;          // x focus map uv scale, y march steps, z forward scattering g, w contrast
+	vec4 shaft_tint;      // rgb tint, a = max brightness
+	vec4 shafts2;         // x threshold, yzw unused
 } p;
 
 #ifdef MODE_SHAFTS
@@ -130,10 +132,11 @@ vec3 light_shafts(vec3 origin, vec3 dir, float max_dist, float jitter) {
 		vec2 surface_xz = pos.xz + to_light.xz * (depth / to_light.y);
 		float focus = textureLod(focus_tex, surface_xz * p.shafts.x, 0.0).r;
 		// Only the focused part stands out; the average light is already in the fog colour.
-		float bright = max(focus - 1.0, 0.0);
+		float bright = pow(max(focus - p.shafts2.x, 0.0), p.shafts.w);
 		sum += bright * exp(-p.absorption.rgb * (t + depth / to_light.y));
 	}
-	return sum * dt * phase_hg(dot(dir, to_light), p.shafts.z) * p.sun_color.rgb * p.sun_dir.w;
+	vec3 light = sum * dt * phase_hg(dot(dir, to_light), p.shafts.z) * p.sun_color.rgb * p.shaft_tint.rgb * p.sun_dir.w;
+	return min(light, vec3(p.shaft_tint.a));
 }
 #endif
 

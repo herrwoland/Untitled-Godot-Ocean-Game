@@ -50,6 +50,60 @@ uniform vec3 underwater_color : source_color = vec3(0.04, 0.13, 0.14);
 uniform vec3 underwater_absorption = vec3(0.22, 0.06, 0.05);
 group_uniforms;
 
+// Light shafts are drawn by underwater_effect.gd, not by this shader. Like the caustics below,
+// they live here so the whole water look is tuned in one material.
+group_uniforms light_shafts;
+uniform bool shafts_enabled = true;
+/** Overall brightness of the underwater light shafts. */
+uniform float shaft_strength : hint_range(0.0, 2.0, 0.01) = 0.2;
+/** Colour of the shafts (multiplied with the sun colour). */
+uniform vec3 shaft_tint : source_color = vec3(1.0);
+/** Caps how bright the shafts can glow. Lower = no blown-out beams towards the sun. */
+uniform float shaft_max_brightness : hint_range(0.0, 4.0, 0.01) = 1.0;
+/** Shapes the beams: > 1 = crisp defined rays, < 1 = soft hazy glow. */
+uniform float shaft_contrast : hint_range(0.1, 4.0, 0.01) = 1.0;
+/** How focused light must be to form a ray. Higher = fewer, stronger rays. */
+uniform float shaft_threshold : hint_range(0.0, 3.0, 0.01) = 1.0;
+/** Thin streaks (low) vs broad beams (high): how much small waves are smoothed away. */
+uniform float shaft_softness : hint_range(1.0, 8.0, 0.1) = 3.0;
+/** Pattern size. > 1 = more, narrower rays closer together. */
+uniform float shaft_scale : hint_range(0.1, 4.0, 0.01) = 1.0;
+/** Depth (m) at which the waves focus light most sharply. Deeper = thinner, more intense rays. */
+uniform float shaft_focus_depth : hint_range(0.5, 40.0, 0.5) = 8.0;
+/** How far from the camera shafts are gathered (m). */
+uniform float shaft_max_distance : hint_range(5.0, 150.0, 1.0) = 40.0;
+/** Forward scattering. Higher = shafts concentrate towards the sun, fade looking away from it. */
+uniform float shaft_scattering : hint_range(0.0, 0.95, 0.01) = 0.6;
+/** Ray march samples per pixel. Fewer = faster but grainier. */
+uniform int shaft_quality : hint_range(4, 64) = 24;
+group_uniforms;
+
+// Caustics are drawn by caustics_effect.gd, not by this shader. They live here so the whole
+// water look is tuned in one material; water.gd forwards them to the effect every frame.
+group_uniforms caustics;
+uniform bool caustics_enabled = true;
+/** Overall brightness of the caustic light net. */
+uniform float caustic_strength : hint_range(0.0, 5.0, 0.01) = 0.6;
+/** Colour of the caustic light (multiplied with the sun colour). */
+uniform vec3 caustic_tint : source_color = vec3(1.0);
+/** Caps how bright a caustic line can get. Lower = no blown-out hot spots. */
+uniform float caustic_max_brightness : hint_range(0.0, 10.0, 0.01) = 1.5;
+/** Shapes the lines: > 1 = thin crisp lines, < 1 = soft broad light. */
+uniform float caustic_contrast : hint_range(0.1, 4.0, 0.01) = 1.0;
+/** How much the gaps between lines darken (light the waves focus away). 0 = only add light. */
+uniform float caustic_darkening : hint_range(0.0, 1.0, 0.01) = 0.5;
+/** Pattern size. > 1 = smaller, denser net. */
+uniform float caustic_scale : hint_range(0.1, 8.0, 0.01) = 1.0;
+/** Depth (m) where caustics are sharpest. Higher also focuses harder: thinner, brighter lines. */
+uniform float caustic_focus_depth : hint_range(0.5, 30.0, 0.1) = 6.0;
+/** Below the focus depth, caustics fade out over roughly this many meters. */
+uniform float caustic_fade_depth : hint_range(0.5, 60.0, 0.1) = 9.0;
+/** Rainbow split at the caustic edges. */
+uniform float caustic_dispersion : hint_range(0.0, 0.03, 0.0005) = 0.004;
+/** Wave cascade that draws the caustics (-1 = smallest waves). Mid-sized waves make the classic net. */
+uniform int caustic_cascade : hint_range(-1, 7) = 1;
+group_uniforms;
+
 varying float wave_height;
 varying float foam_factor;
 varying float fresnel;

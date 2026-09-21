@@ -79,17 +79,6 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 ## Width of the dark meniscus line where a wave crosses the lens, in pixels.
 @export_range(0.0, 12.0, 0.1) var waterline_width := 2.5
 @export_range(0.0, 1.0, 0.01) var underwater_vignette := 0.35
-@export_subgroup('Light Shafts')
-## Brightness of the underwater light shafts (0 = off). Uses the scene's first DirectionalLight3D.
-@export_range(0.0, 2.0, 0.01) var shaft_strength := 0.2
-## Depth (m) at which the waves focus light most sharply. Deeper = thinner, more intense streaks.
-@export_range(0.5, 40.0, 0.5) var shaft_focus_depth := 8.0
-## How far along the view ray shafts are gathered (m).
-@export_range(5.0, 150.0, 1.0) var shaft_max_distance := 40.0
-## Ray march samples per pixel. Fewer = faster but grainier.
-@export_range(4, 64) var shaft_steps := 24
-## Forward scattering (Henyey-Greenstein g). Higher = shafts concentrate towards the sun.
-@export_range(0.0, 0.95, 0.01) var shaft_scattering := 0.6
 
 # ----- Bookkeeping Variables ----- #
 var wave_generator : WaveGenerator :
@@ -102,6 +91,7 @@ var time := 0.0
 var next_update_time := 0.0
 
 var underwater_effect : UnderwaterEffect
+var caustics_effect : CausticsEffect
 var _sun : DirectionalLight3D
 
 var displacement_maps := Texture2DArrayRD.new()
@@ -218,8 +208,8 @@ func _setup_wave_generator() -> void:
 	RenderingServer.global_shader_parameter_set(&'displacements', displacement_maps)
 	RenderingServer.global_shader_parameter_set(&'normals', normal_maps)
 
-## Adds the underwater effect to the scene's WorldEnvironment compositor (reusing one that is
-## already there, eg. saved into the scene by the editor).
+## Adds the caustics and underwater effects to the scene's WorldEnvironment compositor
+## (reusing ones that are already there, eg. saved into the scene by the editor).
 func _setup_underwater_effect() -> void:
 	var scene_root := owner if owner else get_parent()
 	if not scene_root: return
@@ -231,14 +221,17 @@ func _setup_underwater_effect() -> void:
 	if not suns.is_empty(): _sun = suns[0]
 	var env : WorldEnvironment = envs[0]
 	if not env.compositor: env.compositor = Compositor.new()
-	for effect in env.compositor.compositor_effects:
-		if effect is UnderwaterEffect:
-			underwater_effect = effect
+	var effects := env.compositor.compositor_effects
+	for effect in effects:
+		if effect is UnderwaterEffect: underwater_effect = effect
+		if effect is CausticsEffect: caustics_effect = effect
+	if not caustics_effect:
+		caustics_effect = CausticsEffect.new()
+		effects.append(caustics_effect)
 	if not underwater_effect:
 		underwater_effect = UnderwaterEffect.new()
-		var effects := env.compositor.compositor_effects
 		effects.append(underwater_effect)
-		env.compositor.compositor_effects = effects
+	env.compositor.compositor_effects = effects
 	underwater_effect.enabled = underwater_effect_enabled
 
 func _update_underwater_effect() -> void:
@@ -264,11 +257,44 @@ func _update_underwater_effect() -> void:
 		fx.sun_color = _sun.light_color * _sun.light_energy
 	else:
 		fx.sun_direction = Vector3.ZERO
-	fx.shaft_strength = shaft_strength
-	fx.shaft_focus_depth = shaft_focus_depth
-	fx.shaft_max_distance = shaft_max_distance
-	fx.shaft_steps = shaft_steps
-	fx.shaft_scattering = shaft_scattering
+	# Light shaft controls live in the water material's "Light Shafts" uniform group.
+	var shaft_tint = _water_mat_param(&'shaft_tint')
+	if shaft_tint is Vector3: shaft_tint = Color(shaft_tint.x, shaft_tint.y, shaft_tint.z)
+	if shaft_tint is Color: fx.shaft_tint = shaft_tint
+	fx.shaft_strength = _water_mat_param(&'shaft_strength') if _water_mat_param(&'shafts_enabled') == true else 0.0
+	fx.shaft_max_brightness = _water_mat_param(&'shaft_max_brightness')
+	fx.shaft_contrast = _water_mat_param(&'shaft_contrast')
+	fx.shaft_threshold = _water_mat_param(&'shaft_threshold')
+	fx.shaft_softness = _water_mat_param(&'shaft_softness')
+	fx.shaft_scale = _water_mat_param(&'shaft_scale')
+	fx.shaft_focus_depth = _water_mat_param(&'shaft_focus_depth')
+	fx.shaft_max_distance = _water_mat_param(&'shaft_max_distance')
+	fx.shaft_scattering = _water_mat_param(&'shaft_scattering')
+	fx.shaft_steps = _water_mat_param(&'shaft_quality')
+
+	if not caustics_effect: return
+	var cx := caustics_effect
+	cx.displacement_map = fx.displacement_map
+	cx.normal_map = fx.normal_map
+	cx.map_scales = map_scales
+	cx.water_level = fx.water_level
+	cx.absorption = fx.absorption
+	cx.sun_direction = fx.sun_direction
+	cx.sun_color = fx.sun_color
+	# Caustic controls live in the water material's "Caustics" uniform group.
+	cx.enabled = _water_mat_param(&'caustics_enabled') == true
+	var tint = _water_mat_param(&'caustic_tint')
+	if tint is Vector3: tint = Color(tint.x, tint.y, tint.z)
+	if tint is Color: cx.tint = tint
+	cx.strength = _water_mat_param(&'caustic_strength')
+	cx.max_brightness = _water_mat_param(&'caustic_max_brightness')
+	cx.contrast = _water_mat_param(&'caustic_contrast')
+	cx.darkening = _water_mat_param(&'caustic_darkening')
+	cx.pattern_scale = _water_mat_param(&'caustic_scale')
+	cx.focus_depth = _water_mat_param(&'caustic_focus_depth')
+	cx.fade_depth = _water_mat_param(&'caustic_fade_depth')
+	cx.dispersion = _water_mat_param(&'caustic_dispersion')
+	cx.cascade = _water_mat_param(&'caustic_cascade')
 
 ## Material value, falling back to the shader default when it was never changed.
 func _water_mat_param(param : StringName) -> Variant:

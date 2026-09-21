@@ -7,7 +7,7 @@ class_name UnderwaterEffect extends CompositorEffect
 const SHADER_PATH := 'res://assets/shaders/compute/underwater_post.glsl'
 const COPY_SHADER_PATH := 'res://assets/shaders/compute/image_copy.glsl'
 const CAUSTICS_SHADER_PATH := 'res://assets/shaders/compute/caustics.glsl'
-const PARAMS_SIZE := 304 # 2 mat4 + 4 vec4 map scales + 7 vec4, std140.
+const PARAMS_SIZE := 336 # 2 mat4 + 4 vec4 map scales + 9 vec4, std140.
 const FOCUS_MAP_SIZE := 256
 const WATER_IOR := 1.333
 
@@ -30,6 +30,12 @@ var shaft_focus_depth := 8.0
 var shaft_max_distance := 40.0
 var shaft_steps := 24
 var shaft_scattering := 0.6
+var shaft_tint := Color.WHITE
+var shaft_max_brightness := 1.0
+var shaft_contrast := 1.0
+var shaft_threshold := 1.0
+var shaft_softness := 3.0
+var shaft_scale := 1.0
 
 var _rd : RenderingDevice
 var _shader : RID
@@ -155,7 +161,8 @@ func _update_focus_map() -> void:
 	var scales := map_scales[0]
 	var tile_meters := 1.0 / maxf(scales.x, 1e-6)
 	var bend := 1.0 - 1.0 / WATER_IOR # Sideways bend of a refracted beam per unit of slope.
-	var push := PackedFloat32Array([tile_meters / FOCUS_MAP_SIZE, scales.w, shaft_focus_depth * bend, FOCUS_MAP_SIZE]).to_byte_array()
+	# Cascade 0 (largest waves), differenced over several texels so only big swells make shafts.
+	var push := PackedFloat32Array([tile_meters / FOCUS_MAP_SIZE, scales.w, shaft_focus_depth * bend, FOCUS_MAP_SIZE, 0.0, shaft_softness, 0.0, 0.0]).to_byte_array()
 	var uniform_set := UniformSetCacheRD.get_cache(_caustics_shader, 0, [
 		_uniform(RenderingDevice.UNIFORM_TYPE_IMAGE, 0, [_focus_tex]),
 		_uniform(RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 1, [_repeat_sampler, normal_map]),
@@ -213,7 +220,9 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 	data.append_array([sun.x, sun.y, sun.z, shaft_strength if sun != Vector3.ZERO else 0.0])
 	data.append_array([sun_color.r, sun_color.g, sun_color.b, shaft_max_distance])
 	var uv_scale := map_scales[0].x if not map_scales.is_empty() else 0.0
-	data.append_array([uv_scale, float(shaft_steps), shaft_scattering, 0.0])
+	data.append_array([uv_scale * shaft_scale, float(shaft_steps), shaft_scattering, shaft_contrast])
+	data.append_array([shaft_tint.r, shaft_tint.g, shaft_tint.b, shaft_max_brightness])
+	data.append_array([shaft_threshold, 0.0, 0.0, 0.0])
 	var bytes := data.to_byte_array()
 	_rd.buffer_update(_params_buffer, 0, bytes.size(), bytes)
 

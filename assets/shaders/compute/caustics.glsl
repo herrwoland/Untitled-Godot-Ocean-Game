@@ -1,8 +1,9 @@
 #[compute]
 #version 450
-// Builds a tiling "light focus" map for the largest wave cascade: how much the surface
-// concentrates sunlight at a given depth below it. Wave crests act as lenses; the bright
-// lines this produces become the underwater light shafts (see underwater_post.glsl).
+// Builds a tiling "light focus" map for one wave cascade: how much the surface concentrates
+// sunlight at a given depth below it. Wave crests act as lenses; the bright lines this
+// produces become the underwater light shafts (big waves, see underwater_post.glsl) and the
+// caustics on submerged surfaces (small waves, see caustics_apply.glsl).
 //
 // A beam hitting the surface at x with slope gradient g is bent sideways by roughly
 // -k * g per meter of depth, so at depth D it lands at x - D*k*g. Light intensity there is
@@ -18,25 +19,25 @@ layout(push_constant, std430) uniform PushConstant {
 	float normal_scale;  // Cascade normal scale (map_scales[0].w).
 	float focus;         // D * k: focus depth times refraction bend factor.
 	float size;          // Focus map resolution.
+	float layer;         // Cascade to read.
+	float span;          // Texels to difference over. Larger low-passes small ripples away
+	                     // (broad shafts); 1 keeps all detail (sharp caustics).
+	vec2 pad;
 } pc;
 
-// Slopes are differenced over several texels: this low-passes out the small ripples so only
-// the big storm waves focus light, giving broad shafts instead of fine hair-like lines.
-const float SPAN = 3.0;
-
 vec2 slope(vec2 uv) {
-	return textureLod(normals, vec3(uv, 0.0), 0.0).xy * pc.normal_scale;
+	return textureLod(normals, vec3(uv, pc.layer), 0.0).xy * pc.normal_scale;
 }
 
 void main() {
 	ivec2 px = ivec2(gl_GlobalInvocationID.xy);
 	if (any(greaterThanEqual(px, ivec2(pc.size)))) return;
 	vec2 uv = (vec2(px) + 0.5) / pc.size;
-	vec2 e = vec2(SPAN / pc.size, 0.0);
+	vec2 e = vec2(pc.span / pc.size, 0.0);
 
 	// Jacobian of the slope field (per meter) by central differences.
-	vec2 dgdx = (slope(uv + e.xy) - slope(uv - e.xy)) / (2.0 * SPAN * pc.texel_meters);
-	vec2 dgdz = (slope(uv + e.yx) - slope(uv - e.yx)) / (2.0 * SPAN * pc.texel_meters);
+	vec2 dgdx = (slope(uv + e.xy) - slope(uv - e.xy)) / (2.0 * pc.span * pc.texel_meters);
+	vec2 dgdz = (slope(uv + e.yx) - slope(uv - e.yx)) / (2.0 * pc.span * pc.texel_meters);
 	mat2 jacobian = mat2(1.0) - pc.focus * mat2(dgdx, dgdz);
 	float intensity = 1.0 / max(abs(determinant(jacobian)), 0.05);
 
