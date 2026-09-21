@@ -22,8 +22,8 @@ group_uniforms;
 
 group_uniforms wave_blockers;
 uniform int wave_blocker_count = 0;
-uniform vec4 wave_blocker_a[8]; // (pos.x, pos.z, cos yaw, sin yaw)
-uniform vec4 wave_blocker_b[8]; // (half x / radius, half z, fade width, flags: +1 box, +2 hole)
+uniform vec4 wave_blocker_a[8]; // (pos.x, pos.z, frame cos, frame sin)
+uniform vec4 wave_blocker_b[8]; // (half x / radius, half z / capsule half length, fade width, flags: +1 box, +2 hole, +4 capsule)
 group_uniforms;
 
 
@@ -59,6 +59,32 @@ group_uniforms;
 
 // Light shafts are drawn by underwater_effect.gd, not by this shader. Like the caustics below,
 // they live here so the whole water look is tuned in one material.
+// Pale churned water where the surface meets anything poking through it (hulls, creatures,
+// rocks, the shore), with a lighter band of "shallow" water around it.
+group_uniforms contact_foam;
+uniform bool contact_foam_enabled = true;
+/** How far from the contact line the foam reaches (m). */
+uniform float contact_foam_width : hint_range(0.05, 5.0, 0.01) = 1.2;
+/** Screen samples used to find nearby objects. More = smoother ring around them, but slower. */
+uniform int contact_foam_samples : hint_range(0, 32) = 16;
+/** Foam opacity. */
+uniform float contact_foam_strength : hint_range(0.0, 1.0, 0.01) = 0.85;
+/** Breaks the foam into patches: 0 = solid band, 1 = scattered clumps. */
+uniform float contact_foam_breakup : hint_range(0.0, 1.0, 0.01) = 0.45;
+/** Size of the foam clumps (m). */
+uniform float contact_foam_noise_scale : hint_range(0.1, 10.0, 0.01) = 1.2;
+/** How fast the foam churns. */
+uniform float contact_foam_speed : hint_range(0.0, 3.0, 0.01) = 0.35;
+/** Rings of foam pulsing out from the contact line (0 = none). */
+uniform float contact_foam_rings : hint_range(0.0, 1.0, 0.01) = 0.35;
+/** Colour of the lighter water band around objects. */
+uniform vec3 contact_tint_color : source_color = vec3(0.22, 0.45, 0.42);
+/** How far the lighter band reaches (m). */
+uniform float contact_tint_width : hint_range(0.1, 10.0, 0.01) = 1.6;
+/** Strength of the lighter band. */
+uniform float contact_tint_strength : hint_range(0.0, 1.0, 0.01) = 0.5;
+group_uniforms;
+
 group_uniforms light_shafts;
 uniform bool shafts_enabled = true;
 /** Overall brightness of the underwater light shafts. */
@@ -131,15 +157,17 @@ vec2 wave_blocker_eval(vec2 p) {
 		vec2 rel = p - a.xy;
 		int flags = int(b.w + 0.5);
 		float d;
+		vec2 lp = vec2(a.z*rel.x + a.w*rel.y, -a.w*rel.x + a.z*rel.y);
 		if ((flags & 1) == 1) { // box footprint, rotated by yaw
-			vec2 lp = vec2(a.z*rel.x + a.w*rel.y, -a.w*rel.x + a.z*rel.y);
 			vec2 q = abs(lp) - b.xy;
 			d = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0);
+		} else if ((flags & 4) == 4) { // capsule seen from above: a stadium along its axis
+			d = length(vec2(max(abs(lp.x) - b.y, 0.0), lp.y)) - b.x;
 		} else { // circle footprint
 			d = length(rel) - b.x;
 		}
 		mask = min(mask, smoothstep(0.0, max(b.z, 0.001), d));
-		if (flags >= 2 && d <= 0.0) {
+		if ((flags & 2) == 2 && d <= 0.0) {
 			hole = 1.0;
 		}
 	}
@@ -185,6 +213,51 @@ vec4 water_shapes_eval(vec2 p, out float foam) {
 		}
 	}
 	return result;
+}
+
+// Cheap 2D value noise and fbm for the contact foam (foam_noise_tex may be unassigned).
+float hash12(vec2 p) {
+	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+	p3 += dot(p3, p3.yzx + 33.33);
+	return fract((p3.x + p3.y) * p3.z);
+}
+float value_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), u.x),
+	           mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+float foam_fbm(vec2 p, float t) {
+	return 0.55 * value_noise(p + vec2(t, 0.7 * t))
+	     + 0.30 * value_noise(p * 2.3 - vec2(0.6 * t, 1.1 * t))
+	     + 0.15 * value_noise(p * 5.1 + vec2(1.3 * t, -0.4 * t));
+}
+
+vec3 scene_world_at(sampler2D depth_tex, vec2 uv, mat4 inv_proj, mat4 inv_view, out bool sky) {
+	float d = textureLod(depth_tex, uv, 0.0).r;
+	sky = d <= 0.0;
+	vec4 v = inv_proj * vec4(uv * 2.0 - 1.0, d, 1.0);
+	return (inv_view * vec4(v.xyz / v.w, 1.0)).xyz;
+}
+
+/**
+ * Contact foam around anything the surface meets. `gap` is the distance (m) from this bit of
+ * water to the nearest opaque surface near the waterline. Returns (foam, tint) amounts in 0..1.
+ */
+vec2 contact_foam_eval(float gap, vec2 world_xz, float time) {
+	if (!contact_foam_enabled) return vec2(0.0);
+	float near = 1.0 - clamp(gap / contact_foam_width, 0.0, 1.0);
+	float t = time * contact_foam_speed;
+	float n = foam_fbm(world_xz / contact_foam_noise_scale, t);
+	// Rings: bands at fixed distances from the contact line, drifting outwards.
+	float rings = 0.5 + 0.5 * sin(gap / contact_foam_width * 9.0 - time * 2.2 + n * 3.0);
+	float shape = pow(near, 1.5) + contact_foam_rings * rings * near * (1.0 - near) * 1.5;
+	// Noise eats into the band from its outer edge, leaving a solid line at the contact.
+	float threshold = n * contact_foam_breakup;
+	float foam = smoothstep(threshold, threshold + 0.2, shape);
+	float tint = (1.0 - smoothstep(0.0, contact_tint_width, gap)) * contact_tint_strength;
+	return vec2(clamp(foam * contact_foam_strength, 0.0, 1.0), tint);
 }
 
 void vertex() {
@@ -325,11 +398,37 @@ void fragment() {
 	vec3 world_frag = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	underside = (!FRONT_FACING && CAMERA_POSITION_WORLD.y < world_frag.y) ? 1.0 : 0.0;
 
+	// Contact foam: distance to the nearest opaque surface near the waterline, found with a small
+	// screen-space search around this pixel (plus the point straight behind it), so the foam rings
+	// objects on all sides rather than only where they are seen through the water.
+	float contact_gap = 1e6;
+	if (contact_foam_enabled) {
+		bool sky;
+		vec3 behind = scene_world_at(depth_texture, SCREEN_UV, INV_PROJECTION_MATRIX, INV_VIEW_MATRIX, sky);
+		if (!sky) contact_gap = length(behind - world_frag);
+		float reach = max(contact_foam_width * 2.0, contact_tint_width);
+		vec2 radius_uv = 0.5 * reach * vec2(PROJECTION_MATRIX[0][0], PROJECTION_MATRIX[1][1]) / max(-VERTEX.z, 0.1);
+		radius_uv = min(radius_uv, vec2(0.08));
+		float spin = hash12(FRAGCOORD.xy) * 6.2832;
+		for (int i = 0; i < contact_foam_samples; i++) {
+			float k = (float(i) + 0.5) / float(contact_foam_samples);
+			float angle = float(i) * 2.39996 + spin; // Golden angle spiral.
+			// Linear radius packs samples near the centre, where the foam edge needs precision.
+			vec2 uv = SCREEN_UV + vec2(cos(angle), sin(angle)) * k * radius_uv;
+			vec3 q = scene_world_at(depth_texture, uv, INV_PROJECTION_MATRIX, INV_VIEW_MATRIX, sky);
+			if (sky) continue;
+			vec3 rel = q - world_frag;
+			rel.y *= rel.y > 0.0 ? 0.5 : 1.0; // Above-water parts count for less: hulls flare, waves bob.
+			contact_gap = min(contact_gap, length(rel));
+		}
+	}
+	vec2 contact = contact_foam_eval(contact_gap, world_frag.xz, TIME);
+
 	if (underside > 0.5) {
 		gradient *= mix(0.015, normal_strength, exp(-length(VERTEX)*0.0175));
 		gradient.xy += shape.yz; // Water shapes are large and smooth, never faded with distance.
 		vec3 n_down = (VIEW_MATRIX * vec4(-normalize(vec3(-gradient.x, 1.0, -gradient.y)), 0.0)).xyz;
-		vec4 under = shade_underside(VIEW, n_down, SCREEN_UV, foam_factor * foam_alpha * foam_alpha);
+		vec4 under = shade_underside(VIEW, n_down, SCREEN_UV, max(foam_factor * foam_alpha * foam_alpha, contact.x));
 
 		// Unlit: everything comes from the refracted/reflected light computed above.
 		NORMAL = n_down;
@@ -372,7 +471,10 @@ void fragment() {
 
 	depth_water_color = mix(color_shallow, water_color.rgb, factor_translucency);
 	// ===================== shine through ===================================#
+	depth_water_color = mix(depth_water_color, contact_tint_color, contact.y);
 	ALBEDO = mix(depth_water_color, foam_color.rgb, foam_factor * foam_alpha * foam_alpha);
+	ALBEDO = mix(ALBEDO, foam_color.rgb, contact.x);
+	foam_factor = max(foam_factor, contact.x); // Contact foam is matte and lit like foam too.
 	fresnel = mix(pow(1.0 - dot(VIEW, NORMAL), 5.0*exp(-2.69*roughness)) / (1.0 + 22.7*pow(roughness, 1.5)), 1.0, REFLECTANCE);
 	ROUGHNESS = (1.0 - fresnel) * foam_factor + 0.4; // Roughness is proportional to foam/fog amount and fresnel.
 
