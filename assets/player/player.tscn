@@ -138,7 +138,6 @@ volume_db = -40.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.18, -0.3)
 script = ExtResource("30_bubbles")
 trail_full_speed = 0.0
-breath_interval = 3.5
 spawn_radius = 0.05
 
 [node name="OxygenController" type="Node" parent="." unique_id=1983899619 node_paths=PackedStringArray("player", "overlay_rect", "heartbeat_player", "breath_bubbles")]

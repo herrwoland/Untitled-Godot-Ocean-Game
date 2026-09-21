@@ -7,9 +7,17 @@ extends Node
 @export var player: CharacterBody3D
 @export var overlay_rect: ColorRect
 @export var heartbeat_player: AudioStreamPlayer
-## Bubbles puffed from the mouth while underwater (optional). Breathing quickens as air runs
-## out, and the last of it escapes in one gush on drowning.
+## Bubbles from the mouth (optional). A held breath releases nothing: one short involuntary
+## gasp of bubbles a few seconds before the air runs out, then a steady stream once drowned
+## (unconscious, the air escaping the lungs) until the morning restarts.
 @export var breath_bubbles: BubbleEmitter
+## Seconds of breath left when the gasp happens.
+@export var gasp_bubbles_at: float = 3.0
+@export var gasp_bubbles_duration: float = 0.5
+## Emission while drowned (0..1 of the emitter's budget).
+@export var drowned_bubble_stream: float = 0.35
+
+var _gasped := false
 @export var max_breath: float = 40.0 # seconds of air — tune survival time here
 @export var recover_rate: float = 12.0 # breath regained per second at the surface
 @export var effect_start_fraction: float = 0.2 # breath fraction left when the screen effect starts
@@ -26,6 +34,8 @@ func _ready() -> void:
 func _on_day_started(_day: int) -> void:
 	breath = max_breath
 	_died = false
+	_gasped = false
+	if breath_bubbles: breath_bubbles.stream = 0.0
 
 func _process(delta: float) -> void:
 	if player._ears_underwater:
@@ -57,11 +67,17 @@ func _process(delta: float) -> void:
 		heartbeat_player.stop()
 
 	if breath_bubbles:
-		breath_bubbles.breath_interval = lerpf(3.5, 1.2, clampf((spent - 0.4) / 0.6, 0.0, 1.0))
+		if breath <= gasp_bubbles_at and not _gasped and player._ears_underwater:
+			_gasped = true
+			breath_bubbles.burst(gasp_bubbles_duration)
+		elif breath > gasp_bubbles_at + 1.0:
+			_gasped = false # Surfaced and recovered: the next dive can gasp again.
 
 	if breath <= 0.0 and not _died:
 		_died = true
-		if breath_bubbles: breath_bubbles.burst(1.2)
+		if breath_bubbles:
+			breath_bubbles.burst(0.6)
+			breath_bubbles.stream = drowned_bubble_stream
 		EventBus.player_died.emit()
 
 ## Generates a looping two-thump heartbeat entirely in code (no asset needed).

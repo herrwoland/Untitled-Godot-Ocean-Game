@@ -15,6 +15,11 @@ uniform vec3 color : source_color = vec3(0.55, 0.62, 0.58);
 uniform float ring = 0.0;
 /** Square specks instead of round ones (PS1 look). */
 uniform bool square = false;
+/** Snap the dot/ring shape to this many pixels across (0 = smooth). */
+uniform float pixel_grid = 0.0;
+/** Optional sprite (alpha-tested, nearest filtering) replacing the built-in shape. */
+uniform bool use_sprite = false;
+uniform sampler2D sprite : source_color, filter_nearest;
 /** Specks further than this fade out (dithered) (m). */
 uniform float fade_distance = 14.0;
 /** Mean water level (world y) and light lost per meter of depth, matching the underwater
@@ -49,15 +54,21 @@ void vertex() {
 }
 
 void fragment() {
-	float r = length(UV - 0.5) * 2.0;
-	if (!square && r > 1.0) discard;
+	vec2 uv = pixel_grid > 0.5 ? (floor(UV * pixel_grid) + 0.5) / pixel_grid : UV;
+	float r = length(uv - 0.5) * 2.0;
 	float fade = 1.0 - smoothstep(fade_distance * 0.6, fade_distance, length(VERTEX));
 	if (fade < bayer4(FRAGCOORD.xy)) discard;
 	vec3 c = color * COLOR.rgb;
-	if (ring > 0.5) {
+	if (use_sprite) {
+		vec4 tex = texture(sprite, UV);
+		if (tex.a < 0.5) discard;
+		c *= tex.rgb;
+	} else if (!square && r > 1.0) {
+		discard;
+	} else if (ring > 0.5) {
 		// Bubble: bright rim, faint body, a highlight up and to the left.
 		float rim = smoothstep(0.55, 0.85, r);
-		float highlight = 1.0 - smoothstep(0.0, 0.3, length(UV - vec2(0.35, 0.3)));
+		float highlight = 1.0 - smoothstep(0.0, 0.3, length(uv - vec2(0.35, 0.3)));
 		if (rim < 0.5 && highlight < 0.5 && bayer4(FRAGCOORD.xy + 1.0) > 0.25) discard;
 		c *= 0.6 + 0.8 * max(rim, highlight);
 	}

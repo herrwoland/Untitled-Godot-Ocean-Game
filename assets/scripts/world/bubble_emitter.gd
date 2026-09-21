@@ -1,9 +1,10 @@
 @tool
 class_name BubbleEmitter extends GPUParticles3D
-## Bubbles rising to the surface from anything underwater. Three ways to use it:
+## Bubbles rising to the surface from anything underwater. Ways to use it:
 ##  - trail: bubbles stream off it while it moves (creatures, propellers, a sinking package);
-##  - breath: a small puff every `breath_interval` seconds (divers, the player);
-##  - burst(): a one-off gush from script (a gasp, a last breath, something cracking open).
+##  - breath: a small puff every `breath_interval` seconds (scuba divers, machines);
+##  - burst(): a one-off gush from script (a gasp, something cracking open);
+##  - stream: steady emission while `stream` > 0 (air escaping a drowned body, a leak).
 ## Only emits while under the water; finds the water node by itself (group "water").
 
 const PROCESS_SHADER := preload('res://assets/shaders/particles/bubbles.gdshader')
@@ -17,6 +18,8 @@ const DRAW_SHADER := preload('res://assets/shaders/particles/water_speck.gdshade
 @export_range(0.0, 20.0, 0.1) var breath_interval := 0.0
 ## Length of each breath puff (s).
 @export_range(0.05, 2.0, 0.05) var breath_duration := 0.35
+## Steady emission (0..1 of the particle budget), eg. set from script while drowning.
+@export_range(0.0, 1.0, 0.01) var stream := 0.0
 
 @export_group('Look')
 @export_range(0.001, 0.5, 0.001) var size_min := 0.015 : set = _set_size_min
@@ -25,6 +28,11 @@ const DRAW_SHADER := preload('res://assets/shaders/particles/water_speck.gdshade
 @export_range(0.0, 2.0, 0.01) var wobble := 0.35 : set = _set_wobble
 @export_range(0.0, 3.0, 0.01) var spawn_radius := 0.15 : set = _set_spawn_radius
 @export var bubble_color := Color(0.7, 0.85, 0.85) : set = _set_bubble_color
+## Optional sprite for the bubbles (small pixel-art PNG, white/grey on transparent; import
+## with Filter off). Tinted by bubble_color and lit like the rest. Empty = built-in ring.
+@export var bubble_texture : Texture2D : set = _set_bubble_texture
+## Pixelates the built-in ring to this many pixels across (0 = smooth). Ignored with a texture.
+@export_range(0, 32) var pixel_grid := 6 : set = _set_pixel_grid
 
 var _water : Node
 var _last_position := Vector3.INF
@@ -48,11 +56,11 @@ func _ready() -> void:
 		var quad := QuadMesh.new()
 		quad.material = mat
 		draw_pass_1 = quad
-		for prop in [&'size_min', &'size_max', &'rise_speed', &'wobble', &'spawn_radius', &'bubble_color']:
+		for prop in [&'size_min', &'size_max', &'rise_speed', &'wobble', &'spawn_radius', &'bubble_color', &'bubble_texture', &'pixel_grid']:
 			set(prop, get(prop)) # Push the defaults into the materials.
 	layers = 1 << 19 # Water render layer: the sun shadow camera skips it (see water.gd).
 	amount_ratio = 0.0
-	emitting = true
+	emitting = false # Switched on by _physics_process() only when there's something to emit.
 	_breath_timer = randf() * breath_interval
 
 ## A one-off gush of bubbles lasting `seconds` at full rate.
@@ -90,7 +98,9 @@ func _physics_process(delta : float) -> void:
 
 	var under := pos.y < surface - 0.05
 	var trail := trail_amount * smoothstep(0.2, trail_full_speed, velocity.length()) if trail_full_speed > 0.0 else 0.0
-	amount_ratio = clampf(maxf(trail, 1.0 if _burst_left > 0.0 else 0.0), 0.0, 1.0) if under else 0.0
+	amount_ratio = clampf(maxf(maxf(trail, stream), 1.0 if _burst_left > 0.0 else 0.0), 0.0, 1.0) if under else 0.0
+	# amount_ratio = 0 alone doesn't stop a custom-shader particle system: switch emission off.
+	emitting = amount_ratio > 0.001
 
 func _set_size_min(v : float) -> void: size_min = v; _pm_param(&'size_min', v)
 func _set_size_max(v : float) -> void: size_max = v; _pm_param(&'size_max', v)
@@ -101,6 +111,16 @@ func _set_bubble_color(v : Color) -> void:
 	bubble_color = v
 	if draw_pass_1 is PrimitiveMesh and draw_pass_1.material is ShaderMaterial:
 		draw_pass_1.material.set_shader_parameter(&'color', v)
+
+func _set_bubble_texture(v : Texture2D) -> void:
+	bubble_texture = v
+	_draw_param(&'sprite', v)
+	_draw_param(&'use_sprite', v != null)
+func _set_pixel_grid(v : int) -> void: pixel_grid = v; _draw_param(&'pixel_grid', float(v))
+
+func _draw_param(param : StringName, value) -> void:
+	if draw_pass_1 is PrimitiveMesh and draw_pass_1.material is ShaderMaterial:
+		draw_pass_1.material.set_shader_parameter(param, value)
 
 func _pm_param(param : StringName, value) -> void:
 	if process_material is ShaderMaterial: process_material.set_shader_parameter(param, value)

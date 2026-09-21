@@ -8,7 +8,8 @@ class_name Rain extends Node3D
 
 const DROPS_SHADER := preload('res://assets/shaders/particles/rain_drops.gdshader')
 const STREAK_SHADER := preload('res://assets/shaders/particles/rain_streak.gdshader')
-const SPECK_SHADER := preload('res://assets/shaders/particles/water_speck.gdshader')
+const SPLASH_SHADER := preload('res://assets/shaders/particles/rain_splash.gdshader')
+const SPLASH_DRAW_SHADER := preload('res://assets/shaders/particles/rain_splash_draw.gdshader')
 const LENS_SHADER := preload('res://assets/shaders/post/rain_lens.gdshader')
 const WATER_LAYER_BIT := 1 << 19 # Water surface/spray layer (see water.gd).
 
@@ -42,6 +43,23 @@ const WATER_LAYER_BIT := 1 << 19 # Water surface/spray layer (see water.gd).
 @export_range(1.0, 60.0, 0.5) var splash_radius := 22.0
 ## Share of drops that splash.
 @export_range(0.0, 1.0, 0.01) var splash_chance := 0.5
+## Droplets thrown up by each splash (more = fuller crowns, more particles).
+@export_range(0, 12) var splash_droplets := 5
+@export_range(0.005, 0.3, 0.001) var splash_droplet_size := 0.05
+## Radius the ring on the water spreads to (m).
+@export_range(0.05, 2.0, 0.01) var splash_ring_size := 0.35
+## How high droplets are thrown (m/s).
+@export_range(0.1, 8.0, 0.05) var splash_speed := 2.2
+## Seconds a splash lasts.
+@export_range(0.1, 2.0, 0.01) var splash_lifetime := 0.45 :
+	set(value):
+		splash_lifetime = value
+		if _splashes: _splashes.lifetime = value
+## Particle budget for splashes. Raise if splashes pop in and out in heavy rain.
+@export_range(500, 60000, 500) var max_splash_particles := 14000 :
+	set(value):
+		max_splash_particles = value
+		if _splashes: _splashes.amount = value
 @export var splash_color := Color(0.85, 0.9, 0.9)
 ## Stop rain on decks, rooftops and land too (heightfield of the scene around the camera).
 @export var collide_with_geometry := true
@@ -79,7 +97,7 @@ func _build() -> void:
 	_drops = GPUParticles3D.new()
 	_drops.name = 'Drops'
 	_drops.amount = max_drops
-	_drops.lifetime = 4.0
+	_drops.lifetime = 3.0 # ~ the fall from the top of the column (column_height / fall_speed).
 	_drops.preprocess = 3.0
 	_drops.local_coords = false
 	_drops.fixed_fps = 0
@@ -96,32 +114,21 @@ func _build() -> void:
 	_drops.draw_pass_1 = quad
 	add_child(_drops, false, Node.INTERNAL_MODE_BACK)
 
-	# Splashes: a few tiny square droplets thrown up where a drop lands.
+	# Splashes: a ring on the water and a crown of droplets where a drop lands.
 	_splashes = GPUParticles3D.new()
 	_splashes.name = 'Splashes'
-	_splashes.amount = 6000
-	_splashes.lifetime = 0.4
+	_splashes.amount = max_splash_particles
+	_splashes.lifetime = splash_lifetime
 	_splashes.emitting = false # Fed by the drops' emit_subparticle().
 	_splashes.local_coords = false
 	_splashes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_splashes.layers = WATER_LAYER_BIT
-	var spm := ParticleProcessMaterial.new()
-	spm.direction = Vector3.UP
-	spm.spread = 35.0
-	spm.initial_velocity_min = 1.0
-	spm.initial_velocity_max = 2.6
-	spm.gravity = Vector3(0, -9.8, 0)
-	spm.scale_min = 0.5
-	spm.scale_max = 1.2
-	spm.sub_emitter_mode = ParticleProcessMaterial.SUB_EMITTER_DISABLED
+	var spm := ShaderMaterial.new()
+	spm.shader = SPLASH_SHADER
 	_splashes.process_material = spm
 	var splash_mat := ShaderMaterial.new()
-	splash_mat.shader = SPECK_SHADER
-	splash_mat.set_shader_parameter(&'square', true)
-	splash_mat.set_shader_parameter(&'fade_distance', 30.0)
-	splash_mat.set_shader_parameter(&'water_level', -10000.0) # Never dimmed as "underwater".
+	splash_mat.shader = SPLASH_DRAW_SHADER
 	var splash_quad := QuadMesh.new()
-	splash_quad.size = Vector2(0.05, 0.05)
 	splash_quad.material = splash_mat
 	_splashes.draw_pass_1 = splash_quad
 	add_child(_splashes, false, Node.INTERNAL_MODE_BACK)
@@ -174,6 +181,7 @@ func _process(delta : float) -> void:
 	_drops.visible = not underwater
 	_splashes.visible = not underwater
 	_drops.amount_ratio = intensity
+	_drops.emitting = intensity > 0.001 # amount_ratio = 0 alone doesn't stop emission.
 	_drops.visibility_aabb = AABB(Vector3(-area_radius, -80, -area_radius), Vector3(area_radius * 2.0, 160, area_radius * 2.0))
 	_splashes.visibility_aabb = _drops.visibility_aabb
 	_drops.collision_base_size = 0.05 if collide_with_geometry else 0.0
@@ -190,12 +198,19 @@ func _process(delta : float) -> void:
 	pm.set_shader_parameter(&'streak_width', streak_width)
 	pm.set_shader_parameter(&'splash_radius', splash_radius)
 	pm.set_shader_parameter(&'splash_chance', splash_chance if splashes_enabled else 0.0)
+	pm.set_shader_parameter(&'splash_droplets', splash_droplets)
+	pm.set_shader_parameter(&'splash_speed', splash_speed)
+	var spm := _splashes.process_material as ShaderMaterial
+	spm.set_shader_parameter(&'droplet_size', splash_droplet_size)
+	spm.set_shader_parameter(&'ring_size', splash_ring_size)
+	spm.set_shader_parameter(&'water_level', water_level)
 	if _water and _water.get(&'map_scales'):
 		var scales : PackedVector4Array = _water.map_scales
 		var four := PackedVector4Array()
 		four.resize(4)
 		for i in mini(scales.size(), 4): four[i] = scales[i]
 		pm.set_shader_parameter(&'map_scales', four)
+		spm.set_shader_parameter(&'map_scales', four)
 	var streak_mat := (_drops.draw_pass_1 as QuadMesh).material as ShaderMaterial
 	streak_mat.set_shader_parameter(&'color', streak_color)
 	streak_mat.set_shader_parameter(&'opacity', streak_opacity)

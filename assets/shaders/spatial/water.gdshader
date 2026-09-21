@@ -72,6 +72,10 @@ uniform float rain_ripple_distance : hint_range(5.0, 150.0, 1.0) = 45.0;
 uniform float rain_matte : hint_range(0.0, 1.0, 0.01) = 0.6;
 /** How much heavy rain flattens the smallest waves. */
 uniform float rain_flatten : hint_range(0.0, 1.0, 0.01) = 0.25;
+/** Seen from underwater: how much the impact rings light up the underside of the surface. */
+uniform float rain_underside_rings : hint_range(0.0, 3.0, 0.01) = 1.2;
+/** Seen from underwater: extra bending of the view through the rain-beaten surface. */
+uniform float rain_underside_refraction : hint_range(0.0, 4.0, 0.01) = 2.0;
 group_uniforms;
 
 vec2 rain_hash22(vec2 p) {
@@ -80,9 +84,11 @@ vec2 rain_hash22(vec2 p) {
 	return fract((p3.xx + p3.yz) * p3.zy);
 }
 
-/** Slope of the rain ripple rings at a world position (add to the surface gradient). */
-vec2 rain_ripples(vec2 world_xz, float time) {
+/** Slope of the rain ripple rings at a world position (add to the surface gradient). `rings`
+ *  gets how strongly a fresh ring crest passes here (0..1), for drawing them from below. */
+vec2 rain_ripples(vec2 world_xz, float time, out float rings) {
 	vec2 slope = vec2(0.0);
+	rings = 0.0;
 	for (int layer = 0; layer < 2; layer++) {
 		vec2 q = world_xz / rain_ripple_size + float(layer) * vec2(0.37, 0.71);
 		vec2 id = floor(q);
@@ -97,6 +103,7 @@ vec2 rain_ripples(vec2 world_xz, float time) {
 				float u = (r - phase * 0.9) / 0.1; // Ring radius grows to ~0.9 cells.
 				float ring = -2.0 * u * exp(-u * u) * (1.0 - phase) * (1.0 - phase);
 				slope += d / max(r, 1e-3) * ring;
+				rings = max(rings, exp(-u * u * 2.0) * (1.0 - phase) * (1.0 - phase));
 			}
 		}
 	}
@@ -467,7 +474,9 @@ void fragment() {
 	gradient.xy *= 1.0 - shape.w;
 	// Rain: rings from drop impacts near the camera, and the smallest waves beaten flat.
 	float rain_fade = rain_intensity * (1.0 - smoothstep(rain_ripple_distance * 0.6, rain_ripple_distance, length(VERTEX)));
-	vec2 rain_slope = rain_fade > 0.001 ? rain_ripples(UV, TIME) * rain_fade : vec2(0.0);
+	float rain_rings = 0.0;
+	vec2 rain_slope = rain_fade > 0.001 ? rain_ripples(UV, TIME, rain_rings) * rain_fade : vec2(0.0);
+	rain_rings *= rain_fade;
 	gradient.xy *= 1.0 - rain_flatten * rain_intensity;
 	rain_wet = rain_intensity * rain_matte;
 	foam_factor = max(smoothstep(0.0, 1.0, gradient.z*0.75) * exp(-dist*0.0075), shape_foam);
@@ -513,14 +522,15 @@ void fragment() {
 	if (underside > 0.5) {
 		gradient *= mix(0.015, normal_strength, exp(-length(VERTEX)*0.0175));
 		gradient.xy += shape.yz; // Water shapes are large and smooth, never faded with distance.
-		gradient.xy += rain_slope;
+		gradient.xy += rain_slope * rain_underside_refraction;
 		vec3 n_down = (VIEW_MATRIX * vec4(-normalize(vec3(-gradient.x, 1.0, -gradient.y)), 0.0)).xyz;
 		vec4 under = shade_underside(VIEW, n_down, SCREEN_UV, max(foam_factor * foam_alpha * foam_alpha, contact.x));
 
 		// Unlit: everything comes from the refracted/reflected light computed above.
 		NORMAL = n_down;
 		ALBEDO = vec3(0.0);
-		EMISSION = under.rgb;
+		// Rain seen from below: impact rings catch the light, brightest inside Snell's window.
+		EMISSION = under.rgb * (1.0 + rain_rings * rain_underside_rings * (0.3 + 0.7 * under.a));
 		SPECULAR = 0.0;
 		ROUGHNESS = 1.0;
 		RADIANCE = vec4(0.0, 0.0, 0.0, 1.0);
