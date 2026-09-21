@@ -79,6 +79,17 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 ## Width of the dark meniscus line where a wave crosses the lens, in pixels.
 @export_range(0.0, 12.0, 0.1) var waterline_width := 2.5
 @export_range(0.0, 1.0, 0.01) var underwater_vignette := 0.35
+@export_subgroup('Light Shafts')
+## Brightness of the underwater light shafts (0 = off). Uses the scene's first DirectionalLight3D.
+@export_range(0.0, 2.0, 0.01) var shaft_strength := 0.2
+## Depth (m) at which the waves focus light most sharply. Deeper = thinner, more intense streaks.
+@export_range(0.5, 40.0, 0.5) var shaft_focus_depth := 8.0
+## How far along the view ray shafts are gathered (m).
+@export_range(5.0, 150.0, 1.0) var shaft_max_distance := 40.0
+## Ray march samples per pixel. Fewer = faster but grainier.
+@export_range(4, 64) var shaft_steps := 24
+## Forward scattering (Henyey-Greenstein g). Higher = shafts concentrate towards the sun.
+@export_range(0.0, 0.95, 0.01) var shaft_scattering := 0.6
 
 # ----- Bookkeeping Variables ----- #
 var wave_generator : WaveGenerator :
@@ -91,6 +102,7 @@ var time := 0.0
 var next_update_time := 0.0
 
 var underwater_effect : UnderwaterEffect
+var _sun : DirectionalLight3D
 
 var displacement_maps := Texture2DArrayRD.new()
 var normal_maps := Texture2DArrayRD.new()
@@ -215,6 +227,8 @@ func _setup_underwater_effect() -> void:
 	if envs.is_empty():
 		push_warning('Water: no WorldEnvironment found, underwater effect disabled.')
 		return
+	var suns := scene_root.find_children('*', 'DirectionalLight3D', true, false)
+	if not suns.is_empty(): _sun = suns[0]
 	var env : WorldEnvironment = envs[0]
 	if not env.compositor: env.compositor = Compositor.new()
 	for effect in env.compositor.compositor_effects:
@@ -231,6 +245,7 @@ func _update_underwater_effect() -> void:
 	if not underwater_effect or not wave_generator: return
 	var fx := underwater_effect
 	fx.displacement_map = wave_generator.descriptors[&'displacement_map'].rid
+	fx.normal_map = wave_generator.descriptors[&'normal_map'].rid
 	fx.map_scales = map_scales
 	fx.water_level = global_position.y
 	var fog = _water_mat_param(&'underwater_color')
@@ -244,6 +259,16 @@ func _update_underwater_effect() -> void:
 	fx.blur = underwater_blur
 	fx.waterline_width = waterline_width
 	fx.vignette = underwater_vignette
+	if is_instance_valid(_sun) and _sun.visible:
+		fx.sun_direction = _sun.global_basis.z # A DirectionalLight3D shines along -Z.
+		fx.sun_color = _sun.light_color * _sun.light_energy
+	else:
+		fx.sun_direction = Vector3.ZERO
+	fx.shaft_strength = shaft_strength
+	fx.shaft_focus_depth = shaft_focus_depth
+	fx.shaft_max_distance = shaft_max_distance
+	fx.shaft_steps = shaft_steps
+	fx.shaft_scattering = shaft_scattering
 
 ## Material value, falling back to the shader default when it was never changed.
 func _water_mat_param(param : StringName) -> Variant:

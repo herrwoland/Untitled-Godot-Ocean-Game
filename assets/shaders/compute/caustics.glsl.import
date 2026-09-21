@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://ic01tt384ngk"
+path="res://.godot/imported/caustics.glsl-cf274478b8a4ddbbc1117f45f5d4a8a8.res"
+
+[deps]
+
+source_file="res://assets/shaders/compute/caustics.glsl"
+dest_files=["res://.godot/imported/caustics.glsl-cf274478b8a4ddbbc1117f45f5d4a8a8.res"]
+
+[params]
+
