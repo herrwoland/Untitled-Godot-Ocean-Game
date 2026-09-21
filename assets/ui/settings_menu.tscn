@@ -20,9 +20,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -160.0
-offset_top = -215.0
+offset_top = -240.0
 offset_right = 160.0
-offset_bottom = 215.0
+offset_bottom = 240.0
 
 [node name="Margin" type="MarginContainer" parent="Panel" unique_id=1927752804]
 layout_mode = 2
@@ -118,6 +118,25 @@ text = "PS1 Mode"
 [node name="Ps1Check" type="CheckButton" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1332120932]
 unique_name_in_owner = true
 layout_mode = 2
+
+[node name="WaterFxLabel" type="Label" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1570342501]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Water Effects"
+
+[node name="WaterFxOption" type="OptionButton" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1570342502]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="LensDropsLabel" type="Label" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1570342503]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Rain on Lens"
+
+[node name="LensDropsCheck" type="CheckButton" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1570342504]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
 
 [node name="AudioHeader" type="Label" parent="Panel/Margin/VBox" unique_id=1245268071]
 layout_mode = 2

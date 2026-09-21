@@ -90,7 +90,20 @@ var _film := 0.0
 var _gust_time := 0.0
 
 func _ready() -> void:
+	add_to_group(&'rain')
 	_build()
+
+var _quality_base := {}
+
+## Effects quality preset from the settings menu: 0 = low, 1 = medium, 2 = high (the values set
+## in the scene). Lower levels scale down from the scene's own values, never overwrite them.
+func set_effects_quality(level : int) -> void:
+	if _quality_base.is_empty():
+		_quality_base = {max_drops = max_drops, splash_droplets = splash_droplets, splash_radius = splash_radius}
+	var scale : float = [0.35, 0.65, 1.0][clampi(level, 0, 2)]
+	max_drops = maxi(int(_quality_base.max_drops * scale), 100)
+	splash_droplets = clampi(int(round(_quality_base.splash_droplets * scale)), 1, 12)
+	splash_radius = _quality_base.splash_radius * lerpf(0.6, 1.0, scale)
 
 func _build() -> void:
 	# Falling drops.

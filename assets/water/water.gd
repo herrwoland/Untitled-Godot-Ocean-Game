@@ -544,6 +544,31 @@ func _notification(what: int) -> void:
 		normal_maps.texture_rd_rid = RID()
 		if _wake_map: _wake_map.free_resources()
 
+var _quality_base := {}
+
+## Water effects quality preset from the settings menu: 0 = low, 1 = medium, 2 = high (the values
+## set in the scene and the water material). Lower levels scale down from those values.
+##   low:    no water shadows, no caustics, coarse light shafts, fewer foam samples and specks
+##   medium: small shadow map, lighter shafts/foam/specks
+func set_effects_quality(level : int) -> void:
+	level = clampi(level, 0, 2)
+	if _quality_base.is_empty():
+		_quality_base = {
+			shadows = water_shadows_enabled,
+			shadow_res = water_shadow_resolution,
+			snow = marine_snow_amount,
+			caustics = _water_mat_param(&'caustics_enabled'),
+			shaft_quality = _water_mat_param(&'shaft_quality'),
+			foam_samples = _water_mat_param(&'contact_foam_samples'),
+		}
+	var scale : float = [0.3, 0.6, 1.0][level]
+	water_shadows_enabled = _quality_base.shadows and level > 0
+	water_shadow_resolution = _quality_base.shadow_res if level == 2 else mini(_quality_base.shadow_res, 256)
+	marine_snow_amount = maxi(int(_quality_base.snow * scale), 1)
+	WATER_MAT.set_shader_parameter(&'caustics_enabled', _quality_base.caustics == true and level > 0)
+	WATER_MAT.set_shader_parameter(&'shaft_quality', maxi(int(_quality_base.shaft_quality * scale), 6))
+	WATER_MAT.set_shader_parameter(&'contact_foam_samples', maxi(int(_quality_base.foam_samples * scale), 4))
+
 func _sun_base_energy() -> float:
 	return _sun_energy_base if _sun_energy_base >= 0.0 else _sun.light_energy
 
