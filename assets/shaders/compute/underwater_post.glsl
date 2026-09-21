@@ -39,7 +39,12 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 shafts;          // x focus map uv scale, y march steps, z forward scattering g, w contrast
 	vec4 shaft_tint;      // rgb tint, a = max brightness
 	vec4 shafts2;         // x threshold, yzw unused
+	vec4 shape_count;     // x = number of water shapes
+	vec4 shape_a[16];
+	vec4 shape_b[16];
 } p;
+
+#include "water_shapes.glsli"
 
 #ifdef MODE_SHAFTS
 layout(set = 0, binding = 5) uniform sampler2D focus_tex; // Light focus map, see caustics.glsl.
@@ -68,13 +73,14 @@ vec3 displacement(vec2 xz) {
 // The FFT displaces horizontally too (choppy waves), so find which rest position lands on
 // `xz` with a couple of fixed-point iterations before reading the height.
 float wave_height(vec2 xz) {
+	vec2 shape = water_shapes(xz);
 	vec2 rest = xz;
 	vec3 d = vec3(0.0);
 	for (int i = 0; i < 3; i++) {
-		d = displacement(rest);
+		d = displacement(rest) * (1.0 - shape.y);
 		rest = xz - d.xz;
 	}
-	return p.effect2.y + d.y;
+	return p.effect2.y + d.y + shape.x;
 }
 
 #ifndef MODE_SHAFTS

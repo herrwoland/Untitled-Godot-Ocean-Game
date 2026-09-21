@@ -7,7 +7,8 @@ class_name UnderwaterEffect extends CompositorEffect
 const SHADER_PATH := 'res://assets/shaders/compute/underwater_post.glsl'
 const COPY_SHADER_PATH := 'res://assets/shaders/compute/image_copy.glsl'
 const CAUSTICS_SHADER_PATH := 'res://assets/shaders/compute/caustics.glsl'
-const PARAMS_SIZE := 336 # 2 mat4 + 4 vec4 map scales + 9 vec4, std140.
+const PARAMS_SIZE := 864 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes, std140.
+const MAX_WATER_SHAPES := 16
 const FOCUS_MAP_SIZE := 256
 const WATER_IOR := 1.333
 
@@ -36,6 +37,9 @@ var shaft_contrast := 1.0
 var shaft_threshold := 1.0
 var shaft_softness := 3.0
 var shaft_scale := 1.0
+var shape_count := 0 # Water shapes from WaterDeformer nodes (see water.gdshader).
+var shape_a := PackedVector4Array()
+var shape_b := PackedVector4Array()
 
 var _rd : RenderingDevice
 var _shader : RID
@@ -223,6 +227,11 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 	data.append_array([uv_scale * shaft_scale, float(shaft_steps), shaft_scattering, shaft_contrast])
 	data.append_array([shaft_tint.r, shaft_tint.g, shaft_tint.b, shaft_max_brightness])
 	data.append_array([shaft_threshold, 0.0, 0.0, 0.0])
+	data.append_array([float(shape_count), 0.0, 0.0, 0.0])
+	for shapes in [shape_a, shape_b]:
+		for i in MAX_WATER_SHAPES:
+			var v : Vector4 = shapes[i] if i < shapes.size() else Vector4.ZERO
+			data.append_array([v.x, v.y, v.z, v.w])
 	var bytes := data.to_byte_array()
 	_rd.buffer_update(_params_buffer, 0, bytes.size(), bytes)
 

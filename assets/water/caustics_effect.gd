@@ -6,7 +6,8 @@ class_name CausticsEffect extends CompositorEffect
 
 const FOCUS_SHADER_PATH := 'res://assets/shaders/compute/caustics.glsl'
 const APPLY_SHADER_PATH := 'res://assets/shaders/compute/caustics_apply.glsl'
-const PARAMS_SIZE := 288 # 2 mat4 + 4 vec4 map scales + 6 vec4, std140.
+const PARAMS_SIZE := 816 # 2 mat4 + 4 vec4 map scales + 7 vec4 + 2x16 vec4 water shapes, std140.
+const MAX_WATER_SHAPES := 16
 const FOCUS_MAP_SIZE := 512
 const WATER_IOR := 1.333
 
@@ -28,6 +29,9 @@ var focus_depth := 6.0
 var fade_depth := 9.0
 var dispersion := 0.004
 var cascade := -1 # Which wave cascade makes the caustics. -1 = the smallest (last) one.
+var shape_count := 0 # Water shapes from WaterDeformer nodes (see water.gdshader).
+var shape_a := PackedVector4Array()
+var shape_b := PackedVector4Array()
 
 var _rd : RenderingDevice
 var _focus_shader : RID
@@ -145,6 +149,11 @@ func _update_params(scene_data : RenderSceneDataRD, view : int, layer : int) -> 
 	data.append_array([water_level, float(layer), dispersion, 0.0])
 	data.append_array([tint.r, tint.g, tint.b, max_brightness])
 	data.append_array([contrast, darkening, pattern_scale, fade_depth])
+	data.append_array([float(shape_count), 0.0, 0.0, 0.0])
+	for shapes in [shape_a, shape_b]:
+		for i in MAX_WATER_SHAPES:
+			var v : Vector4 = shapes[i] if i < shapes.size() else Vector4.ZERO
+			data.append_array([v.x, v.y, v.z, v.w])
 	var bytes := data.to_byte_array()
 	_rd.buffer_update(_params_buffer, 0, bytes.size(), bytes)
 

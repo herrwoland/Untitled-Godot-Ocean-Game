@@ -19,7 +19,12 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 misc;            // x water level, y caustic cascade, z dispersion, w unused
 	vec4 tint;            // rgb tint, a = max brightness
 	vec4 shape;           // x contrast, y darkening, z pattern scale, w fade depth (m)
+	vec4 shape_count;     // x = number of water shapes
+	vec4 shape_a[16];
+	vec4 shape_b[16];
 } p;
+
+#include "water_shapes.glsli"
 layout(set = 0, binding = 5) uniform sampler2D focus_tex; // Focus map, see caustics.glsl.
 
 layout(push_constant, std430) uniform PushConstant {
@@ -40,6 +45,7 @@ vec3 world_pos(ivec2 px) {
 // Same wave lookup as underwater_post.glsl: invert the choppy horizontal displacement.
 float wave_height(vec2 xz) {
 	int n = int(p.absorption.a);
+	vec2 shape = water_shapes(xz);
 	vec2 rest = xz;
 	vec3 d = vec3(0.0);
 	for (int iter = 0; iter < 3; iter++) {
@@ -48,9 +54,10 @@ float wave_height(vec2 xz) {
 			vec4 s = p.map_scales[i];
 			d += textureLod(displacements, vec3(rest * s.xy, float(i)), 0.0).xyz * s.z;
 		}
+		d *= 1.0 - shape.y;
 		rest = xz - d.xz;
 	}
-	return p.misc.x + d.y;
+	return p.misc.x + d.y + shape.x;
 }
 
 void main() {

@@ -13,6 +13,13 @@ global uniform vec4 foam_color : source_color;
 uniform bool backface_culling = true; // Toggle in the material inspector: discards back faces when on.
 uniform vec3 depth_color_consumption = vec3(7.5, 22.0, 38.0);
 
+// Radial water shapes (domes, ring swells) from WaterDeformer nodes. Set every frame by water.gd.
+group_uniforms water_shapes;
+uniform int water_shape_count = 0;
+uniform vec4 water_shape_a[16];
+uniform vec4 water_shape_b[16];
+group_uniforms;
+
 group_uniforms wave_blockers;
 uniform int wave_blocker_count = 0;
 uniform vec4 wave_blocker_a[8]; // (pos.x, pos.z, cos yaw, sin yaw)
@@ -139,8 +146,45 @@ vec2 wave_blocker_eval(vec2 p) {
 	return vec2(mask, hole);
 }
 
+// Sum of all water shapes at a rest position. Returns (height, dh/dx, dh/dz, calm); `foam` gets
+// the white water they add. Must mirror water_shapes_eval() in water.gd and water_shapes.glsli.
+//   dome: a = (x, z, width, height), b = (trough, calm, 0, foam)
+//   ring: a = (x, z, radius, amplitude), b = (width, 0, 1, foam)
+vec4 water_shapes_eval(vec2 p, out float foam) {
+	vec4 result = vec4(0.0);
+	foam = 0.0;
+	for (int i = 0; i < water_shape_count; i++) {
+		vec4 a = water_shape_a[i];
+		vec4 b = water_shape_b[i];
+		vec2 rel = p - a.xy;
+		if (b.z < 0.5) {
+			// Gaussian dome, with an optional trough ring around it: h = H e^-q (1 - t q).
+			float w2 = a.z * a.z;
+			float q = dot(rel, rel) / w2;
+			if (q > 16.0) continue;
+			float e = exp(-q);
+			float h = a.w * e * (1.0 - b.x * q);
+			vec2 grad = -a.w * e * (1.0 + b.x - b.x * q) * 2.0 * rel / w2;
+			result.xyz += vec3(h, grad);
+			result.w = max(result.w, b.y * e);
+			foam = max(foam, b.w * clamp(length(grad) * 1.5, 0.0, 1.0)); // Water sheeting off steep flanks.
+		} else {
+			// Gaussian swell travelling outwards.
+			float r = length(rel);
+			float u = (r - a.z) / b.x;
+			if (abs(u) > 4.0) continue;
+			float g = exp(-u * u);
+			result.xyz += vec3(a.w * g, a.w * g * (-2.0 * u / b.x) * rel / max(r, 1e-3));
+			foam = max(foam, b.w * g * clamp(a.w, 0.0, 1.0));
+		}
+	}
+	return result;
+}
+
 void vertex() {
 	UV = VERTEX.xz;
+	float shape_foam;
+	vec4 shape = water_shapes_eval(VERTEX.xz, shape_foam);
 	vec2 blocker = wave_blocker_eval(VERTEX.xz);
 	blocker_mask = blocker.x;
 	blocker_hole = blocker.y;
@@ -157,13 +201,16 @@ void vertex() {
 			vec4 scales = map_scales[i];
 			displacement += texture(displacements, vec3(UV*scales.xy, float(i))).xyz * scales.z;
 		}
-		VERTEX += displacement * distance_factor * blocker_mask;
-		wave_height = displacement.y * blocker_mask;
+		float wave_scale = blocker_mask * (1.0 - shape.w); // Domes smooth out the waves riding on them.
+		VERTEX += displacement * distance_factor * wave_scale;
+		wave_height = displacement.y * wave_scale;
 	}
 	else
 	{
 		wave_height = 0.0;
 	}
+	VERTEX.y += shape.x;
+	wave_height += shape.x;
 }
 
 /** Filter weights for a cubic B-spline. */
@@ -262,7 +309,10 @@ void fragment() {
 		foam_alpha += texture(foam_noise_tex, UV * scales.xy * 1.0).r;
 	}
 	gradient *= blocker_mask; // calm zones lose their wave normals and foam too
-	foam_factor = smoothstep(0.0, 1.0, gradient.z*0.75) * exp(-dist*0.0075);
+	float shape_foam;
+	vec4 shape = water_shapes_eval(UV, shape_foam);
+	gradient.xy *= 1.0 - shape.w;
+	foam_factor = max(smoothstep(0.0, 1.0, gradient.z*0.75) * exp(-dist*0.0075), shape_foam);
 
 	// A back face is only the underside if the camera is actually below it. Otherwise it's a
 	// folding storm crest seen from above, which should keep the regular top shading.
@@ -271,6 +321,7 @@ void fragment() {
 
 	if (underside > 0.5) {
 		gradient *= mix(0.015, normal_strength, exp(-length(VERTEX)*0.0175));
+		gradient.xy += shape.yz; // Water shapes are large and smooth, never faded with distance.
 		vec3 n_down = (VIEW_MATRIX * vec4(-normalize(vec3(-gradient.x, 1.0, -gradient.y)), 0.0)).xyz;
 		vec4 under = shade_underside(VIEW, n_down, SCREEN_UV, foam_factor * foam_alpha * foam_alpha);
 
@@ -320,6 +371,7 @@ void fragment() {
 	ROUGHNESS = (1.0 - fresnel) * foam_factor + 0.4; // Roughness is proportional to foam/fog amount and fresnel.
 
 	gradient *= mix(0.015, normal_strength, exp(-dist*0.0175)); // Blend normal with terrain normal as distance increases.
+	gradient.xy += shape.yz; // Water shapes are large and smooth, never faded with distance.
 	NORMAL = (VIEW_MATRIX * vec4(normalize(vec3(-gradient.x, 1.0, -gradient.y)), 0.0)).xyz;
 	}
 }

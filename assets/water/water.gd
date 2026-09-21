@@ -105,6 +105,10 @@ var _img_width: int;
 var map_scales : PackedVector4Array;
 
 const MAX_WAVE_BLOCKERS := 8
+const MAX_WATER_SHAPES := 16 # Matches the water shader and effect arrays.
+var _water_shapes_a := PackedVector4Array()
+var _water_shapes_b := PackedVector4Array()
+var _water_shape_count := 0
 var _wave_blockers: Array[Node] = []
 var _blocker_a := PackedVector4Array()
 var _blocker_b := PackedVector4Array()
@@ -122,9 +126,32 @@ func get_wave_height(global_position: Vector3, masked: bool = true) -> float:
 	var sample_uv: Vector2 = uv * Vector2(scales.x, scales.y)
 	displacement += _sample_displacement(i, sample_uv) * scales.z
 
+	# Domes/swells from WaterDeformer nodes lift the surface and calm the waves riding on it.
+	var shape := water_shapes_eval(Vector2(global_position.x, global_position.z))
+	var waves := displacement.y * (1.0 - shape.y)
 	if masked:
-		return displacement.y * blocker_mask(global_position)
-	return displacement.y
+		waves *= blocker_mask(global_position)
+	return waves + shape.x
+
+## Water shapes (from WaterDeformer nodes) at a world XZ position: (height offset, calm).
+## Must mirror water_shapes_eval() in the water shader.
+func water_shapes_eval(p: Vector2) -> Vector2:
+	var result := Vector2.ZERO
+	for i in _water_shape_count:
+		var a := _water_shapes_a[i]
+		var b := _water_shapes_b[i]
+		var rel := p - Vector2(a.x, a.y)
+		if b.z < 0.5: # Dome
+			var q := rel.length_squared() / (a.z * a.z)
+			if q > 16.0: continue
+			var e := exp(-q)
+			result.x += a.w * e * (1.0 - b.x * q)
+			result.y = maxf(result.y, b.y * e)
+		else: # Ring swell
+			var u := (rel.length() - a.z) / b.x
+			if absf(u) > 4.0: continue
+			result.x += a.w * exp(-u * u)
+	return result
 
 ## Combined wave-blocker attenuation at a position (0 = fully calmed, 1 = untouched).
 func blocker_mask(global_position: Vector3) -> float:
@@ -160,6 +187,7 @@ func _ready() -> void:
 
 func _process(delta : float) -> void:
 	_update_wave_blockers()
+	_update_water_shapes(delta)
 	_update_underwater_effect()
 	# TODO: These should probably be the same update
 	# Update waves once every 1.0/updates_per_second.
@@ -241,6 +269,9 @@ func _update_underwater_effect() -> void:
 	fx.normal_map = wave_generator.descriptors[&'normal_map'].rid
 	fx.map_scales = map_scales
 	fx.water_level = global_position.y
+	fx.shape_count = _water_shape_count
+	fx.shape_a = _water_shapes_a
+	fx.shape_b = _water_shapes_b
 	var fog = _water_mat_param(&'underwater_color')
 	var absorb = _water_mat_param(&'underwater_absorption')
 	if fog is Vector3: fog = Color(fog.x, fog.y, fog.z)
@@ -277,6 +308,9 @@ func _update_underwater_effect() -> void:
 	cx.displacement_map = fx.displacement_map
 	cx.normal_map = fx.normal_map
 	cx.map_scales = map_scales
+	cx.shape_count = _water_shape_count
+	cx.shape_a = _water_shapes_a
+	cx.shape_b = _water_shapes_b
 	cx.water_level = fx.water_level
 	cx.absorption = fx.absorption
 	cx.sun_direction = fx.sun_direction
@@ -302,6 +336,24 @@ func _water_mat_param(param : StringName) -> Variant:
 	if value == null:
 		value = RenderingServer.shader_get_parameter_default(WATER_MAT.shader.get_rid(), param)
 	return value
+
+## Advances all WaterDeformer nodes and uploads their shapes to the water shader. Effects and
+## get_wave_height() read the same packed arrays, so everything agrees on the water height.
+func _update_water_shapes(delta : float) -> void:
+	_water_shapes_a.resize(MAX_WATER_SHAPES)
+	_water_shapes_b.resize(MAX_WATER_SHAPES)
+	var count := 0
+	for deformer in get_tree().get_nodes_in_group(&'water_deformer'):
+		deformer.update_state(delta, global_position.y)
+		for shape in deformer.pack_shapes():
+			if count >= MAX_WATER_SHAPES: break
+			_water_shapes_a[count] = shape[0]
+			_water_shapes_b[count] = shape[1]
+			count += 1
+	_water_shape_count = count
+	WATER_MAT.set_shader_parameter(&'water_shape_count', count)
+	WATER_MAT.set_shader_parameter(&'water_shape_a', _water_shapes_a)
+	WATER_MAT.set_shader_parameter(&'water_shape_b', _water_shapes_b)
 
 ## Uploads all WaveBlocker nodes to the water shader (they can move each frame,
 ## eg. a calm zone parented to the ship) and caches them for CPU sampling.
