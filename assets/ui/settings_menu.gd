@@ -59,6 +59,7 @@ func setup(water_node: Node, player_node: Node, ship_node: Node, retro_post_node
 	ship = ship_node
 	retro_post = retro_post_node
 	_load_settings()
+	_apply_render_scale() # Also on a first run with no settings file.
 
 func open() -> void:
 	_sync_controls_to_current_values()
@@ -67,7 +68,7 @@ func open() -> void:
 func _sync_controls_to_current_values() -> void:
 	fullscreen_check.set_pressed_no_signal(DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN)
 	vsync_check.set_pressed_no_signal(DisplayServer.window_get_vsync_mode() != DisplayServer.VSYNC_DISABLED)
-	render_scale_slider.set_value_no_signal(get_viewport().scaling_3d_scale)
+	render_scale_slider.set_value_no_signal(_render_scale)
 	wave_res_option.select(WAVE_RESOLUTIONS.find(water.map_size))
 	mesh_quality_option.select(water.mesh_quality)
 	ps1_check.set_pressed_no_signal(retro_post.visible)
@@ -87,8 +88,25 @@ func _on_vsync_toggled(on: bool) -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if on else DisplayServer.VSYNC_DISABLED)
 	_save_settings()
 
+var _render_scale := 1.0
+
+## The 3D scene renders at the PS1 filter's resolution while PS1 mode is on (anything more is
+## thrown away by the pixelation), full resolution otherwise. The Render Scale slider scales on
+## top of that. The UI is unaffected: it keeps the viewport's own resolution.
+func _apply_render_scale() -> void:
+	var scale := _render_scale
+	if retro_post and retro_post.visible:
+		var post := retro_post.get_node_or_null(^'PostRect') as CanvasItem
+		var rows = post.material.get_shader_parameter(&'target_rows') if post and post.material else null
+		var height := get_viewport().get_visible_rect().size.y
+		if rows is float and height > 0.0:
+			# Same whole-pixel cell as ps1_post.gdshader, so each 3D pixel is exactly one big pixel.
+			scale *= 1.0 / maxf(round(height / rows), 1.0)
+	get_viewport().scaling_3d_scale = scale
+
 func _on_render_scale_changed(value: float) -> void:
-	get_viewport().scaling_3d_scale = value
+	_render_scale = value
+	_apply_render_scale()
 	_save_settings()
 
 func _on_wave_res_selected(index: int) -> void:
@@ -101,6 +119,7 @@ func _on_mesh_quality_selected(index: int) -> void:
 
 func _on_ps1_toggled(on: bool) -> void:
 	retro_post.visible = on
+	_apply_render_scale()
 	_save_settings()
 
 var _effects_quality := 2
@@ -148,7 +167,7 @@ func _save_settings() -> void:
 	var config := ConfigFile.new()
 	config.set_value("display", "fullscreen", fullscreen_check.button_pressed)
 	config.set_value("display", "vsync", vsync_check.button_pressed)
-	config.set_value("graphics", "render_scale", render_scale_slider.value)
+	config.set_value("graphics", "render_scale", _render_scale)
 	config.set_value("graphics", "wave_resolution", WAVE_RESOLUTIONS[maxi(wave_res_option.selected, 0)])
 	config.set_value("graphics", "mesh_quality", maxi(mesh_quality_option.selected, 0))
 	config.set_value("graphics", "ps1_mode", ps1_check.button_pressed)
@@ -169,7 +188,7 @@ func _load_settings() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	if not config.get_value("display", "vsync", false):
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
-	get_viewport().scaling_3d_scale = config.get_value("graphics", "render_scale", 1.0)
+	_render_scale = config.get_value("graphics", "render_scale", 1.0)
 	var wave_res: int = config.get_value("graphics", "wave_resolution", 512)
 	water.map_size = wave_res if wave_res in WAVE_RESOLUTIONS else 256 # eg. an old saved 128
 	water.mesh_quality = config.get_value("graphics", "mesh_quality", 0)

@@ -48,7 +48,7 @@
 [ext_resource type="PackedScene" path="res://assets/models/package.tscn" id="44_package"]
 [ext_resource type="PackedScene" uid="uid://c1a5366rpgr2k" path="res://assets/models/ship/ferry.tscn" id="45_ferry"]
 [ext_resource type="PackedScene" uid="uid://c4j4cc8pl3fqr" path="res://assets/models/creatures/hunter_fish.tscn" id="50_hrvbo"]
-[ext_resource type="Script" path="res://assets/scripts/world/rain.gd" id="60_rain"]
+[ext_resource type="Script" uid="uid://c7xykbyb5m0er" path="res://assets/scripts/world/rain.gd" id="60_rain"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_d13ii"]
 seed = 666
@@ -203,7 +203,7 @@ size = Vector3(10, 6, 4)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ps1"]
 shader = ExtResource("24_ps1")
-shader_parameter/target_resolution = Vector2(480, 270)
+shader_parameter/target_rows = 240.0
 shader_parameter/color_levels = 16
 shader_parameter/dither_strength = 1.0
 
@@ -427,8 +427,14 @@ shadow_opacity = 0.8
 shadow_blur = 5.0
 sky_mode = 1
 
+[node name="Rain" type="Node3D" parent="." unique_id=1570342401]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26.194424, 4.6162796, -6.0934296)
+script = ExtResource("60_rain")
+intensity = 0.01
+lens_drops_enabled = false
+
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -71, 0, 11)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26, 0, -6)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -438,9 +444,9 @@ mesh = ExtResource("4_0n3wm")
 script = ExtResource("7_s0x5e")
 parameters = Array[ExtResource("2_pw5n6")]([SubResource("Resource_adqv5"), SubResource("Resource_luhq0"), SubResource("Resource_83u3u")])
 marine_snow_amount = 8000
-marine_snow_size = 0.009000000000000001
+marine_snow_size = 0.009
 marine_snow_sink = 0.08
-marine_snow_color = Color(2.7915835e-06, 0.4532056, 0.43438756, 1)
+marine_snow_color = Color(0.1728355, 0.5218784, 0.50807506, 1)
 
 [node name="WaterSprayEmitter" type="GPUParticles3D" parent="Water" unique_id=333901123]
 transform = Transform3D(15, 0, 0, 0, 15, 0, 0, 0, 15, 0, 0, 0)
@@ -547,9 +553,6 @@ offset_top = 2.0
 offset_right = 80.0
 offset_bottom = 20.0
 script = ExtResource("25_fps")
-
-[node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-script = ExtResource("60_rain")
 
 [node name="Shore" type="StaticBody3D" parent="." unique_id=362217321]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -130, 1, 10)

@@ -256,6 +256,7 @@ sky_mode = 1
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=236522956]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -62, 0, 54)
+layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("2_yiy2m")
 cast_shadow = 0
@@ -263,9 +264,12 @@ extra_cull_margin = 1000.0
 mesh = ExtResource("3_i1gkm")
 script = ExtResource("4_j4ek6")
 parameters = Array[ExtResource("5_ag7pc")]([SubResource("Resource_adqv5"), SubResource("Resource_luhq0"), SubResource("Resource_83u3u")])
+marine_snow_size = 0.011
+marine_snow_color = Color(0.52022016, 0.6191783, 0.5601739, 1)
 
 [node name="WaterSprayEmitter" type="GPUParticles3D" parent="Water" unique_id=1945538213]
 transform = Transform3D(15, 0, 0, 0, 15, 0, 0, 0, 15, 0, 0, 0)
+layers = 524288
 material_override = SubResource("ShaderMaterial_urxel")
 cast_shadow = 0
 amount = 32768
@@ -292,15 +296,14 @@ material = SubResource("FogMaterial_ga64o")
 
 [node name="test_light" type="OmniLight3D" parent="." unique_id=644595516]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -119.654434, 0)
-light_energy = 5.904
-light_volumetric_fog_energy = 16.0
-omni_range = 4096.0
 
 [node name="test_mesh" type="MeshInstance3D" parent="test_light" unique_id=1084398354]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.8838651)
 mesh = SubResource("CapsuleMesh_5s6u7")
 
 [node name="big_sphere" type="MeshInstance3D" parent="." unique_id=175354615]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -55.524673, 0)
+visible = false
 mesh = SubResource("SphereMesh_j4ek6")
 
 [node name="WaterDeformer" type="Node3D" parent="big_sphere" unique_id=1645038889]
