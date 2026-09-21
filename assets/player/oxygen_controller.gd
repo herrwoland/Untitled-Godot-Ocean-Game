@@ -16,6 +16,13 @@ extends Node
 @export var gasp_bubbles_duration: float = 0.5
 ## Emission while drowned (0..1 of the emitter's budget).
 @export var drowned_bubble_stream: float = 0.35
+## Seconds of unconsciousness after the air runs out, before the fade to the next morning:
+## the body goes limp and sinks, the view drifts up towards the light, air escapes in a stream
+## and the heartbeat slows and stops.
+@export var drown_duration: float = 4.0
+## How far the view tilts up (radians) and rolls while drowning.
+@export var drown_look_up: float = 0.7
+@export var drown_roll: float = 0.25
 
 var _gasped := false
 @export var max_breath: float = 40.0 # seconds of air — tune survival time here
@@ -25,6 +32,9 @@ var _gasped := false
 
 var breath: float
 var _died := false
+var _drown_time := -1.0 # Seconds since drowning began (< 0 = not drowning).
+var _drown_start_pitch := 0.0
+var _drown_start_roll := 0.0
 
 func _ready() -> void:
 	breath = max_breath
@@ -36,8 +46,17 @@ func _on_day_started(_day: int) -> void:
 	_died = false
 	_gasped = false
 	if breath_bubbles: breath_bubbles.stream = 0.0
+	if _drown_time >= 0.0:
+		player.unconscious = false
+		player.camera.rotation.x = 0.0
+		player.camera.rotation.z = 0.0
+		_set_hud_visible(true)
+	_drown_time = -1.0
 
 func _process(delta: float) -> void:
+	if _drown_time >= 0.0:
+		_process_drowning(delta)
+		return
 	if player._ears_underwater:
 		breath = maxf(breath - delta, 0.0)
 	else:
@@ -78,6 +97,35 @@ func _process(delta: float) -> void:
 		if breath_bubbles:
 			breath_bubbles.burst(0.6)
 			breath_bubbles.stream = drowned_bubble_stream
+		# Unconscious for a few seconds before the morning restarts (see _process_drowning).
+		_drown_time = 0.0
+		player.unconscious = true
+		_drown_start_pitch = player.camera.rotation.x
+		_drown_start_roll = player.camera.rotation.z
+		_set_hud_visible(false) # No crosshair on an unconscious body.
+
+func _set_hud_visible(shown: bool) -> void:
+	var hud := player.get_node_or_null(^'HUD') as CanvasLayer
+	if hud: hud.visible = shown
+
+func _process_drowning(delta: float) -> void:
+	_drown_time += delta
+	var t := clampf(_drown_time / maxf(drown_duration, 0.01), 0.0, 1.0)
+	var smooth := t * t * (3.0 - 2.0 * t)
+	# The view drifts up towards the light and rolls, like a limp head.
+	player.camera.rotation.x = lerpf(_drown_start_pitch, drown_look_up, smooth)
+	player.camera.rotation.z = lerpf(_drown_start_roll, drown_roll, smooth)
+	# The air thins out as the lungs empty.
+	if breath_bubbles:
+		breath_bubbles.stream = drowned_bubble_stream * (1.0 - 0.6 * t)
+	# The heartbeat slows, fades and stops.
+	if heartbeat_player.playing:
+		heartbeat_player.pitch_scale = lerpf(1.0, 0.45, t)
+		heartbeat_player.volume_db = lerpf(-4.0, -40.0, t)
+		if t >= 0.9: heartbeat_player.stop()
+	overlay_rect.material.set_shader_parameter(&'intensity', 1.0)
+	overlay_rect.material.set_shader_parameter(&'flash_amount', 0.0) # No panic flashes any more.
+	if _drown_time >= drown_duration and _drown_time - delta < drown_duration:
 		EventBus.player_died.emit()
 
 ## Generates a looping two-thump heartbeat entirely in code (no asset needed).

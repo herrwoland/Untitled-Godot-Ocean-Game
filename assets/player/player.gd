@@ -33,6 +33,9 @@ var helm_marker: Node3D = null
 var hovered_interactable: Object = null
 var inspecting: bool = false # set by InspectionController; freezes movement and look
 var captured: bool = false # in a hunter's jaws; the CreatureDirector drives our position
+## Drowned and limp (see OxygenController): no control, the body just sinks.
+var unconscious: bool = false
+var unconscious_sink_speed: float = 0.6
 var interact_cooldown_until_msec: int = 0
 var _climb_target = null # Vector3 deck position, set each frame by a ShipLadder while space is held
 
@@ -85,6 +88,8 @@ func _update_interact_hover() -> void:
 	hovered_interactable = target
 
 func _unhandled_input(event: InputEvent) -> void:
+	if unconscious:
+		return
 	if inspecting:
 		return # the InspectionController owns input while an item is held up
 	if state == State.PILOT and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
@@ -108,6 +113,10 @@ func _physics_process(delta: float) -> void:
 	_update_underwater_audio()
 	if captured:
 		return # the creature moves us; nothing to simulate
+	if unconscious:
+		velocity = Vector3(0.0, -unconscious_sink_speed, 0.0)
+		move_and_slide() # Limp: drift down until the sea floor stops us.
+		return
 	if inspecting:
 		velocity = Vector3.ZERO
 		move_and_slide()
