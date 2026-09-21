@@ -117,6 +117,26 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 		wake_coverage = value
 		if _wake_map: _wake_map.free_resources(); _wake_map = null
 
+## Marine snow: specks hanging in the water around the camera while it is underwater.
+@export_group('Marine Snow')
+@export var marine_snow_enabled := true
+## Number of specks (spread over the box around the camera).
+@export_range(0, 8000, 10) var marine_snow_amount := 3000 :
+	set(value):
+		marine_snow_amount = value
+		if _marine_snow: _marine_snow.amount = maxi(value, 1)
+## Size of the box of specks around the camera (m).
+@export var marine_snow_box := Vector3(24, 16, 24)
+## Speck size (m).
+@export_range(0.005, 0.3, 0.001) var marine_snow_size := 0.07
+@export_range(0.0, 2.0, 0.01) var marine_snow_drift := 0.12
+@export_range(0.0, 1.0, 0.005) var marine_snow_sink := 0.04
+@export var marine_snow_color := Color(0.75, 0.82, 0.78)
+## Square specks (PS1 look) instead of round ones.
+@export var marine_snow_square := true
+## Specks further than this fade out (m).
+@export_range(1.0, 50.0, 0.5) var marine_snow_fade_distance := 12.0
+
 # ----- Bookkeeping Variables ----- #
 var wave_generator : WaveGenerator :
 	set(value):
@@ -134,6 +154,7 @@ var _shadow_viewport : SubViewport
 var _shadow_camera : Camera3D
 var _shadow_capture : WaterShadowCapture
 var _wake_map : WakeMap
+var _marine_snow : GPUParticles3D
 const WAKE_MAP_RESOLUTION := 512
 
 var displacement_maps := Texture2DArrayRD.new()
@@ -238,6 +259,7 @@ func _process(delta : float) -> void:
 	_update_water_shapes(delta)
 	_update_underwater_effect()
 	_update_wakes(delta)
+	_update_marine_snow()
 	# TODO: These should probably be the same update
 	# Update waves once every 1.0/updates_per_second.
 	if updates_per_second == 0 or time >= next_update_time:
@@ -502,6 +524,55 @@ func _notification(what: int) -> void:
 		displacement_maps.texture_rd_rid = RID()
 		normal_maps.texture_rd_rid = RID()
 		if _wake_map: _wake_map.free_resources()
+
+func _view_camera() -> Camera3D:
+	var cam := get_viewport().get_camera_3d()
+	if Engine.is_editor_hint() and Engine.has_singleton(&'EditorInterface'):
+		var editor_vp = Engine.get_singleton(&'EditorInterface').get_editor_viewport_3d(0)
+		if editor_vp: cam = editor_vp.get_camera_3d()
+	return cam
+
+## Keeps the marine snow box centred on the camera; hidden above water.
+func _update_marine_snow() -> void:
+	var cam := _view_camera()
+	var active := marine_snow_enabled and cam != null and cam.global_position.y < get_wave_height(cam.global_position, false)
+	if not _marine_snow:
+		if not active: return
+		_marine_snow = GPUParticles3D.new()
+		_marine_snow.name = 'MarineSnow'
+		_marine_snow.amount = maxi(marine_snow_amount, 1)
+		_marine_snow.lifetime = 600.0
+		_marine_snow.explosiveness = 1.0 # All specks exist at once; they never die, just wrap around.
+		_marine_snow.local_coords = false
+		_marine_snow.fixed_fps = 0
+		_marine_snow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_marine_snow.layers = WATER_LAYER_BIT # Skipped by the sun shadow camera.
+		var pm := ShaderMaterial.new()
+		pm.shader = preload('res://assets/shaders/particles/marine_snow.gdshader')
+		_marine_snow.process_material = pm
+		var mat := ShaderMaterial.new()
+		mat.shader = preload('res://assets/shaders/particles/water_speck.gdshader')
+		var quad := QuadMesh.new()
+		quad.material = mat
+		_marine_snow.draw_pass_1 = quad
+		add_child(_marine_snow, false, Node.INTERNAL_MODE_BACK) # Internal: never saved into scenes.
+	_marine_snow.visible = active
+	if not active: return
+	var center := cam.global_position
+	_marine_snow.global_position = center
+	_marine_snow.visibility_aabb = AABB(-marine_snow_box * 0.5 - Vector3.ONE, marine_snow_box + Vector3.ONE * 2.0)
+	var pm := _marine_snow.process_material as ShaderMaterial
+	pm.set_shader_parameter(&'center', center)
+	pm.set_shader_parameter(&'box_size', marine_snow_box)
+	pm.set_shader_parameter(&'size', marine_snow_size)
+	pm.set_shader_parameter(&'drift_speed', marine_snow_drift)
+	pm.set_shader_parameter(&'sink_speed', marine_snow_sink)
+	var mat := (_marine_snow.draw_pass_1 as QuadMesh).material as ShaderMaterial
+	mat.set_shader_parameter(&'color', marine_snow_color)
+	mat.set_shader_parameter(&'fade_distance', marine_snow_fade_distance)
+	mat.set_shader_parameter(&'square', marine_snow_square)
+	mat.set_shader_parameter(&'water_level', global_position.y)
+	mat.set_shader_parameter(&'depth_darkening', depth_darkening)
 
 ## Stamps every WakeEmitter's path into the wake map and hands it to the water material.
 func _update_wakes(delta : float) -> void:

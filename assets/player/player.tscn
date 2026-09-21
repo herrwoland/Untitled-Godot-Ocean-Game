@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://c4nwfe56kuued" path="res://assets/player/oxygen_controller.gd" id="4_oxygen"]
 [ext_resource type="Shader" uid="uid://b2rcikvib8wn8" path="res://assets/shaders/post/oxygen_overlay.gdshader" id="5_oxyshader"]
 [ext_resource type="Script" uid="uid://dbs8itod2p6jf" path="res://assets/player/carry_controller.gd" id="6_carry"]
+[ext_resource type="Script" path="res://assets/scripts/world/bubble_emitter.gd" id="30_bubbles"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
 radius = 0.4
@@ -133,9 +134,17 @@ mouse_filter = 2
 [node name="HeartbeatPlayer" type="AudioStreamPlayer" parent="." unique_id=1949790051]
 volume_db = -40.0
 
-[node name="OxygenController" type="Node" parent="." unique_id=1983899619 node_paths=PackedStringArray("player", "overlay_rect", "heartbeat_player")]
+[node name="BreathBubbles" type="GPUParticles3D" parent="Head/Camera3D" unique_id=1570342301]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.18, -0.3)
+script = ExtResource("30_bubbles")
+trail_full_speed = 0.0
+breath_interval = 3.5
+spawn_radius = 0.05
+
+[node name="OxygenController" type="Node" parent="." unique_id=1983899619 node_paths=PackedStringArray("player", "overlay_rect", "heartbeat_player", "breath_bubbles")]
 script = ExtResource("4_oxygen")
 player = NodePath("..")
+breath_bubbles = NodePath("../Head/Camera3D/BreathBubbles")
 overlay_rect = NodePath("../OxygenOverlay/OxygenRect")
 heartbeat_player = NodePath("../HeartbeatPlayer")
 max_breath = 20.0

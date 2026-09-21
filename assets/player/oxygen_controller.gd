@@ -7,6 +7,9 @@ extends Node
 @export var player: CharacterBody3D
 @export var overlay_rect: ColorRect
 @export var heartbeat_player: AudioStreamPlayer
+## Bubbles puffed from the mouth while underwater (optional). Breathing quickens as air runs
+## out, and the last of it escapes in one gush on drowning.
+@export var breath_bubbles: BubbleEmitter
 @export var max_breath: float = 40.0 # seconds of air — tune survival time here
 @export var recover_rate: float = 12.0 # breath regained per second at the surface
 @export var effect_start_fraction: float = 0.2 # breath fraction left when the screen effect starts
@@ -53,8 +56,12 @@ func _process(delta: float) -> void:
 	elif heartbeat_player.playing:
 		heartbeat_player.stop()
 
+	if breath_bubbles:
+		breath_bubbles.breath_interval = lerpf(3.5, 1.2, clampf((spent - 0.4) / 0.6, 0.0, 1.0))
+
 	if breath <= 0.0 and not _died:
 		_died = true
+		if breath_bubbles: breath_bubbles.burst(1.2)
 		EventBus.player_died.emit()
 
 ## Generates a looping two-thump heartbeat entirely in code (no asset needed).
