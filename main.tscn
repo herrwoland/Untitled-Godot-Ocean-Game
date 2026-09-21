@@ -23,6 +23,7 @@
 [ext_resource type="PackedScene" uid="uid://dt05m04hsc0p0" path="res://assets/ui/settings_menu.tscn" id="21_settings"]
 [ext_resource type="Shader" uid="uid://bo8roxh5bsnai" path="res://assets/shaders/post/ps1_post.gdshader" id="24_ps1"]
 [ext_resource type="Script" uid="uid://cfdhchsvnkb3e" path="res://assets/ui/fps_meter.gd" id="25_fps"]
+[ext_resource type="PackedScene" uid="uid://dbejhouby1a6p" path="res://assets/models/shed/House_01.glb" id="25_wnkbs"]
 [ext_resource type="Script" uid="uid://d23qkx5iyk16y" path="res://assets/scripts/core/mission_controller.gd" id="26_mission"]
 [ext_resource type="Script" uid="uid://dot2o2qjhydl5" path="res://assets/scripts/interactables/bed.gd" id="28_bed"]
 [ext_resource type="Script" uid="uid://b0osiac7p66k8" path="res://assets/scripts/interactables/mission_point.gd" id="29_mpoint"]
@@ -84,7 +85,7 @@ sky_material = SubResource("ShaderMaterial_0odxb")
 [sub_resource type="Environment" id="Environment_icybu"]
 background_mode = 2
 sky = SubResource("Sky_vroi3")
-tonemap_mode = 3
+tonemap_mode = 4
 glow_enabled = true
 glow_normalized = true
 glow_intensity = 0.16
@@ -105,6 +106,7 @@ volumetric_fog_length = 500.0
 [sub_resource type="Resource" id="Resource_adqv5"]
 script = ExtResource("2_pw5n6")
 tile_length = Vector2(88, 88)
+displacement_scale = 0.65
 wind_speed = 10.0
 wind_direction = 20.0
 fetch_length = 150.0
@@ -114,7 +116,7 @@ foam_amount = 8.0
 [sub_resource type="Resource" id="Resource_luhq0"]
 script = ExtResource("2_pw5n6")
 tile_length = Vector2(57, 57)
-displacement_scale = 0.75
+displacement_scale = 0.45
 wind_speed = 5.0
 wind_direction = 15.0
 fetch_length = 150.0
@@ -457,7 +459,7 @@ shadow_blur = 5.0
 sky_mode = 1
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -103, 0, 130)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -113, 0, 20)
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
 cast_shadow = 0
@@ -616,8 +618,12 @@ shape = SubResource("BoxShape3D_shore")
 mesh = SubResource("BoxMesh_shore")
 surface_material_override/0 = SubResource("StandardMaterial3D_shore")
 
+[node name="House_01" parent="." unique_id=1399797306 instance=ExtResource("25_wnkbs")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -133.12311, 3, 10)
+
 [node name="Shack" type="StaticBody3D" parent="." unique_id=2092962252]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -132, 3, 10)
+visible = false
 
 [node name="BackWallShape" type="CollisionShape3D" parent="Shack" unique_id=662059054]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 1.5, 0)
@@ -670,6 +676,7 @@ shape = SubResource("BoxShape3D_roof")
 
 [node name="ShackRoofProp" type="Node3D" parent="." unique_id=1464151730]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -132, 3, 10)
+visible = false
 script = ExtResource("36_swap")
 prop_id = &"shack_roof"
 
@@ -994,5 +1001,6 @@ script = ExtResource("42_sting")
 [node name="HunterFish" parent="." unique_id=2037867007 instance=ExtResource("50_hrvbo")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 320.1753, -81.338844, 221.668)
 
+[editable path="House_01"]
 [editable path="StonyBeach/Light_House_0_1"]
 [editable path="StonyBeach/Light_House_0_1/Light_House_light_0_1"]

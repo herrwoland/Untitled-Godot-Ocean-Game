@@ -1,0 +1,101 @@
+[gd_scene format=3 uid="uid://br3xqfvnubf55"]
+
+[ext_resource type="PackedScene" uid="uid://dbejhouby1a6p" path="res://assets/models/shed/House_01.glb" id="1_xn2p4"]
+[ext_resource type="Texture2D" uid="uid://dtxfremylnjxg" path="res://assets/blender/House_01_WoodenPlanks02_1K_BaseColor.png.png" id="2_trg5r"]
+[ext_resource type="Texture2D" uid="uid://mep5aqman4eq" path="res://assets/models/shed/House_01_WoodenPlanks02_1K_Normal.png" id="3_pvm1j"]
+[ext_resource type="Texture2D" uid="uid://bvwtlgdhgium4" path="res://assets/blender/boat_0.1_Metal025_1K-PNG_Color.png.png" id="4_trg5r"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3lmls"]
+resource_name = "wood_02"
+cull_mode = 2
+albedo_texture = ExtResource("2_trg5r")
+normal_enabled = true
+normal_texture = ExtResource("3_pvm1j")
+texture_filter = 2
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pvm1j"]
+albedo_texture = ExtResource("4_trg5r")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mixqf"]
+albedo_texture = ExtResource("4_trg5r")
+
+[node name="Shack" type="Node3D" unique_id=336421711]
+
+[node name="House_01" parent="." unique_id=1399797306 instance=ExtResource("1_xn2p4")]
+
+[node name="Plane" parent="House_01" index="0" unique_id=14186361]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Plane_001" parent="House_01" index="1" unique_id=1006826996]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cylinder_001" parent="House_01" index="2" unique_id=555739499]
+surface_material_override/0 = SubResource("StandardMaterial3D_pvm1j")
+
+[node name="Cube" parent="House_01" index="3" unique_id=1403488147]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_001" parent="House_01" index="4" unique_id=1481606062]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_002" parent="House_01" index="5" unique_id=301612896]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Plane_002" parent="House_01" index="6" unique_id=690702330]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Plane_003" parent="House_01" index="7" unique_id=1756025721]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_003" parent="House_01" index="8" unique_id=282685289]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_004" parent="House_01" index="9" unique_id=238261031]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_005" parent="House_01" index="10" unique_id=829354220]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_006" parent="House_01" index="11" unique_id=267395390]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_007" parent="House_01" index="12" unique_id=1083087100]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_008" parent="House_01" index="13" unique_id=2080443769]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_009" parent="House_01" index="14" unique_id=523116126]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_010" parent="House_01" index="15" unique_id=486348626]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_011" parent="House_01" index="16" unique_id=438647470]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_012" parent="House_01" index="17" unique_id=601945678]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_013" parent="House_01" index="18" unique_id=321708630]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_014" parent="House_01" index="19" unique_id=781071202]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_015" parent="House_01" index="20" unique_id=1473181806]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Plane_004" parent="House_01" index="21" unique_id=666047609]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cylinder" parent="House_01" index="22" unique_id=152315978]
+surface_material_override/0 = SubResource("StandardMaterial3D_mixqf")
+
+[node name="Cube_016" parent="House_01" index="23" unique_id=1442226604]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[node name="Cube_017" parent="House_01" index="24" unique_id=805574862]
+surface_material_override/0 = SubResource("StandardMaterial3D_3lmls")
+
+[editable path="House_01"]

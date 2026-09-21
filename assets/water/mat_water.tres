@@ -236,4 +236,4 @@ shader_parameter/normal_strength = 1.0
 shader_parameter/wave_blocker_count = 0
 shader_parameter/wave_blocker_a = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 shader_parameter/wave_blocker_b = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-shader_parameter/map_scales = PackedVector4Array(0.011363637, 0.011363637, 1, 1, 0.01754386, 0.01754386, 0.75, 1, 0.0625, 0.0625, 0, 0.25)
+shader_parameter/map_scales = PackedVector4Array(0.011363637, 0.011363637, 0.65, 1, 0.01754386, 0.01754386, 0.45, 1, 0.0625, 0.0625, 0, 0.25)

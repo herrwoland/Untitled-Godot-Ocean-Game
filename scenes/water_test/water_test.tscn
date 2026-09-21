@@ -1,0 +1,176 @@
+[gd_scene format=3 uid="uid://cqkasrtlto55o"]
+
+[ext_resource type="Shader" uid="uid://frqgg80eqd3c" path="res://assets/shaders/compute/sky.gdshader" id="1_d83d0"]
+[ext_resource type="Material" uid="uid://byumtcccq4ew3" path="res://assets/water/mat_water.tres" id="2_yiy2m"]
+[ext_resource type="ArrayMesh" uid="uid://qexqjidelskc" path="res://assets/water/clipmap_high_8k.obj" id="3_i1gkm"]
+[ext_resource type="Script" uid="uid://bdjbwk3saoju4" path="res://assets/water/water.gd" id="4_j4ek6"]
+[ext_resource type="Script" uid="uid://dddasf5sla0ws" path="res://assets/water/wave_cascade_parameters.gd" id="5_ag7pc"]
+[ext_resource type="Shader" uid="uid://bjmoda33o8qkd" path="res://assets/shaders/spatial/sea_spray.gdshader" id="6_0g2qf"]
+[ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="7_ntuti"]
+[ext_resource type="Material" uid="uid://5xqyddws6rt5" path="res://assets/water/mat_spray.tres" id="8_4beje"]
+[ext_resource type="ArrayMesh" uid="uid://mkodygt504hm" path="res://assets/water/clipmap_low.obj" id="9_6tkii"]
+[ext_resource type="Texture2D" uid="uid://b6322bl0qxuss" path="res://assets/textures/Ground057_1K-PNG_Color.png" id="10_3e2m4"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_p6go0"]
+seed = 666
+frequency = 0.004
+fractal_weighted_strength = 0.13
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_1u8w0"]
+noise = SubResource("FastNoiseLite_p6go0")
+seamless = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_xi160"]
+shader = ExtResource("1_d83d0")
+shader_parameter/noise_texture = SubResource("NoiseTexture2D_1u8w0")
+shader_parameter/cloud_scale = 0.12
+shader_parameter/coverage = 0.8290000393775
+shader_parameter/density = 8.9230004000925
+shader_parameter/warp_strength = 0.3
+shader_parameter/wind_direction = Vector2(1, 0.35)
+shader_parameter/wind_speed = 0.015
+shader_parameter/scud_speed_mult = 2.2
+shader_parameter/cloud_lit_color = Color(0.5816137, 0.4793473, 0.537673, 1)
+shader_parameter/cloud_dark_color = Color(0.035, 0.04, 0.055, 1)
+shader_parameter/zenith_color = Color(0.05, 0.06, 0.08, 1)
+shader_parameter/horizon_color = Color(0.3, 0.31, 0.32, 1)
+shader_parameter/ground_color = Color(0.02, 0.03, 0.04, 1)
+shader_parameter/sun_glow = 0.35
+shader_parameter/lightning_strength = 0.4310000204725
+shader_parameter/exposure = 1.0
+shader_parameter/sunset_color = Color(0.9, 0.45, 0.2, 1)
+shader_parameter/sunset_strength = 1.0
+shader_parameter/sunset_spread = 2.5
+
+[sub_resource type="Sky" id="Sky_vroi3"]
+sky_material = SubResource("ShaderMaterial_xi160")
+
+[sub_resource type="Environment" id="Environment_thx1t"]
+background_mode = 2
+sky = SubResource("Sky_vroi3")
+tonemap_mode = 4
+glow_enabled = true
+glow_normalized = true
+glow_intensity = 0.16
+glow_strength = 1.1
+glow_bloom = 0.15
+fog_light_color = Color(0.107337, 0.114064, 0.276683, 1)
+fog_light_energy = 0.0
+fog_sky_affect = 0.0
+fog_height = -4.0
+fog_height_density = 16.0
+fog_depth_curve = 0.25
+fog_depth_begin = 200.0
+fog_depth_end = 350.0
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.003
+volumetric_fog_length = 500.0
+
+[sub_resource type="Resource" id="Resource_adqv5"]
+script = ExtResource("5_ag7pc")
+tile_length = Vector2(88, 88)
+displacement_scale = 0.65
+wind_speed = 10.0
+wind_direction = 20.0
+fetch_length = 150.0
+spread = 0.2
+foam_amount = 8.0
+
+[sub_resource type="Resource" id="Resource_luhq0"]
+script = ExtResource("5_ag7pc")
+tile_length = Vector2(57, 57)
+displacement_scale = 0.45
+wind_speed = 5.0
+wind_direction = 15.0
+fetch_length = 150.0
+spread = 0.4
+foam_amount = 0.0
+
+[sub_resource type="Resource" id="Resource_83u3u"]
+script = ExtResource("5_ag7pc")
+tile_length = Vector2(16, 16)
+displacement_scale = 0.0
+normal_scale = 0.25
+wind_direction = 20.0
+fetch_length = 550.0
+spread = 0.4
+whitecap = 0.25
+foam_amount = 3.0
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_aqyki"]
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_tsx6q"]
+noise = SubResource("FastNoiseLite_aqyki")
+seamless = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_urxel"]
+render_priority = 0
+shader = ExtResource("6_0g2qf")
+shader_parameter/max_alpha = 0.666
+shader_parameter/albedo_texture = ExtResource("7_ntuti")
+shader_parameter/dissolve_texture = SubResource("NoiseTexture2D_tsx6q")
+
+[sub_resource type="QuadMesh" id="QuadMesh_bl3y3"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dqui4"]
+transparency = 1
+albedo_color = Color(0.218002, 0.374093, 0.456032, 0.992157)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_7ccjr"]
+size = Vector2(4000, 4000)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6240f"]
+albedo_texture = ExtResource("10_3e2m4")
+texture_filter = 0
+
+[sub_resource type="FogMaterial" id="FogMaterial_ga64o"]
+density = 0.01
+albedo = Color(0.37830523, 0.56667346, 0.57315886, 1)
+
+[node name="water_test" type="Node3D" unique_id=704787569]
+
+[node name="Environment" type="WorldEnvironment" parent="." unique_id=1466687628]
+environment = SubResource("Environment_thx1t")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=404076308]
+transform = Transform3D(0.945601, -0.0516921, 0.321197, -0.00840572, 0.983084, 0.18296, -0.325221, -0.175707, 0.929171, 0, 10, 0)
+shadow_bias = 0.0
+shadow_normal_bias = 6.464
+shadow_opacity = 0.8
+shadow_blur = 5.0
+sky_mode = 1
+
+[node name="Water" type="MeshInstance3D" parent="." unique_id=236522956]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -62, 0, 54)
+sorting_offset = 999.0
+material_override = ExtResource("2_yiy2m")
+cast_shadow = 0
+extra_cull_margin = 1000.0
+mesh = ExtResource("3_i1gkm")
+script = ExtResource("4_j4ek6")
+parameters = Array[ExtResource("5_ag7pc")]([SubResource("Resource_adqv5"), SubResource("Resource_luhq0"), SubResource("Resource_83u3u")])
+
+[node name="WaterSprayEmitter" type="GPUParticles3D" parent="Water" unique_id=1945538213]
+transform = Transform3D(15, 0, 0, 0, 15, 0, 0, 0, 15, 0, 0, 0)
+material_override = SubResource("ShaderMaterial_urxel")
+cast_shadow = 0
+amount = 32768
+lifetime = 6.0
+process_material = ExtResource("8_4beje")
+draw_pass_1 = SubResource("QuadMesh_bl3y3")
+
+[node name="underwater" type="MeshInstance3D" parent="Water" unique_id=1404038006]
+transform = Transform3D(-1, 8.74228e-08, 0, -8.74228e-08, -1, 0, 0, 0, 1, 0, -1, 0)
+visible = false
+mesh = ExtResource("9_6tkii")
+surface_material_override/0 = SubResource("StandardMaterial3D_dqui4")
+
+[node name="ocean_floor" type="MeshInstance3D" parent="Water" unique_id=1381198792]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -200, 0)
+mesh = SubResource("PlaneMesh_7ccjr")
+surface_material_override/0 = SubResource("StandardMaterial3D_6240f")
+
+[node name="FogVolume" type="FogVolume" parent="Water" unique_id=1837362407]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -100, 0)
+size = Vector3(2000, 200, 2000)
+material = SubResource("FogMaterial_ga64o")
