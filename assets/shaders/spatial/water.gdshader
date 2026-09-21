@@ -150,6 +150,7 @@ vec2 wave_blocker_eval(vec2 p) {
 // the white water they add. Must mirror water_shapes_eval() in water.gd and water_shapes.glsli.
 //   dome: a = (x, z, width, height), b = (trough, calm, 0, foam)
 //   ring: a = (x, z, radius, amplitude), b = (width, 0, 1, foam)
+//   boil: a = (x, z, width, 0),          b = (0, 0, 2, foam)   (foam patch only, no height)
 vec4 water_shapes_eval(vec2 p, out float foam) {
 	vec4 result = vec4(0.0);
 	foam = 0.0;
@@ -168,7 +169,7 @@ vec4 water_shapes_eval(vec2 p, out float foam) {
 			result.xyz += vec3(h, grad);
 			result.w = max(result.w, b.y * e);
 			foam = max(foam, b.w * clamp(length(grad) * 1.5, 0.0, 1.0)); // Water sheeting off steep flanks.
-		} else {
+		} else if (b.z < 1.5) {
 			// Gaussian swell travelling outwards.
 			float r = length(rel);
 			float u = (r - a.z) / b.x;
@@ -176,6 +177,11 @@ vec4 water_shapes_eval(vec2 p, out float foam) {
 			float g = exp(-u * u);
 			result.xyz += vec3(a.w * g, a.w * g * (-2.0 * u / b.x) * rel / max(r, 1e-3));
 			foam = max(foam, b.w * g * clamp(a.w, 0.0, 1.0));
+		} else {
+			// Churned water left where something went under.
+			float q = dot(rel, rel) / (a.z * a.z);
+			if (q > 16.0) continue;
+			foam = max(foam, b.w * exp(-q));
 		}
 	}
 	return result;

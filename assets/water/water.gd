@@ -147,7 +147,7 @@ func water_shapes_eval(p: Vector2) -> Vector2:
 			var e := exp(-q)
 			result.x += a.w * e * (1.0 - b.x * q)
 			result.y = maxf(result.y, b.y * e)
-		else: # Ring swell
+		elif b.z < 1.5: # Ring swell (boil patches, b.z = 2, are foam only)
 			var u := (rel.length() - a.z) / b.x
 			if absf(u) > 4.0: continue
 			result.x += a.w * exp(-u * u)

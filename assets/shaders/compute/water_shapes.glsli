@@ -3,6 +3,7 @@
 // Params block `p` must end with:  vec4 shape_count; vec4 shape_a[16]; vec4 shape_b[16];
 //   dome: a = (x, z, width, height), b = (trough, calm, 0, foam)
 //   ring: a = (x, z, radius, amplitude), b = (width, 0, 1, foam)
+//   boil: a = (x, z, width, 0),          b = (0, 0, 2, foam)   (foam only, ignored here)
 
 // Returns (height offset, calm): calm is how much the waves riding on a dome are smoothed out.
 vec2 water_shapes(vec2 p_xz) {
@@ -18,7 +19,7 @@ vec2 water_shapes(vec2 p_xz) {
 			float e = exp(-q);
 			result.x += a.w * e * (1.0 - b.x * q);
 			result.y = max(result.y, b.y * e);
-		} else {
+		} else if (b.z < 1.5) {
 			float u = (length(rel) - a.z) / b.x;
 			if (abs(u) > 4.0) continue;
 			result.x += a.w * exp(-u * u);

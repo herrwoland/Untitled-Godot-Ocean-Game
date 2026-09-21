@@ -1,8 +1,10 @@
 [gd_scene format=3 uid="uid://cqkasrtlto55o"]
 
 [ext_resource type="Shader" uid="uid://frqgg80eqd3c" path="res://assets/shaders/compute/sky.gdshader" id="1_d83d0"]
+[ext_resource type="Script" uid="uid://x8fjyd40yp7v" path="res://assets/water/underwater_effect.gd" id="2_i1gkm"]
 [ext_resource type="Material" uid="uid://byumtcccq4ew3" path="res://assets/water/mat_water.tres" id="2_yiy2m"]
 [ext_resource type="ArrayMesh" uid="uid://qexqjidelskc" path="res://assets/water/clipmap_high_8k.obj" id="3_i1gkm"]
+[ext_resource type="Script" uid="uid://p02gk5akocn8" path="res://assets/water/caustics_effect.gd" id="3_j4ek6"]
 [ext_resource type="Script" uid="uid://bdjbwk3saoju4" path="res://assets/water/water.gd" id="4_j4ek6"]
 [ext_resource type="Script" uid="uid://dddasf5sla0ws" path="res://assets/water/wave_cascade_parameters.gd" id="5_ag7pc"]
 [ext_resource type="Shader" uid="uid://bjmoda33o8qkd" path="res://assets/shaders/spatial/sea_spray.gdshader" id="6_0g2qf"]
@@ -10,6 +12,8 @@
 [ext_resource type="Material" uid="uid://5xqyddws6rt5" path="res://assets/water/mat_spray.tres" id="8_4beje"]
 [ext_resource type="ArrayMesh" uid="uid://mkodygt504hm" path="res://assets/water/clipmap_low.obj" id="9_6tkii"]
 [ext_resource type="Texture2D" uid="uid://b6322bl0qxuss" path="res://assets/textures/Ground057_1K-PNG_Color.png" id="10_3e2m4"]
+[ext_resource type="Script" uid="uid://ddm71i1yfjrbw" path="res://assets/scripts/world/water_deformer.gd" id="13_j4ek6"]
+[ext_resource type="PackedScene" uid="uid://c1a5366rpgr2k" path="res://assets/models/ship/ferry.tscn" id="14_ag7pc"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_p6go0"]
 seed = 666
@@ -65,6 +69,29 @@ fog_depth_end = 350.0
 volumetric_fog_enabled = true
 volumetric_fog_density = 0.003
 volumetric_fog_length = 500.0
+
+[sub_resource type="CompositorEffect" id="CompositorEffect_j4ek6"]
+resource_local_to_scene = false
+resource_name = ""
+enabled = true
+effect_callback_type = 4
+needs_motion_vectors = false
+needs_normal_roughness = false
+script = ExtResource("2_i1gkm")
+
+[sub_resource type="CompositorEffect" id="CompositorEffect_ag7pc"]
+resource_local_to_scene = false
+resource_name = ""
+enabled = true
+effect_callback_type = 3
+access_resolved_color = false
+access_resolved_depth = false
+needs_motion_vectors = false
+needs_normal_roughness = false
+script = ExtResource("3_j4ek6")
+
+[sub_resource type="Compositor" id="Compositor_ag7pc"]
+compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_j4ek6"), SubResource("CompositorEffect_ag7pc")])
 
 [sub_resource type="Resource" id="Resource_adqv5"]
 script = ExtResource("5_ag7pc")
@@ -127,10 +154,98 @@ texture_filter = 0
 density = 0.01
 albedo = Color(0.37830523, 0.56667346, 0.57315886, 1)
 
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_5s6u7"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_j4ek6"]
+radius = 100.0
+height = 200.0
+
+[sub_resource type="Animation" id="Animation_j4ek6"]
+length = 0.001
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("big_sphere:position:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("big_sphere:position:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-55.524673, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("big_sphere:position:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+
+[sub_resource type="Animation" id="Animation_ag7pc"]
+resource_name = "test"
+length = 30.0
+loop_mode = 1
+step = 1.0
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("big_sphere:position:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(2, 0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 2.1666667, 0, 0, -1.6666667, 0, 0, 0, 0, -1.6666667, 0, 0, 0, 0, 0, 0, 2.1666667, 0),
+"times": PackedFloat32Array(0, 13, 17, 30)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("big_sphere:position:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(2, 0, 0, 0),
+"points": PackedFloat32Array(-159.45369, 0, 0, 2.1666667, 24.77252, -10.818569, -1.6666667, -7.451018, 0, 0, -10.818569, -1.6666667, -7.451018, 0, 0, -159.45369, 0, 0, 2.1666667, 24.77252),
+"times": PackedFloat32Array(0, 13, 17, 30)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("big_sphere:position:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(2, 0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 2.1666667, 0, 0, -1.6666667, 0, 0, 0, 0, -1.6666667, 0, 0, 0, 0, 0, 0, 2.1666667, 0),
+"times": PackedFloat32Array(0, 13, 17, 30)
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_0g2qf"]
+_data = {
+&"RESET": SubResource("Animation_j4ek6"),
+&"test": SubResource("Animation_ag7pc")
+}
+
 [node name="water_test" type="Node3D" unique_id=704787569]
 
 [node name="Environment" type="WorldEnvironment" parent="." unique_id=1466687628]
 environment = SubResource("Environment_thx1t")
+compositor = SubResource("Compositor_ag7pc")
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=404076308]
 transform = Transform3D(0.945601, -0.0516921, 0.321197, -0.00840572, 0.983084, 0.18296, -0.325221, -0.175707, 0.929171, 0, 10, 0)
@@ -172,5 +287,41 @@ surface_material_override/0 = SubResource("StandardMaterial3D_6240f")
 
 [node name="FogVolume" type="FogVolume" parent="Water" unique_id=1837362407]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -100, 0)
+visible = false
 size = Vector3(2000, 200, 2000)
 material = SubResource("FogMaterial_ga64o")
+
+[node name="test_light" type="OmniLight3D" parent="." unique_id=644595516]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -119.654434, 0)
+light_energy = 5.904
+light_volumetric_fog_energy = 16.0
+omni_range = 4096.0
+
+[node name="test_mesh" type="MeshInstance3D" parent="test_light" unique_id=1084398354]
+mesh = SubResource("CapsuleMesh_5s6u7")
+
+[node name="big_sphere" type="MeshInstance3D" parent="." unique_id=175354615]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -55.524673, 0)
+mesh = SubResource("SphereMesh_j4ek6")
+
+[node name="WaterDeformer" type="Node3D" parent="big_sphere" unique_id=1645038889]
+script = ExtResource("13_j4ek6")
+radius = 90.0
+max_lift = 10.0
+ring_amplitude = 20.0
+ring_lifetime = 20.0
+metadata/_custom_type_script = "uid://ddm71i1yfjrbw"
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=551773085]
+transform = Transform3D(-0.8660266, 0.19536473, -0.46025053, 0, 0.92050487, 0.3907311, 0.4999979, 0.33838353, -0.79718167, -121.426605, 67.45856, -142.43082)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=566485365]
+libraries/ = SubResource("AnimationLibrary_0g2qf")
+autoplay = &"test"
+
+[node name="Boat" parent="." unique_id=693725928 instance=ExtResource("14_ag7pc")]
+transform = Transform3D(-0.7265752, 0, -0.687088, 0, 1, 0, 0.687088, 0, -0.7265752, -140.99155, 5, 195.88017)
+
+[node name="Camera3D" type="Camera3D" parent="Boat" unique_id=977178402]
+transform = Transform3D(2.9802322e-08, 0.043619297, 0.9990475, 0, 0.99904823, -0.043619327, -0.9999993, 0, 0, -15.609207, 4.9597454, -7.6293945e-05)
+current = true
