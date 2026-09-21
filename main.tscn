@@ -17,7 +17,6 @@
 [ext_resource type="Texture2D" uid="uid://b6322bl0qxuss" path="res://assets/textures/Ground057_1K-PNG_Color.png" id="11_0n3wm"]
 [ext_resource type="Script" uid="uid://dsn01qhv7ioi3" path="res://assets/scripts/buoyant_cell.gd" id="14_vivmo"]
 [ext_resource type="Script" uid="uid://kwfe6bfkiqn2" path="res://assets/scripts/mass_calculation.gd" id="14_yaehf"]
-[ext_resource type="Script" uid="uid://cp8ogsskg7a4c" path="res://assets/scripts/rain_follow.gd" id="15_rainf"]
 [ext_resource type="PackedScene" uid="uid://c3q8m6t1p7f2a" path="res://assets/player/player.tscn" id="16_player"]
 [ext_resource type="PackedScene" uid="uid://c7pflpm1pnx7k" path="res://assets/models/island.tscn" id="17_island"]
 [ext_resource type="PackedScene" uid="uid://cf2rcpsk3hrt1" path="res://assets/ui/start_screen.tscn" id="18_start"]
@@ -49,6 +48,7 @@
 [ext_resource type="PackedScene" path="res://assets/models/package.tscn" id="44_package"]
 [ext_resource type="PackedScene" uid="uid://c1a5366rpgr2k" path="res://assets/models/ship/ferry.tscn" id="45_ferry"]
 [ext_resource type="PackedScene" uid="uid://c4j4cc8pl3fqr" path="res://assets/models/creatures/hunter_fish.tscn" id="50_hrvbo"]
+[ext_resource type="Script" path="res://assets/scripts/world/rain.gd" id="60_rain"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_d13ii"]
 seed = 666
@@ -206,63 +206,6 @@ shader = ExtResource("24_ps1")
 shader_parameter/target_resolution = Vector2(480, 270)
 shader_parameter/color_levels = 16
 shader_parameter/dither_strength = 1.0
-
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_rainf"]
-lifetime_randomness = 0.2
-emission_shape = 3
-emission_box_extents = Vector3(80, 1, 80)
-direction = Vector3(0, -1, 0)
-spread = 4.0
-initial_velocity_min = 18.0
-initial_velocity_max = 25.0
-gravity = Vector3(0, -28, 0)
-scale_min = 0.7
-scale_max = 1.3
-collision_mode = 2
-sub_emitter_mode = 3
-sub_emitter_amount_at_collision = 1
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rainf"]
-transparency = 1
-shading_mode = 0
-albedo_color = Color(0.7, 0.8, 0.9, 0.35)
-
-[sub_resource type="BoxMesh" id="BoxMesh_rainf"]
-material = SubResource("StandardMaterial3D_rainf")
-size = Vector3(0.03, 0.6, 0.03)
-
-[sub_resource type="Gradient" id="Gradient_splashfade"]
-offsets = PackedFloat32Array(0, 0.6, 1)
-colors = PackedColorArray(1, 1, 1, 0.55, 0.9, 0.95, 1, 0.25, 0.9, 0.95, 1, 0)
-
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_splashfade"]
-gradient = SubResource("Gradient_splashfade")
-
-[sub_resource type="Curve" id="Curve_splashscale"]
-_data = [Vector2(0, 0.1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
-point_count = 2
-
-[sub_resource type="CurveTexture" id="CurveTexture_splashscale"]
-curve = SubResource("Curve_splashscale")
-
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_splash"]
-lifetime_randomness = 0.25
-gravity = Vector3(0, 0, 0)
-scale_min = 0.5
-scale_max = 1.1
-scale_curve = SubResource("CurveTexture_splashscale")
-color_ramp = SubResource("GradientTexture1D_splashfade")
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_splashring"]
-render_priority = 2
-transparency = 1
-shading_mode = 0
-vertex_color_use_as_albedo = true
-albedo_color = Color(0.85, 0.92, 1, 0.6)
-
-[sub_resource type="PlaneMesh" id="PlaneMesh_splashring"]
-material = SubResource("StandardMaterial3D_splashring")
-size = Vector2(0.5, 0.5)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_shore"]
 size = Vector3(60, 4, 60)
@@ -485,7 +428,8 @@ shadow_blur = 5.0
 sky_mode = 1
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 0, -11)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -71, 0, 11)
+layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
 cast_shadow = 0
@@ -493,9 +437,14 @@ extra_cull_margin = 1000.0
 mesh = ExtResource("4_0n3wm")
 script = ExtResource("7_s0x5e")
 parameters = Array[ExtResource("2_pw5n6")]([SubResource("Resource_adqv5"), SubResource("Resource_luhq0"), SubResource("Resource_83u3u")])
+marine_snow_amount = 8000
+marine_snow_size = 0.009000000000000001
+marine_snow_sink = 0.08
+marine_snow_color = Color(2.7915835e-06, 0.4532056, 0.43438756, 1)
 
 [node name="WaterSprayEmitter" type="GPUParticles3D" parent="Water" unique_id=333901123]
 transform = Transform3D(15, 0, 0, 0, 15, 0, 0, 0, 15, 0, 0, 0)
+layers = 524288
 material_override = SubResource("ShaderMaterial_ds3o1")
 cast_shadow = 0
 amount = 32768
@@ -564,7 +513,7 @@ cell_density_kg_per_m3 = 300.0
 calc_f_gravity = true
 
 [node name="Player" parent="." unique_id=939891512 node_paths=PackedStringArray("water") instance=ExtResource("16_player")]
-transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -83.44903, 6.867653, 9.36186)
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -83.44903, 10.32106, 9.36186)
 water = NodePath("../Water")
 jump_velocity = 7.0
 sink_speed = 3.0
@@ -599,37 +548,8 @@ offset_right = 80.0
 offset_bottom = 20.0
 script = ExtResource("25_fps")
 
-[node name="RainFollow" type="Node3D" parent="." unique_id=702590762 node_paths=PackedStringArray("target")]
-script = ExtResource("15_rainf")
-target = NodePath("../Player")
-
-[node name="Rain" type="GPUParticles3D" parent="RainFollow" unique_id=602890047]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 54.809456, 0)
-cast_shadow = 0
-amount = 20000
-sub_emitter = NodePath("RainSplash")
-lifetime = 4.0
-preprocess = 10.0
-randomness = 0.2
-visibility_aabb = AABB(-160, -120, -160, 320, 160, 320)
-transform_align = 2
-process_material = SubResource("ParticleProcessMaterial_rainf")
-draw_pass_1 = SubResource("BoxMesh_rainf")
-
-[node name="RainSplash" type="GPUParticles3D" parent="RainFollow/Rain" unique_id=618073784]
-cast_shadow = 0
-emitting = false
-amount = 8000
-lifetime = 0.45
-visibility_aabb = AABB(-160, -120, -160, 320, 160, 320)
-process_material = SubResource("ParticleProcessMaterial_splash")
-draw_pass_1 = SubResource("PlaneMesh_splashring")
-
-[node name="RainCollision" type="GPUParticlesCollisionHeightField3D" parent="RainFollow/Rain" unique_id=618073783]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -114.34683, 0)
-size = Vector3(200, 111.3139, 200)
-resolution = 0
-update_mode = 1
+[node name="Rain" type="Node3D" parent="." unique_id=1570342401]
+script = ExtResource("60_rain")
 
 [node name="Shore" type="StaticBody3D" parent="." unique_id=362217321]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -130, 1, 10)
@@ -737,7 +657,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_bed")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -129.4, 3.3, 10)
 
 [node name="PlayerSpawn" type="Marker3D" parent="." unique_id=1902926855]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -133, 3.2, 8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80.93555, 10.247797, 8.251836)
 
 [node name="HomeZone" type="Area3D" parent="." unique_id=1786139595]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -132, 6, 10)

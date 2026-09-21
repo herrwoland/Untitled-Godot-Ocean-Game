@@ -57,10 +57,52 @@ uniform vec3 underwater_color : source_color = vec3(0.04, 0.13, 0.14);
 uniform vec3 underwater_absorption = vec3(0.22, 0.06, 0.05);
 group_uniforms;
 
-// Light shafts are drawn by underwater_effect.gd, not by this shader. Like the caustics below,
-// they live here so the whole water look is tuned in one material.
-// Pale churned water where the surface meets anything poking through it (hulls, creatures,
-// rocks, the shore), with a lighter band of "shallow" water around it.
+// Rain hitting the sea (see rain.gd, which drives rain_intensity).
+group_uniforms rain;
+uniform float rain_intensity : hint_range(0.0, 1.0, 0.01) = 0.0;
+/** Spacing of the ripple rings (m). */
+uniform float rain_ripple_size : hint_range(0.1, 3.0, 0.01) = 0.7;
+/** How strongly the rings bend reflections and the view through the water. */
+uniform float rain_ripple_strength : hint_range(0.0, 2.0, 0.01) = 0.6;
+/** Rings per second in each spot. */
+uniform float rain_ripple_speed : hint_range(0.1, 4.0, 0.01) = 1.3;
+/** Ripples fade out beyond this distance (m). */
+uniform float rain_ripple_distance : hint_range(5.0, 150.0, 1.0) = 45.0;
+/** How matte and beaten-down the surface gets in heavy rain. */
+uniform float rain_matte : hint_range(0.0, 1.0, 0.01) = 0.6;
+/** How much heavy rain flattens the smallest waves. */
+uniform float rain_flatten : hint_range(0.0, 1.0, 0.01) = 0.25;
+group_uniforms;
+
+vec2 rain_hash22(vec2 p) {
+	vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+	p3 += dot(p3, p3.yzx + 33.33);
+	return fract((p3.xx + p3.yz) * p3.zy);
+}
+
+/** Slope of the rain ripple rings at a world position (add to the surface gradient). */
+vec2 rain_ripples(vec2 world_xz, float time) {
+	vec2 slope = vec2(0.0);
+	for (int layer = 0; layer < 2; layer++) {
+		vec2 q = world_xz / rain_ripple_size + float(layer) * vec2(0.37, 0.71);
+		vec2 id = floor(q);
+		for (int y = -1; y <= 1; y++) {
+			for (int x = -1; x <= 1; x++) {
+				vec2 cell = id + vec2(float(x), float(y));
+				vec2 h = rain_hash22(cell + float(layer) * 17.0);
+				if (fract(h.x * 13.7 + h.y * 7.1) > rain_intensity) continue; // Fewer drops in light rain.
+				float phase = fract(time * rain_ripple_speed * mix(0.8, 1.2, h.y) + h.x * 7.3);
+				vec2 d = q - (cell + 0.2 + 0.6 * h);
+				float r = length(d);
+				float u = (r - phase * 0.9) / 0.1; // Ring radius grows to ~0.9 cells.
+				float ring = -2.0 * u * exp(-u * u) * (1.0 - phase) * (1.0 - phase);
+				slope += d / max(r, 1e-3) * ring;
+			}
+		}
+	}
+	return slope * rain_ripple_strength * 0.35;
+}
+
 // Ship wakes: world-space trail map (r = foam, g = churn) around the camera, from wake_map.gd.
 group_uniforms wake;
 uniform sampler2D wake_map : filter_linear, repeat_disable;
@@ -85,6 +127,8 @@ vec2 wake_sample(vec2 world_xz) {
 	return textureLod(wake_map, uv, 0.0).rg * edge.x * edge.y;
 }
 
+// Pale churned water where the surface meets anything poking through it (hulls, creatures,
+// rocks, the shore), with a lighter band of "shallow" water around it.
 group_uniforms contact_foam;
 uniform bool contact_foam_enabled = true;
 /** How far from the contact line the foam reaches (m). */
@@ -109,6 +153,8 @@ uniform float contact_tint_width : hint_range(0.1, 10.0, 0.01) = 1.6;
 uniform float contact_tint_strength : hint_range(0.0, 1.0, 0.01) = 0.5;
 group_uniforms;
 
+// Light shafts are drawn by underwater_effect.gd, not by this shader. Like the caustics below,
+// they live here so the whole water look is tuned in one material.
 group_uniforms light_shafts;
 uniform bool shafts_enabled = true;
 /** Overall brightness of the underwater light shafts. */
@@ -167,6 +213,7 @@ varying float fresnel;
 varying float blocker_mask;
 varying float blocker_hole;
 varying float underside; // 1.0 when this fragment is the water surface seen from below.
+varying float rain_wet; // How rain-beaten this bit of surface is (0..1), for the lighting.
 
 // Wave-blocker attenuation at a rest position (pre-displacement). Returns
 // (mask, hole): mask 0 inside a blocker rising to 1 across its fade width;
@@ -418,6 +465,11 @@ void fragment() {
 	float shape_foam;
 	vec4 shape = water_shapes_eval(UV, shape_foam);
 	gradient.xy *= 1.0 - shape.w;
+	// Rain: rings from drop impacts near the camera, and the smallest waves beaten flat.
+	float rain_fade = rain_intensity * (1.0 - smoothstep(rain_ripple_distance * 0.6, rain_ripple_distance, length(VERTEX)));
+	vec2 rain_slope = rain_fade > 0.001 ? rain_ripples(UV, TIME) * rain_fade : vec2(0.0);
+	gradient.xy *= 1.0 - rain_flatten * rain_intensity;
+	rain_wet = rain_intensity * rain_matte;
 	foam_factor = max(smoothstep(0.0, 1.0, gradient.z*0.75) * exp(-dist*0.0075), shape_foam);
 
 	// A back face is only the underside if the camera is actually below it. Otherwise it's a
@@ -461,6 +513,7 @@ void fragment() {
 	if (underside > 0.5) {
 		gradient *= mix(0.015, normal_strength, exp(-length(VERTEX)*0.0175));
 		gradient.xy += shape.yz; // Water shapes are large and smooth, never faded with distance.
+		gradient.xy += rain_slope;
 		vec3 n_down = (VIEW_MATRIX * vec4(-normalize(vec3(-gradient.x, 1.0, -gradient.y)), 0.0)).xyz;
 		vec4 under = shade_underside(VIEW, n_down, SCREEN_UV, max(foam_factor * foam_alpha * foam_alpha, contact.x));
 
@@ -510,11 +563,13 @@ void fragment() {
 	ALBEDO = mix(depth_water_color, foam_color.rgb, foam_factor * foam_alpha * foam_alpha);
 	ALBEDO = mix(ALBEDO, foam_color.rgb, contact.x);
 	foam_factor = max(foam_factor, contact.x); // Contact foam is matte and lit like foam too.
-	fresnel = mix(pow(1.0 - dot(VIEW, NORMAL), 5.0*exp(-2.69*roughness)) / (1.0 + 22.7*pow(roughness, 1.5)), 1.0, REFLECTANCE);
+	float wet_roughness = mix(roughness, max(roughness, 0.85), rain_wet); // Rain: matte, hazy surface.
+	fresnel = mix(pow(1.0 - dot(VIEW, NORMAL), 5.0*exp(-2.69*wet_roughness)) / (1.0 + 22.7*pow(wet_roughness, 1.5)), 1.0, REFLECTANCE);
 	ROUGHNESS = (1.0 - fresnel) * foam_factor + 0.4; // Roughness is proportional to foam/fog amount and fresnel.
 
 	gradient *= mix(0.015, normal_strength, exp(-dist*0.0175)); // Blend normal with terrain normal as distance increases.
 	gradient.xy += shape.yz; // Water shapes are large and smooth, never faded with distance.
+	gradient.xy += rain_slope;
 	NORMAL = (VIEW_MATRIX * vec4(normalize(vec3(-gradient.x, 1.0, -gradient.y)), 0.0)).xyz;
 	}
 }
@@ -539,9 +594,10 @@ void light() {
 		float dot_nv = max(dot(NORMAL, VIEW), 2e-5);
 
 		// --- SPECULAR ---
-		float light_mask = smith_masking_shadowing(roughness, dot_nv);
-		float view_mask = smith_masking_shadowing(roughness, dot_nl);
-		float microfacet_distribution = ggx_distribution(dot(NORMAL, halfway), roughness);
+		float wet_roughness = mix(roughness, max(roughness, 0.85), rain_wet);
+		float light_mask = smith_masking_shadowing(wet_roughness, dot_nv);
+		float view_mask = smith_masking_shadowing(wet_roughness, dot_nl);
+		float microfacet_distribution = ggx_distribution(dot(NORMAL, halfway), wet_roughness);
 		float geometric_attenuation = 1.0 / (1.0 + light_mask + view_mask);
 		SPECULAR_LIGHT += fresnel * microfacet_distribution * geometric_attenuation / (4.0 * dot_nv + 0.1) * ATTENUATION;
 
