@@ -98,8 +98,9 @@ func _apply_render_scale() -> void:
 	if retro_post and retro_post.visible:
 		var post := retro_post.get_node_or_null(^'PostRect') as CanvasItem
 		var rows = post.material.get_shader_parameter(&'target_rows') if post and post.material else null
+		var pixelate = post.material.get_shader_parameter(&'pixelate') if post and post.material else false
 		var height := get_viewport().get_visible_rect().size.y
-		if rows is float and height > 0.0:
+		if pixelate == true and rows is float and height > 0.0:
 			# Same whole-pixel cell as ps1_post.gdshader, so each 3D pixel is exactly one big pixel.
 			scale *= 1.0 / maxf(round(height / rows), 1.0)
 	get_viewport().scaling_3d_scale = scale

@@ -204,6 +204,7 @@ size = Vector3(10, 6, 4)
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ps1"]
 shader = ExtResource("24_ps1")
 shader_parameter/target_rows = 240.0
+shader_parameter/pixelate = false
 shader_parameter/color_levels = 16
 shader_parameter/dither_strength = 1.0
 
