@@ -1,0 +1,28 @@
+// Sun visibility at a point on the water surface, from the water's own sun shadow map
+// (WaterShadowCapture). The including shader needs `shadow_tex` (linear depth) and these
+// members in its Params block `p`:
+//   vec4 shadow_origin; // xyz shadow camera position, w = enabled
+//   vec4 shadow_right;  // xyz camera right, w = half coverage (m)
+//   vec4 shadow_up;     // xyz camera up, w = softness (texels)
+//   vec4 shadow_fwd;    // xyz view direction (away from the sun), w = depth bias (m)
+
+// 1 = sunlit, 0 = something above the water blocks the sun at surface point `s`.
+float sun_visibility(vec3 s) {
+	if (p.shadow_origin.w < 0.5) return 1.0;
+	vec3 rel = s - p.shadow_origin.xyz;
+	float half_size = p.shadow_right.w;
+	vec2 uv = vec2(dot(rel, p.shadow_right.xyz), -dot(rel, p.shadow_up.xyz)) / half_size * 0.5 + 0.5;
+	if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return 1.0;
+	float depth = dot(rel, p.shadow_fwd.xyz) - p.shadow_fwd.w;
+	vec2 texel = p.shadow_up.w / vec2(textureSize(shadow_tex, 0));
+	float lit = 0.0;
+	for (int y = -1; y <= 1; y++) {
+		for (int x = -1; x <= 1; x++) {
+			// Anything nearer the sun than the surface point is an occluder above the water.
+			lit += textureLod(shadow_tex, uv + vec2(x, y) * texel, 0.0).r >= depth ? 1.0 : 0.0;
+		}
+	}
+	// Fade out towards the map's edges instead of cutting off.
+	vec2 edge = smoothstep(vec2(0.0), vec2(0.08), uv) * smoothstep(vec2(0.0), vec2(0.08), 1.0 - uv);
+	return mix(1.0, lit / 9.0, edge.x * edge.y);
+}

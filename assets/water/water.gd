@@ -80,6 +80,30 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 @export_range(0.0, 12.0, 0.1) var waterline_width := 2.5
 @export_range(0.0, 1.0, 0.01) var underwater_vignette := 0.35
 
+## Shadows of things above the water (boats, creatures, cliffs) cut through the underwater light
+## shafts and caustics. A small hidden camera renders the scene from the sun, depth only.
+@export_group('Water Shadows')
+@export var water_shadows_enabled := true :
+	set(value):
+		water_shadows_enabled = value
+		if _shadow_viewport: _shadow_viewport.render_target_update_mode = \
+				SubViewport.UPDATE_ALWAYS if value else SubViewport.UPDATE_DISABLED
+## Shadow map resolution. Higher = sharper shadow edges, slightly slower.
+@export_enum('256:256', '512:512', '1024:1024') var water_shadow_resolution := 512 :
+	set(value):
+		water_shadow_resolution = value
+		if _shadow_viewport: _shadow_viewport.size = Vector2i(value, value)
+## Width of the square around the camera that receives water shadows (m).
+@export_range(16.0, 512.0, 1.0) var water_shadow_coverage := 128.0
+## Blur of the shadow edges, in shadow map texels.
+@export_range(0.0, 4.0, 0.05) var water_shadow_softness := 1.0
+## Render layers that cast water shadows. The water itself lives on WATER_RENDER_LAYER and
+## is never part of it.
+@export_flags_3d_render var water_shadow_layers := 0x7FFFF :
+	set(value):
+		water_shadow_layers = value
+		if _shadow_camera: _shadow_camera.cull_mask = value & ~WATER_LAYER_BIT
+
 # ----- Bookkeeping Variables ----- #
 var wave_generator : WaveGenerator :
 	set(value):
@@ -93,6 +117,9 @@ var next_update_time := 0.0
 var underwater_effect : UnderwaterEffect
 var caustics_effect : CausticsEffect
 var _sun : DirectionalLight3D
+var _shadow_viewport : SubViewport
+var _shadow_camera : Camera3D
+var _shadow_capture : WaterShadowCapture
 
 var displacement_maps := Texture2DArrayRD.new()
 var normal_maps := Texture2DArrayRD.new()
@@ -105,6 +132,8 @@ var _img_width: int;
 var map_scales : PackedVector4Array;
 
 const MAX_WAVE_BLOCKERS := 8
+const WATER_RENDER_LAYER := 20 # Render layer of the water surface/spray (skipped by the sun shadow camera).
+const WATER_LAYER_BIT := 1 << (WATER_RENDER_LAYER - 1)
 const MAX_WATER_SHAPES := 16 # Matches the water shader and effect arrays.
 var _water_shapes_a := PackedVector4Array()
 var _water_shapes_b := PackedVector4Array()
@@ -265,6 +294,69 @@ func _setup_underwater_effect() -> void:
 		effects.append(underwater_effect)
 	env.compositor.compositor_effects = effects
 	underwater_effect.enabled = underwater_effect_enabled
+	_setup_water_shadows()
+
+## Hidden orthographic camera looking down the sunbeams. Renders unshaded, without the scene's
+## environment or effects, and hands its depth to the shafts/caustics via WaterShadowCapture.
+func _setup_water_shadows() -> void:
+	if _shadow_viewport: return
+	_shadow_viewport = SubViewport.new()
+	_shadow_viewport.name = 'WaterShadowViewport'
+	_shadow_viewport.size = Vector2i(water_shadow_resolution, water_shadow_resolution)
+	_shadow_viewport.debug_draw = Viewport.DEBUG_DRAW_UNSHADED
+	_shadow_viewport.positional_shadow_atlas_size = 0
+	_shadow_viewport.msaa_3d = Viewport.MSAA_DISABLED
+	_shadow_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if water_shadows_enabled else SubViewport.UPDATE_DISABLED
+	_shadow_camera = Camera3D.new()
+	_shadow_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	_shadow_camera.near = 0.5
+	_shadow_camera.far = 800.0
+	_shadow_camera.cull_mask = water_shadow_layers & ~WATER_LAYER_BIT
+	# The water surface and spray are transparent (they'd never cast a shadow) but expensive,
+	# so they go on their own layer that the sun camera skips. Normal cameras still see it.
+	layers = WATER_LAYER_BIT
+	for child in get_children():
+		if child is GPUParticles3D: child.layers = WATER_LAYER_BIT
+	var env := Environment.new()
+	env.background_mode = Environment.BG_CLEAR_COLOR
+	_shadow_camera.environment = env
+	_shadow_capture = WaterShadowCapture.new()
+	var compositor := Compositor.new()
+	compositor.compositor_effects = [_shadow_capture]
+	_shadow_camera.compositor = compositor
+	_shadow_viewport.add_child(_shadow_camera)
+	add_child(_shadow_viewport, false, Node.INTERNAL_MODE_BACK) # Internal: never saved into scenes.
+
+func _update_water_shadows(fx_list : Array) -> void:
+	var active := water_shadows_enabled and _shadow_camera != null and is_instance_valid(_sun) and _sun.visible
+	for fx in fx_list:
+		if not fx: continue
+		fx.shadow_texture = _shadow_capture.shadow_texture if active else RID()
+	if not active: return
+	var view_camera := get_viewport().get_camera_3d()
+	if Engine.is_editor_hint() and Engine.has_singleton(&'EditorInterface'):
+		# Looked up dynamically: EditorInterface doesn't exist in exported builds.
+		var editor_vp = Engine.get_singleton(&'EditorInterface').get_editor_viewport_3d(0)
+		if editor_vp: view_camera = editor_vp.get_camera_3d()
+	if not view_camera: return
+
+	var to_sun := _sun.global_basis.z.normalized()
+	var basis := Basis.looking_at(-to_sun, Vector3.UP if absf(to_sun.y) < 0.99 else Vector3.FORWARD)
+	# Centre on the camera's spot at water level, snapped to whole texels so edges don't shimmer.
+	var center := view_camera.global_position
+	center.y = global_position.y
+	var texel := water_shadow_coverage / float(water_shadow_resolution)
+	var r := snappedf(center.dot(basis.x), texel)
+	var u := snappedf(center.dot(basis.y), texel)
+	var f := center.dot(-basis.z)
+	var snapped := basis.x * r + basis.y * u - basis.z * f
+	_shadow_camera.size = water_shadow_coverage
+	_shadow_camera.global_transform = Transform3D(basis, snapped + to_sun * 400.0)
+	for fx in fx_list:
+		if not fx: continue
+		fx.shadow_transform = _shadow_camera.global_transform
+		fx.shadow_half_size = water_shadow_coverage * 0.5
+		fx.shadow_softness = water_shadow_softness
 
 func _update_underwater_effect() -> void:
 	if not underwater_effect or not wave_generator: return
@@ -307,6 +399,7 @@ func _update_underwater_effect() -> void:
 	fx.shaft_scattering = _water_mat_param(&'shaft_scattering')
 	fx.shaft_steps = _water_mat_param(&'shaft_quality')
 
+	_update_water_shadows([underwater_effect, caustics_effect])
 	if not caustics_effect: return
 	var cx := caustics_effect
 	cx.displacement_map = fx.displacement_map

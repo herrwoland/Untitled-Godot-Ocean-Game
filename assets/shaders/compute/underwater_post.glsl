@@ -42,12 +42,18 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 shape_count;     // x = number of water shapes
 	vec4 shape_a[16];
 	vec4 shape_b[16];
+	vec4 shadow_origin;   // Sun shadow map, see water_shadow.glsli.
+	vec4 shadow_right;
+	vec4 shadow_up;
+	vec4 shadow_fwd;
 } p;
 
 #include "water_shapes.glsli"
 
 #ifdef MODE_SHAFTS
 layout(set = 0, binding = 5) uniform sampler2D focus_tex; // Light focus map, see caustics.glsl.
+layout(set = 0, binding = 7) uniform sampler2D shadow_tex; // Sun shadow map, see water_shadow.glsli.
+#include "water_shadow.glsli"
 #endif
 
 layout(push_constant, std430) uniform PushConstant {
@@ -139,6 +145,8 @@ vec3 light_shafts(vec3 origin, vec3 dir, float max_dist, float jitter) {
 		float focus = textureLod(focus_tex, surface_xz * p.shafts.x, 0.0).r;
 		// Only the focused part stands out; the average light is already in the fog colour.
 		float bright = pow(max(focus - p.shafts2.x, 0.0), p.shafts.w);
+		// Nothing gets focused where something above the water blocks the sun.
+		bright *= sun_visibility(vec3(surface_xz.x, p.effect2.y, surface_xz.y));
 		sum += bright * exp(-p.absorption.rgb * (t + depth / to_light.y));
 	}
 	vec3 light = sum * dt * phase_hg(dot(dir, to_light), p.shafts.z) * p.sun_color.rgb * p.shaft_tint.rgb * p.sun_dir.w;

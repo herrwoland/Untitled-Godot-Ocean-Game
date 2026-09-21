@@ -6,7 +6,7 @@ class_name CausticsEffect extends CompositorEffect
 
 const FOCUS_SHADER_PATH := 'res://assets/shaders/compute/caustics.glsl'
 const APPLY_SHADER_PATH := 'res://assets/shaders/compute/caustics_apply.glsl'
-const PARAMS_SIZE := 816 # 2 mat4 + 4 vec4 map scales + 7 vec4 + 2x16 vec4 water shapes, std140.
+const PARAMS_SIZE := 880 # 2 mat4 + 4 vec4 map scales + 7 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow, std140.
 const MAX_WATER_SHAPES := 16
 const FOCUS_MAP_SIZE := 512
 const WATER_IOR := 1.333
@@ -32,6 +32,11 @@ var cascade := -1 # Which wave cascade makes the caustics. -1 = the smallest (la
 var shape_count := 0 # Water shapes from WaterDeformer nodes (see water.gdshader).
 var shape_a := PackedVector4Array()
 var shape_b := PackedVector4Array()
+var shadow_texture := RID() # From WaterShadowCapture; invalid = no water shadows.
+var shadow_transform := Transform3D() # Shadow camera: origin, basis x = right, y = up, z = towards sun.
+var shadow_half_size := 64.0
+var shadow_softness := 1.0
+var shadow_bias := 0.3
 
 var _rd : RenderingDevice
 var _focus_shader : RID
@@ -41,6 +46,7 @@ var _apply_pipeline : RID
 var _linear_sampler : RID
 var _repeat_sampler : RID
 var _params_buffer : RID
+var _dummy_shadow_tex : RID
 var _focus_tex : RID
 
 func _init() -> void:
@@ -49,7 +55,7 @@ func _init() -> void:
 
 func _notification(what : int) -> void:
 	if what == NOTIFICATION_PREDELETE and _rd:
-		for rid in [_focus_tex, _params_buffer, _repeat_sampler, _linear_sampler, _apply_shader, _focus_shader]:
+		for rid in [_dummy_shadow_tex, _focus_tex, _params_buffer, _repeat_sampler, _linear_sampler, _apply_shader, _focus_shader]:
 			if rid.is_valid(): _rd.free_rid(rid) # Freeing a shader also frees its pipeline.
 
 func _init_compute() -> void:
@@ -69,6 +75,14 @@ func _init_compute() -> void:
 	sampler.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
 	_repeat_sampler = _rd.sampler_create(sampler)
 	_params_buffer = _rd.uniform_buffer_create(PARAMS_SIZE)
+
+	# Bound in place of the water shadow map while there is none.
+	var dummy_fmt := RDTextureFormat.new()
+	dummy_fmt.format = RenderingDevice.DATA_FORMAT_R32_SFLOAT
+	dummy_fmt.width = 4
+	dummy_fmt.height = 4
+	dummy_fmt.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT
+	_dummy_shadow_tex = _rd.texture_create(dummy_fmt, RDTextureView.new())
 
 	var fmt := RDTextureFormat.new()
 	fmt.format = RenderingDevice.DATA_FORMAT_R16_SFLOAT
@@ -99,6 +113,7 @@ func _render_callback(_callback_type : int, render_data : RenderData) -> void:
 			_uniform(RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 3, [_repeat_sampler, displacement_map]),
 			_uniform(RenderingDevice.UNIFORM_TYPE_UNIFORM_BUFFER, 4, [_params_buffer]),
 			_uniform(RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 5, [_repeat_sampler, _focus_tex]),
+			_uniform(RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, 6, [_linear_sampler, _shadow_tex()]),
 		])
 		var compute_list := _rd.compute_list_begin()
 		_rd.compute_list_bind_compute_pipeline(compute_list, _apply_pipeline)
@@ -154,8 +169,17 @@ func _update_params(scene_data : RenderSceneDataRD, view : int, layer : int) -> 
 		for i in MAX_WATER_SHAPES:
 			var v : Vector4 = shapes[i] if i < shapes.size() else Vector4.ZERO
 			data.append_array([v.x, v.y, v.z, v.w])
+	var shadows_on := 1.0 if shadow_texture.is_valid() and _rd.texture_is_valid(shadow_texture) else 0.0
+	var sb := shadow_transform.basis
+	data.append_array([shadow_transform.origin.x, shadow_transform.origin.y, shadow_transform.origin.z, shadows_on])
+	data.append_array([sb.x.x, sb.x.y, sb.x.z, shadow_half_size])
+	data.append_array([sb.y.x, sb.y.y, sb.y.z, shadow_softness])
+	data.append_array([-sb.z.x, -sb.z.y, -sb.z.z, shadow_bias])
 	var bytes := data.to_byte_array()
 	_rd.buffer_update(_params_buffer, 0, bytes.size(), bytes)
+
+func _shadow_tex() -> RID:
+	return shadow_texture if shadow_texture.is_valid() and _rd.texture_is_valid(shadow_texture) else _dummy_shadow_tex
 
 static func _uniform(type : RenderingDevice.UniformType, binding : int, ids : Array) -> RDUniform:
 	var u := RDUniform.new()

@@ -22,9 +22,15 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 shape_count;     // x = number of water shapes
 	vec4 shape_a[16];
 	vec4 shape_b[16];
+	vec4 shadow_origin;   // Sun shadow map, see water_shadow.glsli.
+	vec4 shadow_right;
+	vec4 shadow_up;
+	vec4 shadow_fwd;
 } p;
 
 #include "water_shapes.glsli"
+layout(set = 0, binding = 6) uniform sampler2D shadow_tex; // Sun shadow map, see water_shadow.glsli.
+#include "water_shadow.glsli"
 layout(set = 0, binding = 5) uniform sampler2D focus_tex; // Focus map, see caustics.glsl.
 
 layout(push_constant, std430) uniform PushConstant {
@@ -98,6 +104,7 @@ void main() {
 	vec3 pattern = pow(max(variation, 0.0), vec3(p.shape.x)) + min(variation, 0.0) * p.shape.y;
 	vec3 light = p.sun_color.rgb * p.tint.rgb * p.sun_dir.w * n_dot_l * exp(-p.absorption.rgb * path) * sharpness * pattern;
 	light = min(light, vec3(p.tint.a));
+	light *= sun_visibility(vec3(surface_xz.x, p.misc.x, surface_xz.y));
 
 	vec4 color = imageLoad(color_image, px);
 	imageStore(color_image, px, vec4(max(color.rgb * (1.0 + light), vec3(0.0)), color.a));

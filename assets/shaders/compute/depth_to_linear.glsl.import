@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://dqomtmden2msq"
+path="res://.godot/imported/depth_to_linear.glsl-41e4fa05a146bdd905f8c6ef028e589a.res"
+
+[deps]
+
+source_file="res://assets/shaders/compute/depth_to_linear.glsl"
+dest_files=["res://.godot/imported/depth_to_linear.glsl-41e4fa05a146bdd905f8c6ef028e589a.res"]
+
+[params]
+

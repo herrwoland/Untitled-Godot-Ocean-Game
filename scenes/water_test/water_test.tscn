@@ -53,7 +53,6 @@ sky_material = SubResource("ShaderMaterial_xi160")
 background_mode = 2
 sky = SubResource("Sky_vroi3")
 tonemap_mode = 4
-glow_enabled = true
 glow_normalized = true
 glow_intensity = 0.16
 glow_strength = 1.1
@@ -198,7 +197,7 @@ tracks/2/keys = {
 
 [sub_resource type="Animation" id="Animation_ag7pc"]
 resource_name = "test"
-length = 30.0
+length = 50.0
 loop_mode = 1
 step = 1.0
 tracks/0/type = "bezier"
@@ -208,9 +207,9 @@ tracks/0/path = NodePath("big_sphere:position:x")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"handle_modes": PackedInt32Array(2, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0, 0, 0),
 "points": PackedFloat32Array(0, 0, 0, 2.1666667, 0, 0, -1.6666667, 0, 0, 0, 0, -1.6666667, 0, 0, 0, 0, 0, 0, 2.1666667, 0),
-"times": PackedFloat32Array(0, 13, 17, 30)
+"times": PackedFloat32Array(4, 17, 29, 42)
 }
 tracks/1/type = "bezier"
 tracks/1/imported = false
@@ -219,9 +218,9 @@ tracks/1/path = NodePath("big_sphere:position:y")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"handle_modes": PackedInt32Array(2, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0, 0, 0),
 "points": PackedFloat32Array(-159.45369, 0, 0, 2.1666667, 24.77252, -10.818569, -1.6666667, -7.451018, 0, 0, -10.818569, -1.6666667, -7.451018, 0, 0, -159.45369, 0, 0, 2.1666667, 24.77252),
-"times": PackedFloat32Array(0, 13, 17, 30)
+"times": PackedFloat32Array(4, 17, 29, 42)
 }
 tracks/2/type = "bezier"
 tracks/2/imported = false
@@ -230,9 +229,9 @@ tracks/2/path = NodePath("big_sphere:position:z")
 tracks/2/interp = 1
 tracks/2/loop_wrap = true
 tracks/2/keys = {
-"handle_modes": PackedInt32Array(2, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0, 0, 0),
 "points": PackedFloat32Array(0, 0, 0, 2.1666667, 0, 0, -1.6666667, 0, 0, 0, 0, -1.6666667, 0, 0, 0, 0, 0, 0, 2.1666667, 0),
-"times": PackedFloat32Array(0, 13, 17, 30)
+"times": PackedFloat32Array(4, 17, 29, 42)
 }
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_0g2qf"]
@@ -307,8 +306,10 @@ mesh = SubResource("SphereMesh_j4ek6")
 [node name="WaterDeformer" type="Node3D" parent="big_sphere" unique_id=1645038889]
 script = ExtResource("13_j4ek6")
 radius = 90.0
-max_lift = 10.0
+max_lift = 50.0
+max_drawdown = 50.0
 ring_amplitude = 20.0
+ring_fade_in = 2.0
 ring_lifetime = 20.0
 metadata/_custom_type_script = "uid://ddm71i1yfjrbw"
 
@@ -320,7 +321,7 @@ libraries/ = SubResource("AnimationLibrary_0g2qf")
 autoplay = &"test"
 
 [node name="Boat" parent="." unique_id=693725928 instance=ExtResource("14_ag7pc")]
-transform = Transform3D(-0.7265752, 0, -0.687088, 0, 1, 0, 0.687088, 0, -0.7265752, -140.99155, 5, 195.88017)
+transform = Transform3D(-0.7265752, 0, -0.687088, 0, 1, 0, 0.687088, 0, -0.7265752, -121.69354, 4.9999924, 144.73334)
 
 [node name="Camera3D" type="Camera3D" parent="Boat" unique_id=977178402]
 transform = Transform3D(2.9802322e-08, 0.043619297, 0.9990475, 0, 0.99904823, -0.043619327, -0.9999993, 0, 0, -15.609207, 4.9597454, -7.6293945e-05)
