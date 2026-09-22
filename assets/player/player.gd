@@ -37,6 +37,16 @@ var captured: bool = false # in a hunter's jaws; the CreatureDirector drives our
 var unconscious: bool = false
 var unconscious_sink_speed: float = 0.6
 var interact_cooldown_until_msec: int = 0
+## Ship whose deck is under our feet. Its collision is made of StaticBody3D pieces parented
+## to the hull's RigidBody3D, so the physics engine sees them teleport rather than move and
+## carries us nowhere: we have to travel with the deck ourselves or it slides out from under us.
+var _deck: PhysicsBody3D = null
+var _deck_xform: Transform3D
+var _deck_coyote: float = 0.0
+var _deck_velocity := Vector3.ZERO # measured from the deck's movement, so it is right no
+                                   # matter what moves her: engine, waves or a creature
+const DECK_COYOTE := 0.35 # keep carrying this long after the deck drops away, so a heaving
+                          # sea doesn't shake us loose every time contact is lost
 var _climb_target = null # Vector3 deck position, set each frame by a ShipLadder while space is held
 
 const GRAVITY: float = 9.8
@@ -51,6 +61,7 @@ const GASP_AFTER_SECONDS := 4.0 # dives shorter than this surface without a gasp
 
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	floor_snap_length = 0.5 # a deck falling out of a wave can outrun gravity; stay stuck to it
 	# Muffle all audio while underwater via a low-pass filter on the Master bus.
 	var lowpass := AudioEffectLowPassFilter.new()
 	lowpass.cutoff_hz = underwater_cutoff_hz
@@ -106,6 +117,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func set_captured(caught: bool) -> void:
 	captured = caught
 	collider.disabled = caught
+	_deck = null
 	velocity = Vector3.ZERO
 	surface_ripples.emitting = false
 
@@ -163,6 +175,7 @@ func _process_climb(_delta: float) -> void:
 		state = State.WALK
 
 func _process_walk(delta: float) -> void:
+	_carry_with_deck(delta)
 	if not is_on_floor():
 		velocity.y -= GRAVITY * delta
 	elif Input.is_action_just_pressed(&'jump'):
@@ -179,6 +192,66 @@ func _process_walk(delta: float) -> void:
 	velocity.z = move_dir.z * speed
 
 	move_and_slide()
+	_update_deck()
+
+## Moves us by however much the deck moved since the last frame and turns us with it, so
+## standing still on a boat under way keeps us standing on the same plank.
+func _carry_with_deck(delta: float) -> void:
+	if not is_instance_valid(_deck):
+		_deck = null
+		return
+	_deck_coyote -= delta
+	if _deck_coyote <= 0.0:
+		_release_deck() # airborne too long to still count as standing on her
+		return
+	var step := _deck_step()
+	var carried_to := step * global_position
+	_deck_velocity = (carried_to - global_position) / delta
+	global_position = carried_to
+	head.rotation.y += step.basis.get_euler().y
+
+## The deck's movement since we last looked.
+func _deck_step() -> Transform3D:
+	var step := _deck.global_transform * _deck_xform.affine_inverse()
+	_deck_xform = _deck.global_transform
+	return step
+
+## Re-anchors to whatever we are standing on at the end of a frame.
+func _update_deck() -> void:
+	if not is_on_floor():
+		return # the coyote timer keeps us aboard for a moment; _carry_with_deck runs it down
+	var ship := _ship_under_feet()
+	if not ship:
+		if _deck: _release_deck() # stepped off onto the island, or a jetty
+		return
+	if ship != _deck:
+		_deck_velocity = Vector3.ZERO
+	_deck = ship
+	_deck_xform = ship.global_transform
+	_deck_coyote = DECK_COYOTE
+
+## Lets go of the deck, keeping its momentum, so stepping off a moving boat throws us
+## forward the way it should instead of dropping us straight down.
+func _release_deck() -> void:
+	velocity += _deck_velocity
+	_deck = null
+	_deck_coyote = 0.0
+	_deck_velocity = Vector3.ZERO
+
+## The hull under our feet, found by looking past the deck's static collision pieces to the
+## body they hang from -- a ship, or anything else built to move under us. A ray rather than
+## the slide collisions: standing perfectly still reports none.
+func _ship_under_feet() -> PhysicsBody3D:
+	var from := global_position + Vector3.UP * 0.3
+	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 0.8,
+			collision_mask, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var node = hit.get('collider') if hit else null
+	while node is Node:
+		if node is RigidBody3D or node is AnimatableBody3D:
+			return node
+		node = node.get_parent() # the deck's own StaticBody3D pieces are not what carries us
+	return null
 
 func _process_swim(delta: float) -> void:
 	var surface_y: float = water.get_wave_height(global_position)
@@ -222,6 +295,8 @@ func _process_pilot(delta: float) -> void:
 
 	global_position = helm_marker.global_position
 	velocity = Vector3.ZERO
+	if is_instance_valid(_deck):
+		head.rotation.y += _deck_step().basis.get_euler().y # the helm turns with her
 
 	var throttle := Input.get_action_strength(&'move_forward') - Input.get_action_strength(&'move_back')
 	var rudder := Input.get_action_strength(&'move_right') - Input.get_action_strength(&'move_left')
@@ -239,6 +314,7 @@ func _check_enter_swim() -> void:
 	var surface_y: float = water.get_wave_height(global_position)
 	if surface_y - global_position.y > swim_enter_depth:
 		state = State.SWIM
+		_release_deck()
 		collider.disabled = false
 		_play_splash(surface_y)
 		surface_ripples.emitting = true
@@ -279,6 +355,8 @@ func enter_pilot(ship: Node, marker: Node3D) -> void:
 	state = State.PILOT
 	piloted_ship = ship
 	helm_marker = marker
+	_deck = ship as PhysicsBody3D
+	if _deck: _deck_xform = _deck.global_transform
 	collider.disabled = true
 	velocity = Vector3.ZERO
 	if ship.has_method(&'set_piloted'):
@@ -293,3 +371,6 @@ func exit_pilot() -> void:
 	piloted_ship = null
 	helm_marker = null
 	collider.disabled = false
+	if is_instance_valid(_deck): # step off the helm already moving with her
+		_deck_xform = _deck.global_transform
+		_deck_coyote = DECK_COYOTE
