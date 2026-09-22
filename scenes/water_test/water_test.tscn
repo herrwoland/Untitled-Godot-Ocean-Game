@@ -13,7 +13,7 @@
 [ext_resource type="ArrayMesh" uid="uid://mkodygt504hm" path="res://assets/water/clipmap_low.obj" id="9_6tkii"]
 [ext_resource type="Texture2D" uid="uid://b6322bl0qxuss" path="res://assets/textures/Ground057_1K-PNG_Color.png" id="10_3e2m4"]
 [ext_resource type="Script" uid="uid://ddm71i1yfjrbw" path="res://assets/scripts/world/water_deformer.gd" id="13_j4ek6"]
-[ext_resource type="PackedScene" uid="uid://c1a5366rpgr2k" path="res://assets/models/ship/ferry.tscn" id="14_ag7pc"]
+[ext_resource type="PackedScene" uid="uid://c1a5366rpgr2k" path="res://assets/models/ship/boat.tscn" id="14_ag7pc"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_p6go0"]
 seed = 666

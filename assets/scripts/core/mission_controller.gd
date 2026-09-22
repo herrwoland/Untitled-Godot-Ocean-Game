@@ -7,7 +7,7 @@ const DayConfig := preload("res://assets/scripts/core/day_config.gd")
 const CoordinateSystem := preload("res://assets/scripts/core/coordinate_system.gd")
 
 @export var player: Node3D
-@export var ferry: RigidBody3D
+@export var boat: RigidBody3D
 @export var player_spawn: Node3D
 @export var letter_point: Node3D
 @export var pickup_point: Node3D
@@ -21,12 +21,12 @@ const LETTER_HOME := Vector3(-129.4, 3.3, 10)
 const DELIVERY_RADIUS := 4.0 # how close the package must get to complete the hand-off
 
 var days: Array[DayConfig] = []
-var _ferry_start: Transform3D
+var _boat_start: Transform3D
 
 func _ready() -> void:
 	add_to_group(&'mission_controller')
 	_build_placeholder_days()
-	_ferry_start = ferry.global_transform
+	_boat_start = boat.global_transform
 	EventBus.package_picked_up.connect(_on_package_picked_up)
 	EventBus.package_delivered.connect(_on_package_delivered)
 	EventBus.player_died.connect(_on_player_died)
@@ -47,9 +47,9 @@ func _on_day_started(_day: int) -> void:
 	player.global_position = player_spawn.global_position
 	player.velocity = Vector3.ZERO
 	player.state = 0 # State.WALK
-	ferry.global_transform = _ferry_start
-	ferry.linear_velocity = Vector3.ZERO
-	ferry.angular_velocity = Vector3.ZERO
+	boat.global_transform = _boat_start
+	boat.linear_velocity = Vector3.ZERO
+	boat.angular_velocity = Vector3.ZERO
 
 	# Nothing is carried on a new morning.
 	get_tree().get_first_node_in_group(&'carry_controller').reset_day()

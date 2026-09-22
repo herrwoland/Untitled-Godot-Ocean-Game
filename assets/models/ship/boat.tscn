@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c1a5366rpgr2k"]
 
-[ext_resource type="Script" uid="uid://cj1mrslpmgpi6" path="res://assets/models/ship/ferry.gd" id="1_ferry"]
+[ext_resource type="Script" uid="uid://cj1mrslpmgpi6" path="res://assets/models/ship/boat.gd" id="1_boat"]
 [ext_resource type="Script" uid="uid://dsn01qhv7ioi3" path="res://assets/scripts/buoyant_cell.gd" id="2_cell"]
 [ext_resource type="Script" uid="uid://c7n8dp7f8tkeu" path="res://assets/scripts/world/wave_blocker.gd" id="3_2ib73"]
 [ext_resource type="Script" uid="uid://4j6vkvpadkr7" path="res://assets/player/camera.gd" id="3_camera"]
@@ -138,13 +138,13 @@ particles_anim_loop = false
 material = SubResource("StandardMaterial3D_nqvh8")
 size = Vector2(3.5, 3.5)
 
-[node name="Ferry" type="RigidBody3D" unique_id=693725928 node_paths=PackedStringArray("buoyant_cells", "mesh", "engine_cells")]
+[node name="Boat" type="RigidBody3D" unique_id=693725928 node_paths=PackedStringArray("buoyant_cells", "mesh", "engine_cells")]
 collision_layer = 4
 mass = 1043780.0
 gravity_scale = 0.0
 center_of_mass_mode = 1
 inertia = Vector3(94394000, 12910900, 587128)
-script = ExtResource("1_ferry")
+script = ExtResource("1_boat")
 buoyant_cells = [NodePath("AS Cell"), NodePath("FS Cell"), NodePath("MS Cell"), NodePath("MP Cell"), NodePath("FP Cell"), NodePath("AP Cell"), NodePath("Aft Ballast"), NodePath("Fore Ballast")]
 mesh = NodePath("HullDragVolume")
 engine_cells = [NodePath("Aft Ballast")]

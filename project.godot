@@ -47,7 +47,6 @@ settings/3d/rendering/render_mode=2
 window/size/viewport_width=854
 window/size/viewport_height=480
 window/stretch/mode="viewport"
-window/stretch/aspect="keep"
 window/vsync/vsync_mode=2
 window/quality/msaa_2d=0
 window/quality/msaa_3d=0

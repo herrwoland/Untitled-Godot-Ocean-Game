@@ -46,7 +46,7 @@
 [ext_resource type="PackedScene" path="res://assets/models/letter.tscn" id="43_letter"]
 [ext_resource type="PackedScene" uid="uid://dtaokrqog4ywo" path="res://assets/models/lighthouse/Light_House_0.1.glb" id="44_gngh3"]
 [ext_resource type="PackedScene" path="res://assets/models/package.tscn" id="44_package"]
-[ext_resource type="PackedScene" uid="uid://c1a5366rpgr2k" path="res://assets/models/ship/ferry.tscn" id="45_ferry"]
+[ext_resource type="PackedScene" uid="uid://c1a5366rpgr2k" path="res://assets/models/ship/boat.tscn" id="45_boat"]
 [ext_resource type="PackedScene" uid="uid://c4j4cc8pl3fqr" path="res://assets/models/creatures/hunter_fish.tscn" id="50_hrvbo"]
 [ext_resource type="Script" uid="uid://c7xykbyb5m0er" path="res://assets/scripts/world/rain.gd" id="60_rain"]
 
@@ -493,7 +493,7 @@ autoplay = true
 volume_db = -8.0
 autoplay = true
 
-[node name="Boat" parent="." unique_id=108108734 node_paths=PackedStringArray("water") instance=ExtResource("45_ferry")]
+[node name="Boat" parent="." unique_id=108108734 node_paths=PackedStringArray("water") instance=ExtResource("45_boat")]
 transform = Transform3D(-0.994964, -1.30385e-08, -0.10024, 7.31041e-08, 1, -2.87383e-08, 0.10024, 1.19209e-07, -0.994964, -79.8999, 5, 9.36186)
 water = NodePath("../Water")
 
@@ -728,10 +728,10 @@ anchor_bottom = 1.0
 mouse_filter = 2
 color = Color(0, 0, 0, 1)
 
-[node name="MissionController" type="Node" parent="." unique_id=1801545549 node_paths=PackedStringArray("player", "ferry", "player_spawn", "letter_point", "pickup_point", "delivery_point", "package", "ending_fish", "note_view", "sleep_fade")]
+[node name="MissionController" type="Node" parent="." unique_id=1801545549 node_paths=PackedStringArray("player", "boat", "player_spawn", "letter_point", "pickup_point", "delivery_point", "package", "ending_fish", "note_view", "sleep_fade")]
 script = ExtResource("26_mission")
 player = NodePath("../Player")
-ferry = NodePath("../Boat")
+boat = NodePath("../Boat")
 player_spawn = NodePath("../PlayerSpawn")
 letter_point = NodePath("../LetterPoint")
 pickup_point = NodePath("../PickupPoint")

@@ -11,7 +11,9 @@ extends RigidBody3D
 @export var mesh: MeshInstance3D;
 @export var engine_cells: Array[MeshInstance3D] = []; # Cells whose throttle is driven by the helm while piloted
 @export var engine_power: float = 400000.0; # newtons of thrust each engine cell produces at full throttle
-@export var rudder_torque_strength: float = 8000000.0;
+@export var rudder_torque_strength: float = 40000000.0; # yaw torque at full rudder and full bite
+@export var rudder_full_speed: float = 5.0; # m/s of flow past the rudder for full bite
+@export var rudder_prop_wash: float = 0.35; # bite the propeller alone gives at a standstill
 
 # TODO: Move to global config
 const DEBUG_FORCE_SCALE: float = 0.000015;
@@ -64,7 +66,15 @@ func set_helm_input(throttle: float, rudder: float) -> void:
 func apply_helm() -> void:
 	for cell in engine_cells:
 		cell.throttle = helm_throttle
-	apply_torque(basis.y * helm_rudder * rudder_torque_strength)
+	apply_torque(basis.y * helm_rudder * rudder_torque_strength * rudder_bite())
+
+## How much grip the rudder has right now, -1..1. A rudder only steers while water flows past
+## it, so the helm is heavy when the boat is barely moving, firm at cruise, and reversed when
+## making sternway. The propeller's own wash keeps a little steering alive at a standstill.
+func rudder_bite() -> float:
+	var forward := linear_velocity.dot(global_transform.basis.x)
+	var wash := maxf(helm_throttle, 0.0) * rudder_prop_wash * rudder_full_speed
+	return clampf((forward + wash) / maxf(rudder_full_speed, 0.01), -1.0, 1.0)
 
 func apply_drag() -> void:
 	# TODO: Different drag for parts in air vs water

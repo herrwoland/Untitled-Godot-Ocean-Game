@@ -2,16 +2,48 @@
 
 [ext_resource type="Script" uid="uid://tusxajaaj8mt" path="res://assets/player/player.gd" id="1_player"]
 [ext_resource type="Script" uid="uid://daqw81ug7ha8c" path="res://assets/player/crosshair.gd" id="2_crosshair"]
+[ext_resource type="Shader" uid="uid://b6okysbp05jgo" path="res://assets/shaders/particles/bubbles.gdshader" id="2_m2mll"]
 [ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="2_v2miy"]
+[ext_resource type="Shader" uid="uid://bikiihl7insv7" path="res://assets/shaders/particles/water_speck.gdshader" id="3_hai6l"]
 [ext_resource type="Script" uid="uid://lnixgqedq5ji" path="res://assets/player/inspection_controller.gd" id="3_inspect"]
 [ext_resource type="Script" uid="uid://c4nwfe56kuued" path="res://assets/player/oxygen_controller.gd" id="4_oxygen"]
 [ext_resource type="Shader" uid="uid://b2rcikvib8wn8" path="res://assets/shaders/post/oxygen_overlay.gdshader" id="5_oxyshader"]
 [ext_resource type="Script" uid="uid://dbs8itod2p6jf" path="res://assets/player/carry_controller.gd" id="6_carry"]
-[ext_resource type="Script" path="res://assets/scripts/world/bubble_emitter.gd" id="30_bubbles"]
+[ext_resource type="Script" uid="uid://f1i0c0keg8l6" path="res://assets/scripts/world/bubble_emitter.gd" id="30_bubbles"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
 radius = 0.4
 height = 1.8
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vlpqo"]
+shader = ExtResource("2_m2mll")
+shader_parameter/spawn_radius = 0.05
+shader_parameter/inherit_velocity = Vector3(0, 0, 0)
+shader_parameter/inherit_amount = 0.4
+shader_parameter/rise_speed = 1.1
+shader_parameter/wobble = 0.35
+shader_parameter/size_min = 0.015
+shader_parameter/size_max = 0.07
+shader_parameter/surface_y = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0eov8"]
+render_priority = 0
+shader = ExtResource("3_hai6l")
+shader_parameter/color = Color(0.7, 0.85, 0.85, 1)
+shader_parameter/ring = 1.0
+shader_parameter/square = false
+shader_parameter/pixel_grid = 6.0
+shader_parameter/use_sprite = false
+shader_parameter/fade_distance = 14.0
+shader_parameter/water_level = 0.0
+shader_parameter/depth_darkening = 0.04
+shader_parameter/ambient_glow = 0.45
+shader_parameter/sun_scatter = 0.8
+shader_parameter/local_scatter = 5.0
+shader_parameter/forward_scatter = 0.6
+
+[sub_resource type="QuadMesh" id="QuadMesh_g7aau"]
+material = SubResource("ShaderMaterial_0eov8")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_oxygen"]
 shader = ExtResource("5_oxyshader")
@@ -70,6 +102,22 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.55)
 
 [node name="CarrySocket" type="Marker3D" parent="Head/Camera3D" unique_id=429615435]
 transform = Transform3D(1, 0, 0, 0, 0.16443092, -0.9863925, 0, 0.9863925, 0.16443092, 0.13788526, -0.12041986, -0.620222)
+
+[node name="BreathBubbles" type="GPUParticles3D" parent="Head/Camera3D" unique_id=1570342301]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.18, -0.3)
+layers = 524288
+cast_shadow = 0
+emitting = false
+amount = 256
+amount_ratio = 0.0
+lifetime = 8.0
+randomness = 0.3
+visibility_aabb = AABB(-15, -5, -15, 30, 60, 30)
+process_material = SubResource("ShaderMaterial_vlpqo")
+draw_pass_1 = SubResource("QuadMesh_g7aau")
+script = ExtResource("30_bubbles")
+trail_full_speed = 0.0
+spawn_radius = 0.05
 
 [node name="InspectOverlay" type="CanvasLayer" parent="." unique_id=1850755420]
 visible = false
@@ -134,18 +182,12 @@ mouse_filter = 2
 [node name="HeartbeatPlayer" type="AudioStreamPlayer" parent="." unique_id=1949790051]
 volume_db = -40.0
 
-[node name="BreathBubbles" type="GPUParticles3D" parent="Head/Camera3D" unique_id=1570342301]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.18, -0.3)
-script = ExtResource("30_bubbles")
-trail_full_speed = 0.0
-spawn_radius = 0.05
-
 [node name="OxygenController" type="Node" parent="." unique_id=1983899619 node_paths=PackedStringArray("player", "overlay_rect", "heartbeat_player", "breath_bubbles")]
 script = ExtResource("4_oxygen")
 player = NodePath("..")
-breath_bubbles = NodePath("../Head/Camera3D/BreathBubbles")
 overlay_rect = NodePath("../OxygenOverlay/OxygenRect")
 heartbeat_player = NodePath("../HeartbeatPlayer")
+breath_bubbles = NodePath("../Head/Camera3D/BreathBubbles")
 max_breath = 20.0
 flash_start_intensity = 0.1
 

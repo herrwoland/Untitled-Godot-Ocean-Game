@@ -1,5 +1,5 @@
 extends "res://assets/scripts/mass_calculation.gd"
-## Root of the standalone ferry scene. The physics rig — buoyant cells, the
+## Root of the standalone boat scene. The physics rig — buoyant cells, the
 ## hull drag volume and the collider — is invisible and must never be touched
 ## when changing the ship's look. Swap models by replacing the placeholders
 ## under the three visual sockets instead: ShipModel, WheelModel and the
@@ -17,7 +17,7 @@ func _ready() -> void:
 	if not water:
 		water = get_tree().get_first_node_in_group(&'water')
 	if not water:
-		push_warning("Ferry '%s': no water node set and none found in group 'water'." % name)
+		push_warning("Boat '%s': no water node set and none found in group 'water'." % name)
 	for cell in buoyant_cells:
 		cell.water = water
 	super._ready()
