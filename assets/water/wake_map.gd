@@ -1,6 +1,7 @@
 class_name WakeMap extends RefCounted
-## World-space trail map of ship wakes around the camera (r = foam, g = churn), updated on the
-## GPU every frame from WakeEmitter nodes and read by the water shader. Owned by water.gd.
+## World-space trail map of ship wakes around the camera (r = foam, g = churn, b/a = how much
+## life each has left), updated on the GPU every frame from WakeEmitter nodes and read by the
+## water shader, which draws strength * life. Owned by water.gd.
 
 const SHADER_PATH := 'res://assets/shaders/compute/wake_update.glsl'
 const MAX_STAMPS := 16
@@ -40,7 +41,7 @@ func _init(resolution : int, coverage : float) -> void:
 	fmt.width = resolution
 	fmt.height = resolution
 	fmt.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_STORAGE_BIT \
-			| RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT
+			| RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT | RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
 	var zeros := PackedByteArray()
 	zeros.resize(resolution * resolution * 8)
 	_tex_a = _rd.texture_create(fmt, RDTextureView.new(), [zeros])
@@ -70,9 +71,9 @@ func update(delta : float, center : Vector3, stamps : Array, lifetime : float, s
 	rect = Vector4(origin.x * texel, origin.y * texel, _coverage, 1.0)
 
 	var data := PackedFloat32Array()
-	# Fade so that foam is ~5% after `lifetime`; churn lingers twice as long.
-	var fade := exp(-3.0 * delta / maxf(lifetime, 0.1))
-	var churn_fade := exp(-1.5 * delta / maxf(lifetime, 0.1))
+	# Life runs out over `lifetime`; churned water lingers half again as long.
+	var fade := delta / maxf(lifetime, 0.1)
+	var churn_fade := fade / 1.5
 	var count := mini(stamps.size(), MAX_STAMPS)
 	data.append_array([fade, churn_fade, clampf(spread * delta / texel, 0.0, 0.25), float(count)])
 	data.append_array([rect.x, rect.y, _coverage, float(_resolution)])

@@ -116,14 +116,15 @@ uniform sampler2D wake_map : filter_linear, repeat_disable;
 uniform vec4 wake_map_rect = vec4(0.0); // xz of the map corner, map size (m), 1 = active
 /** Opacity of wake foam. */
 uniform float wake_foam_strength : hint_range(0.0, 1.0, 0.01) = 0.9;
-/** Breaks the wake foam into patches and streaks. */
-uniform float wake_foam_breakup : hint_range(0.0, 1.0, 0.01) = 0.75;
+/** Breaks the wake foam into patches and streaks. High values can cut a faint wake away
+ *  entirely, so keep it below the strength the boat lays down (WakeEmitter's foam). */
+uniform float wake_foam_breakup : hint_range(0.0, 1.0, 0.01) = 0.4;
 /** How much churned wake water flattens the waves (a ship leaves a smoother lane behind it). */
 uniform float wake_flatten : hint_range(0.0, 1.0, 0.01) = 0.35;
 /** Colour of churned wake water. */
 uniform vec3 wake_tint_color : source_color = vec3(0.2, 0.42, 0.4);
 /** Strength of the churned-water tint. */
-uniform float wake_tint_strength : hint_range(0.0, 1.0, 0.01) = 0.45;
+uniform float wake_tint_strength : hint_range(0.0, 1.0, 0.01) = 0.6;
 group_uniforms;
 
 vec2 wake_sample(vec2 world_xz) {
@@ -131,7 +132,9 @@ vec2 wake_sample(vec2 world_xz) {
 	vec2 uv = (world_xz - wake_map_rect.xy) / wake_map_rect.z;
 	if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return vec2(0.0);
 	vec2 edge = smoothstep(vec2(0.0), vec2(0.05), uv) * smoothstep(vec2(0.0), vec2(0.05), 1.0 - uv);
-	return textureLod(wake_map, uv, 0.0).rg * edge.x * edge.y;
+	// Strength * life left: a wake keeps its look and then fades out over its last seconds.
+	vec4 m = textureLod(wake_map, uv, 0.0);
+	return m.rg * smoothstep(0.0, 0.25, m.ba) * edge.x * edge.y;
 }
 
 // Pale churned water where the surface meets anything poking through it (hulls, creatures,

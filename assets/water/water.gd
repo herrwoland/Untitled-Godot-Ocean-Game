@@ -117,10 +117,11 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 ## Foam trails behind boats (see WakeEmitter). A world-space map around the camera.
 @export_group('Wakes')
 @export var wakes_enabled := true
-## Seconds for a wake to fade away.
-@export_range(1.0, 120.0, 0.5) var wake_lifetime := 20.0
+## Seconds a wake takes to fade away completely.
+@export_range(1.0, 120.0, 0.5) var wake_lifetime := 15.0
 ## How fast a wake widens as it ages (m/s). This is what opens it into a V behind the boat.
-@export_range(0.0, 10.0, 0.05) var wake_spread := 1.2
+## Widening also thins the foam, so high values make a wake fade out sooner than its lifetime.
+@export_range(0.0, 10.0, 0.05) var wake_spread := 0.5
 ## Width of the square around the camera that keeps wakes (m). Map resolution is fixed at 512.
 @export_range(64.0, 1024.0, 1.0) var wake_coverage := 256.0 :
 	set(value):

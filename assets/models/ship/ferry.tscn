@@ -9,8 +9,9 @@
 [ext_resource type="Script" uid="uid://cs2x7rmusrtt6" path="res://assets/scripts/interactables/ship_ladder.gd" id="6_ladder"]
 [ext_resource type="PackedScene" uid="uid://bs7x4dgp16lr5" path="res://assets/models/boat/boat_0.1.glb" id="8_2ib73"]
 [ext_resource type="PackedScene" uid="uid://d327mym4cwyr7" path="res://assets/models/boat/ladder.glb" id="9_4dvsp"]
-[ext_resource type="Script" path="res://assets/scripts/world/wake_emitter.gd" id="20_wake"]
-[ext_resource type="Script" path="res://assets/scripts/world/bow_spray.gd" id="21_spray"]
+[ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="11_w61sw"]
+[ext_resource type="Script" uid="uid://cxunwhxll1nib" path="res://assets/scripts/world/wake_emitter.gd" id="20_wake"]
+[ext_resource type="Script" uid="uid://k1t7w7sw8jih" path="res://assets/scripts/world/bow_spray.gd" id="21_spray"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_82xsv"]
 size = Vector3(44, 8.062927, 13.075356)
@@ -44,6 +45,98 @@ radius = 0.7788086
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_s6qt6"]
 size = Vector3(3.3085938, 13.639282, 2.0875854)
+
+[sub_resource type="Gradient" id="Gradient_t42vp"]
+offsets = PackedFloat32Array(0, 0.1, 0.6, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0.6, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_44820"]
+gradient = SubResource("Gradient_t42vp")
+
+[sub_resource type="Curve" id="Curve_rcsef"]
+_data = [Vector2(0, 0.3), 0.0, 0.0, 0, 0, Vector2(0.25, 1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_ijem4"]
+curve = SubResource("Curve_rcsef")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_ol6qw"]
+emission_shape = 3
+emission_box_extents = Vector3(2.5, 0.3, 0.3)
+angle_min = -180.0
+angle_max = 180.0
+direction = Vector3(0, 0.8192319, 0.5734623)
+spread = 30.0
+initial_velocity_min = 3.6
+initial_velocity_max = 9.0
+damping_min = 1.0
+damping_max = 3.0
+scale_min = 0.6
+scale_max = 1.4
+scale_curve = SubResource("CurveTexture_ijem4")
+color_ramp = SubResource("GradientTexture1D_44820")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qmuha"]
+transparency = 1
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_color = Color(0.95, 0.97, 0.97, 0.9)
+albedo_texture = ExtResource("11_w61sw")
+disable_receive_shadows = true
+billboard_mode = 3
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="QuadMesh" id="QuadMesh_plcnw"]
+material = SubResource("StandardMaterial3D_qmuha")
+size = Vector2(3.5, 3.5)
+
+[sub_resource type="Gradient" id="Gradient_mt3et"]
+offsets = PackedFloat32Array(0, 0.1, 0.6, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0.6, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_yc0wb"]
+gradient = SubResource("Gradient_mt3et")
+
+[sub_resource type="Curve" id="Curve_k83xg"]
+_data = [Vector2(0, 0.3), 0.0, 0.0, 0, 0, Vector2(0.25, 1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_k86m4"]
+curve = SubResource("Curve_k83xg")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_yh560"]
+emission_shape = 3
+emission_box_extents = Vector3(2.5, 0.3, 0.3)
+angle_min = -180.0
+angle_max = 180.0
+direction = Vector3(0, 0.8192319, -0.5734623)
+spread = 30.0
+initial_velocity_min = 3.6
+initial_velocity_max = 9.0
+damping_min = 1.0
+damping_max = 3.0
+scale_min = 0.6
+scale_max = 1.4
+scale_curve = SubResource("CurveTexture_k86m4")
+color_ramp = SubResource("GradientTexture1D_yc0wb")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_nqvh8"]
+transparency = 1
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_color = Color(0.95, 0.97, 0.97, 0.9)
+albedo_texture = ExtResource("11_w61sw")
+disable_receive_shadows = true
+billboard_mode = 3
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="QuadMesh" id="QuadMesh_4s4sa"]
+material = SubResource("StandardMaterial3D_nqvh8")
+size = Vector2(3.5, 3.5)
 
 [node name="Ferry" type="RigidBody3D" unique_id=693725928 node_paths=PackedStringArray("buoyant_cells", "mesh", "engine_cells")]
 collision_layer = 4
@@ -279,24 +372,42 @@ max_distance = 25.0
 [node name="WakeStern" type="Node3D" parent="." unique_id=1570342201]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, -2.5, 0)
 script = ExtResource("20_wake")
-half_width = 6.0
-foam = 0.65
+half_width = 8.0
+foam = 0.49
+churn = 0.15
 edge_bias = 0.5
+full_speed = 4.0
 
 [node name="WakeBow" type="Node3D" parent="." unique_id=1570342202]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, -2.5, 0)
 script = ExtResource("20_wake")
 half_width = 4.5
-foam = 0.7
 churn = 0.4
 edge_bias = 0.85
+full_speed = 4.0
 
 [node name="BowSprayPort" type="GPUParticles3D" parent="." unique_id=1570342203]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, -2.2, 3.8)
+cast_shadow = 0
+amount = 600
+amount_ratio = 0.0
+lifetime = 1.6
+randomness = 0.5
+visibility_aabb = AABB(-30, -10, -30, 60, 40, 60)
+process_material = SubResource("ParticleProcessMaterial_ol6qw")
+draw_pass_1 = SubResource("QuadMesh_plcnw")
 script = ExtResource("21_spray")
 
 [node name="BowSprayStarboard" type="GPUParticles3D" parent="." unique_id=1570342204]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, -2.2, -3.8)
+cast_shadow = 0
+amount = 600
+amount_ratio = 0.0
+lifetime = 1.6
+randomness = 0.5
+visibility_aabb = AABB(-30, -10, -30, 60, 40, 60)
+process_material = SubResource("ParticleProcessMaterial_yh560")
+draw_pass_1 = SubResource("QuadMesh_4s4sa")
 script = ExtResource("21_spray")
 throw_direction = Vector3(0, 1, -0.7)
 
