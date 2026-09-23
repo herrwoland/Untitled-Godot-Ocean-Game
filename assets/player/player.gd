@@ -58,11 +58,18 @@ const GRAVITY: float = 9.8
 
 var _lowpass_idx: int = -1
 var _last_eye_submersion: float = INF
+var _head_base_y: float = 1.6
+var _eye_offset: float = 0.0
+var _eye_side: float = 1.0 # +1 keeps the eyes above the water, -1 keeps them under
 var _ears_underwater: bool = false
 var _submerged_at_msec: int = 0 # when the ears last went under, for the surfacing gasp
 
 const GASP_AFTER_SECONDS := 4.0 # dives shorter than this surface without a gasp
 
+## The sea passing exactly through the eyes draws a hard line across the middle of the view:
+## a plane through a camera always projects to one. Keep the eyes this far clear of the
+## surface, plainly above it or plainly under, rather than sitting in it (0 = allow it).
+@export_range(0.0, 0.5, 0.01) var eye_waterline_clearance: float = 0.18
 ## How fast the surface has to pass the eyes for the plunge to drag a full lungful of air
 ## under (m/s). Jumping off the deck is well past this; a wave washing over is not.
 @export var plunge_full_speed: float = 4.0
@@ -73,6 +80,7 @@ const GASP_AFTER_SECONDS := 4.0 # dives shorter than this surface without a gasp
 
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	_head_base_y = head.position.y
 	floor_snap_length = 0.5 # a deck falling out of a wave can outrun gravity; stay stuck to it
 	# Muffle all audio while underwater via a low-pass filter on the Master bus.
 	var lowpass := AudioEffectLowPassFilter.new()
@@ -100,6 +108,26 @@ func _update_underwater_audio(delta: float) -> void:
 		elif Time.get_ticks_msec() - _submerged_at_msec > GASP_AFTER_SECONDS * 1000.0 \
 				and gasp_player and gasp_player.stream and not captured:
 			gasp_player.play() # breaking the surface after a long dive
+
+## Nudges the eyes out of the waterline. Which side we take is settled while we are plainly
+## on one of them, so a wave washing past cannot make the view flick between the two.
+func _keep_eyes_clear_of_waterline(delta: float) -> void:
+	var target := 0.0
+	if water and eye_waterline_clearance > 0.0 and state != State.PILOT and not captured:
+		# Work from where the head would sit untouched, never from the nudged position, or the
+		# nudge chases its own tail and settles halfway into the very band it is avoiding.
+		var eye := camera.global_position
+		var rest_eye := eye.y - _eye_offset
+		var submersion: float = water.get_wave_height(eye) - rest_eye
+		if absf(submersion) > eye_waterline_clearance:
+			_eye_side = -1.0 if submersion > 0.0 else 1.0 # commit while the answer is clear
+			target = 0.0
+		elif _eye_side > 0.0:
+			target = submersion + eye_waterline_clearance # hold them clear above
+		else:
+			target = submersion - eye_waterline_clearance # push them clear under
+	_eye_offset = lerpf(_eye_offset, target, 1.0 - exp(-delta * 10.0))
+	head.position.y = _head_base_y + _eye_offset
 
 ## The air a body drags under with it. Slipping through the surface barely clouds the water;
 ## jumping off the deck takes a great gout of it down.
@@ -176,6 +204,8 @@ func _physics_process(delta: float) -> void:
 			_check_exit_swim()
 		State.PILOT:
 			_process_pilot(delta)
+
+	_keep_eyes_clear_of_waterline(delta)
 
 func _process_turn_keys(delta: float) -> void:
 	var turn := Input.get_action_strength(&'turn_left') - Input.get_action_strength(&'turn_right')

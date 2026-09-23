@@ -78,6 +78,10 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 @export_range(0.0, 6.0, 0.1) var underwater_blur := 1.5
 ## Width of the dark meniscus line where a wave crosses the lens, in pixels.
 @export_range(0.0, 12.0, 0.1) var waterline_width := 2.5
+## How gradually the underwater look takes over the screen as the surface crosses the lens,
+## in pixels. Too narrow and it cuts a hard edge across the waves, the half below it lighter
+## than the half above. Separate from the line's own width so the meniscus stays crisp.
+@export_range(0.0, 200.0, 1.0) var waterline_softness := 120.0
 ## Froth and bubbles along that line. Widens into a churn of air as you go under.
 @export_range(0.0, 2.0, 0.01) var waterline_foam := 0.8
 ## How long the churn of air takes to clear after the camera crosses the surface (s).
@@ -276,6 +280,19 @@ func _ready() -> void:
 	_displacement_update_rate = (1 / displacement_updates_per_second)
 	_setup_underwater_effect()
 
+## TEMPORARY, for chasing the dark upper half. F9 turns the full-screen underwater effect
+## off and on; F10 hides the water surface itself. Whatever survives F9 is drawn by the
+## surface material (water.gdshader), not by the post effect. Remove once we know.
+func _unhandled_input(event : InputEvent) -> void:
+	if Engine.is_editor_hint() or not event is InputEventKey or not event.pressed or event.echo:
+		return
+	if event.keycode == KEY_F9:
+		underwater_effect_enabled = not underwater_effect_enabled
+		print("[debug] underwater post effect: %s" % ("ON" if underwater_effect_enabled else "OFF"))
+	elif event.keycode == KEY_F10:
+		visible = not visible
+		print("[debug] water surface: %s" % ("SHOWN" if visible else "HIDDEN"))
+
 func _process(delta : float) -> void:
 	_update_wave_blockers()
 	_update_water_shapes(delta)
@@ -440,6 +457,7 @@ func _update_underwater_effect() -> void:
 	fx.blur = underwater_blur
 	fx.waterline_width = waterline_width
 	fx.waterline_foam = waterline_foam
+	fx.waterline_softness = waterline_softness
 	fx.waterline_churn = _waterline_churn
 	fx.vignette = underwater_vignette
 	fx.silhouette_range = silhouette_range

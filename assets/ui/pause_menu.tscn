@@ -1,16 +1,16 @@
-[gd_scene load_steps=1 format=3]
+[gd_scene format=3 uid="uid://dsm5csm5s7y4k"]
 
-[node name="PauseMenu" type="CanvasLayer"]
+[node name="PauseMenu" type="CanvasLayer" unique_id=1728135337]
 process_mode = 3
 visible = false
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=1062723526]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 color = Color(0, 0, 0, 0.55)
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=39309656]
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
@@ -22,20 +22,20 @@ offset_right = 120.0
 offset_bottom = 70.0
 alignment = 1
 
-[node name="Title" type="Label" parent="VBoxContainer"]
+[node name="Title" type="Label" parent="VBoxContainer" unique_id=466861830]
 layout_mode = 2
 theme_type_variation = &"TitleLabel"
-horizontal_alignment = 1
 text = "Paused"
+horizontal_alignment = 1
 
-[node name="ResumeButton" type="Button" parent="VBoxContainer"]
+[node name="ResumeButton" type="Button" parent="VBoxContainer" unique_id=1009957724]
 layout_mode = 2
 text = "Resume"
 
-[node name="SettingsButton" type="Button" parent="VBoxContainer"]
+[node name="SettingsButton" type="Button" parent="VBoxContainer" unique_id=1536331166]
 layout_mode = 2
 text = "Settings"
 
-[node name="QuitButton" type="Button" parent="VBoxContainer"]
+[node name="QuitButton" type="Button" parent="VBoxContainer" unique_id=1119209784]
 layout_mode = 2
 text = "Quit"

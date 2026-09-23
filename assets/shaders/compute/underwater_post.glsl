@@ -38,7 +38,7 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 sun_color;       // rgb light colour * energy, w = max shaft march distance (m)
 	vec4 shafts;          // x focus map uv scale, y march steps, z forward scattering g, w contrast
 	vec4 shaft_tint;      // rgb tint, a = max brightness
-	vec4 shafts2;         // x threshold, y waterline churn (0..1), zw unused
+	vec4 shafts2;         // x threshold, y waterline churn (0..1), z waterline softness (px), w unused
 	vec4 shape_count;     // x = number of water shapes
 	vec4 shape_a[16];
 	vec4 shape_b[16];
@@ -63,6 +63,8 @@ layout(push_constant, std430) uniform PushConstant {
 } pc;
 
 vec3 view_pos(vec2 uv, float depth) {
+	// No y flip here: inv_projection comes from get_view_projection(), which already carries
+	// it. Flipping again turns every direction taken from here upside down.
 	vec4 v = p.inv_projection * vec4(uv * 2.0 - 1.0, depth, 1.0);
 	return v.xyz / v.w;
 }
@@ -201,14 +203,18 @@ void main() {
 	// Waterline width is given in pixels; convert to meters on the (tiny) near plane.
 	float pixel_meters = length(view_pos(uv + vec2(0.0, 1.0) / pc.size, 1.0) - near_view);
 	float thickness = max(p.effect.w * pixel_meters, 1e-6);
-	float coverage = smoothstep(-thickness, thickness, submersion);
+	// How gradually the underwater treatment takes over the screen. Held apart from the line's
+	// own width on purpose: a few pixels there keeps the meniscus crisp, but the same few
+	// pixels here cut a hard edge straight across the waves, lighter below than above.
+	float feather = max(p.shafts2.z * pixel_meters, thickness);
+	float coverage = smoothstep(-feather, feather, submersion);
 	// Froth reaches further than the line itself, and further still while you are going under.
 	// Pixel scale like the line: across the whole screen the near plane spans only a couple
 	// of centimeters of world height, so a band measured in meters would swallow the view.
 	float churn = p.shafts2.y;
 	float foam = p.effect2.w;
 	float band = thickness * (1.5 + 4.0 * churn);
-	float reach = max(3.0 * thickness, foam > 0.0 ? band * 2.0 : 0.0);
+	float reach = max(max(3.0 * thickness, feather), foam > 0.0 ? band * 2.0 : 0.0);
 	if (coverage <= 0.0 && submersion < -reach) return; // Dry and away from the waterline.
 
 	vec3 result = scene;
@@ -220,16 +226,10 @@ void main() {
 
 		vec3 view_dir = normalize(mat3(p.cam_to_world) * view_pos(suv, 1.0));
 		float depth = textureLod(depth_tex, suv, 0.0).r;
-		float dist;
-		if (depth > 0.0) {
-			dist = length(view_pos(suv, depth));
-		} else {
-			// Nothing was drawn here, so the ray leaves the water through the surface above
-			// (looking up) or runs into the deep forever (looking down). Using its real exit
-			// distance instead of "infinitely far" is what stops the sky beyond the last wave
-			// from being painted as a flat bar of fully scattered water at the horizon.
-			dist = view_dir.y > 0.001 ? min(max(submersion, 0.0) / view_dir.y, 1e4) : 1e4;
-		}
+		// depth 0 = far plane (sky). Tempting to use where such a ray would leave the water
+		// instead, but that swings from metres (looking just up) to endless (looking just
+		// down) inside a degree of eye level, and draws a hard line right across the view.
+		float dist = depth <= 0.0 ? 1e4 : length(view_pos(suv, depth));
 
 		vec3 under = blurred(suv, p.effect.z);
 		// Light fades with depth. The scattered light you see along a view comes from the water

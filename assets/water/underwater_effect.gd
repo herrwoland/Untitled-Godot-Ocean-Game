@@ -25,6 +25,7 @@ var blur := 1.5
 var waterline_width := 2.5
 var waterline_foam := 0.8
 var waterline_churn := 0.0 # 0..1, spikes as the camera crosses the surface
+var waterline_softness := 0.0 # px over which the underwater treatment takes over the screen
 var vignette := 0.35
 var silhouette_range := 45.0
 var fog_down := 0.35
@@ -246,7 +247,7 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 	var uv_scale := map_scales[0].x if not map_scales.is_empty() else 0.0
 	data.append_array([uv_scale * shaft_scale, float(shaft_steps), shaft_scattering, shaft_contrast])
 	data.append_array([shaft_tint.r, shaft_tint.g, shaft_tint.b, shaft_max_brightness])
-	data.append_array([shaft_threshold, waterline_churn, 0.0, 0.0])
+	data.append_array([shaft_threshold, waterline_churn, waterline_softness, 0.0])
 	data.append_array([float(shape_count), 0.0, 0.0, 0.0])
 	for shapes in [shape_a, shape_b]:
 		for i in MAX_WATER_SHAPES:
