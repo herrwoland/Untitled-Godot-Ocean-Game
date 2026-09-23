@@ -25,6 +25,9 @@ enum State { WALK, SWIM, PILOT }
 @onready var splash_particles: GPUParticles3D = $SplashParticles
 @onready var surface_ripples: GPUParticles3D = $SurfaceRipples
 @onready var splash_player: AudioStreamPlayer = get_node_or_null(^'SplashPlayer')
+## Air dragged under as we break the surface. Not breath -- see OxygenController for that;
+## this is the cloud that comes down with a body. Tune its look on the node itself.
+@onready var plunge_bubbles: BubbleEmitter = get_node_or_null(^'Head/Camera3D/PlungeBubbles')
 @onready var gasp_player: AudioStreamPlayer = get_node_or_null(^'GaspPlayer')
 
 var state: State = State.WALK
@@ -54,10 +57,19 @@ const GRAVITY: float = 9.8
 @export var underwater_cutoff_hz: float = 600.0 # low-pass cutoff while the camera is submerged
 
 var _lowpass_idx: int = -1
+var _last_eye_submersion: float = INF
 var _ears_underwater: bool = false
 var _submerged_at_msec: int = 0 # when the ears last went under, for the surfacing gasp
 
 const GASP_AFTER_SECONDS := 4.0 # dives shorter than this surface without a gasp
+
+## How fast the surface has to pass the eyes for the plunge to drag a full lungful of air
+## under (m/s). Jumping off the deck is well past this; a wave washing over is not.
+@export var plunge_full_speed: float = 4.0
+## Bubbles from merely drifting through the surface (0..1 of the emitter's budget).
+@export_range(0.0, 1.0, 0.01) var plunge_idle_bubbles: float = 0.12
+## How long the hardest plunge keeps bubbling (s).
+@export_range(0.05, 3.0, 0.05) var plunge_burst_seconds: float = 0.5
 
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -69,19 +81,34 @@ func _ready() -> void:
 	AudioServer.add_bus_effect(0, lowpass)
 	AudioServer.set_bus_effect_enabled(0, _lowpass_idx, false)
 
-func _update_underwater_audio() -> void:
+func _update_underwater_audio(delta: float) -> void:
 	if not water:
 		return
-	var underwater: bool = camera.global_position.y < water.get_wave_height(camera.global_position) \
-		and not water.is_water_hole(camera.global_position)
+	var submersion: float = water.get_wave_height(camera.global_position) - camera.global_position.y
+	var underwater: bool = submersion > 0.0 and not water.is_water_hole(camera.global_position)
+	# How fast the surface is passing the eyes, for the plunge below.
+	var crossing_speed := 0.0
+	if _last_eye_submersion != INF and delta > 0.0:
+		crossing_speed = absf(submersion - _last_eye_submersion) / delta
+	_last_eye_submersion = submersion
 	if underwater != _ears_underwater:
 		_ears_underwater = underwater
 		AudioServer.set_bus_effect_enabled(0, _lowpass_idx, underwater)
 		if underwater:
+			_plunge(crossing_speed)
 			_submerged_at_msec = Time.get_ticks_msec()
 		elif Time.get_ticks_msec() - _submerged_at_msec > GASP_AFTER_SECONDS * 1000.0 \
 				and gasp_player and gasp_player.stream and not captured:
 			gasp_player.play() # breaking the surface after a long dive
+
+## The air a body drags under with it. Slipping through the surface barely clouds the water;
+## jumping off the deck takes a great gout of it down.
+func _plunge(crossing_speed: float) -> void:
+	if not plunge_bubbles:
+		return
+	var hardness := clampf(crossing_speed / maxf(plunge_full_speed, 0.1), 0.0, 1.0)
+	plunge_bubbles.burst(lerpf(0.12, plunge_burst_seconds, hardness),
+			lerpf(plunge_idle_bubbles, 1.0, hardness))
 
 func _update_interact_hover() -> void:
 	var target: Object = null
@@ -122,7 +149,7 @@ func set_captured(caught: bool) -> void:
 	surface_ripples.emitting = false
 
 func _physics_process(delta: float) -> void:
-	_update_underwater_audio()
+	_update_underwater_audio(delta)
 	if captured:
 		return # the creature moves us; nothing to simulate
 	if unconscious:

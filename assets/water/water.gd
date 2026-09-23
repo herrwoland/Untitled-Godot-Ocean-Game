@@ -78,6 +78,10 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 @export_range(0.0, 6.0, 0.1) var underwater_blur := 1.5
 ## Width of the dark meniscus line where a wave crosses the lens, in pixels.
 @export_range(0.0, 12.0, 0.1) var waterline_width := 2.5
+## Froth and bubbles along that line. Widens into a churn of air as you go under.
+@export_range(0.0, 2.0, 0.01) var waterline_foam := 0.8
+## How long the churn of air takes to clear after the camera crosses the surface (s).
+@export_range(0.1, 4.0, 0.05) var waterline_churn_time := 0.9
 @export_range(0.0, 1.0, 0.01) var underwater_vignette := 0.35
 ## How far away big shapes can still be made out as dark silhouettes against the water (m).
 ## Detail and colour are lost much sooner (the material's underwater_absorption).
@@ -163,6 +167,8 @@ var caustics_effect : CausticsEffect
 var _sun : DirectionalLight3D
 var _shadow_viewport : SubViewport
 var _shadow_camera : Camera3D
+var _waterline_churn := 0.0
+var _last_cam_submersion := INF
 var _shadow_capture : WaterShadowCapture
 var _wake_map : WakeMap
 var _marine_snow : GPUParticles3D
@@ -433,6 +439,8 @@ func _update_underwater_effect() -> void:
 	fx.distortion = underwater_distortion
 	fx.blur = underwater_blur
 	fx.waterline_width = waterline_width
+	fx.waterline_foam = waterline_foam
+	fx.waterline_churn = _waterline_churn
 	fx.vignette = underwater_vignette
 	fx.silhouette_range = silhouette_range
 	fx.fog_down = fog_brightness_down
@@ -589,11 +597,24 @@ func _update_depth_lighting() -> void:
 	var depth := 0.0
 	if dim_sunlight_underwater and cam:
 		depth = maxf(get_wave_height(cam.global_position, false) - cam.global_position.y, 0.0)
+	_update_waterline_churn(cam)
 	var light := exp(-depth_darkening * depth)
 	_sun.light_energy = _sun_energy_base * light
 	if _env:
 		_env.ambient_light_energy = _env_ambient_base * light
 		_env.background_energy_multiplier = _env_sky_energy_base * light
+
+## Air is only churned up where the surface is actually being broken: the faster the lens
+## crosses it, the more of a cloud it drags down, and the cloud clears over the next second.
+func _update_waterline_churn(cam : Camera3D) -> void:
+	var delta := get_process_delta_time()
+	_waterline_churn = maxf(_waterline_churn - delta / maxf(waterline_churn_time, 0.05), 0.0)
+	if not cam or delta <= 0.0: return
+	var submersion := get_wave_height(cam.global_position, false) - cam.global_position.y
+	if _last_cam_submersion != INF and absf(submersion) < 1.5:
+		var crossing_speed := absf(submersion - _last_cam_submersion) / delta
+		_waterline_churn = maxf(_waterline_churn, clampf(crossing_speed / 2.5, 0.0, 1.0))
+	_last_cam_submersion = submersion
 
 func _view_camera() -> Camera3D:
 	var cam := get_viewport().get_camera_3d()

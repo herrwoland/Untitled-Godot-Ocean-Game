@@ -1,7 +1,7 @@
 @tool
 class_name UnderwaterEffect extends CompositorEffect
 ## Full-screen underwater effect: absorption/in-scattering, light shafts, wobble, blur,
-## vignette and a waterline that follows the FFT waves across the lens. Runs after the transparent pass so
+## vignette and a frothing waterline that follows the FFT waves across the lens. Runs after the transparent pass so
 ## the water surface (Snell's window) is included. Configured and fed by water.gd.
 
 const SHADER_PATH := 'res://assets/shaders/compute/underwater_post.glsl'
@@ -23,6 +23,8 @@ var depth_darkening := 0.04
 var distortion := 0.0025
 var blur := 1.5
 var waterline_width := 2.5
+var waterline_foam := 0.8
+var waterline_churn := 0.0 # 0..1, spikes as the camera crosses the surface
 var vignette := 0.35
 var silhouette_range := 45.0
 var fog_down := 0.35
@@ -237,14 +239,14 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 	data.append_array([fog_color.r, fog_color.g, fog_color.b, depth_darkening])
 	data.append_array([absorption.x, absorption.y, absorption.z, float(cascades)])
 	data.append_array([Time.get_ticks_msec() / 1000.0, distortion, blur, waterline_width])
-	data.append_array([vignette, water_level, silhouette_range, 0.0])
+	data.append_array([vignette, water_level, silhouette_range, waterline_foam])
 	var sun := sun_direction.normalized()
 	data.append_array([sun.x, sun.y, sun.z, shaft_strength if sun != Vector3.ZERO else 0.0])
 	data.append_array([sun_color.r, sun_color.g, sun_color.b, shaft_max_distance])
 	var uv_scale := map_scales[0].x if not map_scales.is_empty() else 0.0
 	data.append_array([uv_scale * shaft_scale, float(shaft_steps), shaft_scattering, shaft_contrast])
 	data.append_array([shaft_tint.r, shaft_tint.g, shaft_tint.b, shaft_max_brightness])
-	data.append_array([shaft_threshold, 0.0, 0.0, 0.0])
+	data.append_array([shaft_threshold, waterline_churn, 0.0, 0.0])
 	data.append_array([float(shape_count), 0.0, 0.0, 0.0])
 	for shapes in [shape_a, shape_b]:
 		for i in MAX_WATER_SHAPES:

@@ -10,8 +10,8 @@ composite = "";
 #VERSION_DEFINES
 // Underwater screen effect (runs after transparents, see underwater_effect.gd).
 // Per pixel: is the camera's near plane below the FFT wave surface here? If so, apply
-// distance absorption/in-scattering, light shafts, wobble, blur and vignette. A meniscus
-// line marks the waterline where a wave crosses the lens.
+// distance absorption/in-scattering, light shafts, wobble, blur and vignette. The waterline where a wave
+// crosses the lens is torn up with froth and bubbles.
 // Two versions: `shafts` ray marches light shafts at half resolution (noisy, cheap), and
 // `composite` blurs them away while applying everything else at full resolution.
 
@@ -33,12 +33,12 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 fog_color;       // rgb in-scattered colour, a = light loss per meter of depth
 	vec4 absorption;      // rgb extinction per meter, a = number of cascades
 	vec4 effect;          // x time, y distortion, z blur (px), w waterline width (px)
-	vec4 effect2;         // x vignette, y water level (world y), z silhouette range (m), w unused
+	vec4 effect2;         // x vignette, y water level (world y), z silhouette range (m), w waterline foam
 	vec4 sun_dir;         // xyz direction towards the sun (world), w = shaft strength
 	vec4 sun_color;       // rgb light colour * energy, w = max shaft march distance (m)
 	vec4 shafts;          // x focus map uv scale, y march steps, z forward scattering g, w contrast
 	vec4 shaft_tint;      // rgb tint, a = max brightness
-	vec4 shafts2;         // x threshold, yzw unused
+	vec4 shafts2;         // x threshold, y waterline churn (0..1), zw unused
 	vec4 shape_count;     // x = number of water shapes
 	vec4 shape_a[16];
 	vec4 shape_b[16];
@@ -91,6 +91,19 @@ float wave_height(vec2 xz) {
 }
 
 #ifndef MODE_SHAFTS
+float hash12(vec2 p) {
+	vec3 q = fract(vec3(p.xyx) * 0.1031);
+	q += dot(q, q.yzx + 33.33);
+	return fract((q.x + q.y) * q.z);
+}
+
+float vnoise(vec2 p) {
+	vec2 i = floor(p), f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), f.x),
+	           mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
 vec3 blurred(vec2 uv, float radius_px) {
 	vec2 r = radius_px / pc.size;
 	vec3 c = textureLod(source_tex, uv, 0.0).rgb * 0.4;
@@ -189,7 +202,14 @@ void main() {
 	float pixel_meters = length(view_pos(uv + vec2(0.0, 1.0) / pc.size, 1.0) - near_view);
 	float thickness = max(p.effect.w * pixel_meters, 1e-6);
 	float coverage = smoothstep(-thickness, thickness, submersion);
-	if (coverage <= 0.0 && submersion < -3.0 * thickness) return; // Dry and away from the waterline.
+	// Froth reaches further than the line itself, and further still while you are going under.
+	// Pixel scale like the line: across the whole screen the near plane spans only a couple
+	// of centimeters of world height, so a band measured in meters would swallow the view.
+	float churn = p.shafts2.y;
+	float foam = p.effect2.w;
+	float band = thickness * (1.5 + 4.0 * churn);
+	float reach = max(3.0 * thickness, foam > 0.0 ? band * 2.0 : 0.0);
+	if (coverage <= 0.0 && submersion < -reach) return; // Dry and away from the waterline.
 
 	vec3 result = scene;
 	if (coverage > 0.0) {
@@ -198,14 +218,23 @@ void main() {
 		                   cos(uv.x * 19.0 + t * 1.3) + cos(uv.x * 37.0 + t * 2.9) * 0.5);
 		vec2 suv = clamp(uv + wobble * p.effect.y, vec2(0.0), vec2(1.0));
 
+		vec3 view_dir = normalize(mat3(p.cam_to_world) * view_pos(suv, 1.0));
 		float depth = textureLod(depth_tex, suv, 0.0).r;
-		float dist = depth <= 0.0 ? 1e4 : length(view_pos(suv, depth)); // depth 0 = far plane (sky).
+		float dist;
+		if (depth > 0.0) {
+			dist = length(view_pos(suv, depth));
+		} else {
+			// Nothing was drawn here, so the ray leaves the water through the surface above
+			// (looking up) or runs into the deep forever (looking down). Using its real exit
+			// distance instead of "infinitely far" is what stops the sky beyond the last wave
+			// from being painted as a flat bar of fully scattered water at the horizon.
+			dist = view_dir.y > 0.001 ? min(max(submersion, 0.0) / view_dir.y, 1e4) : 1e4;
+		}
 
 		vec3 under = blurred(suv, p.effect.z);
 		// Light fades with depth. The scattered light you see along a view comes from the water
 		// it passes through (out to about the silhouette range), so looking up you see shallower,
 		// brighter water - a faint glow overhead even when deep - and looking down, only black.
-		vec3 view_dir = normalize(mat3(p.cam_to_world) * view_pos(suv, 1.0));
 		float seen_depth = max(submersion - view_dir.y * min(dist, p.effect2.z), 0.0);
 		vec3 fog = p.fog_color.rgb * exp(-p.fog_color.a * seen_depth);
 		fog *= mix(p.fog_gradient.x, p.fog_gradient.y, view_dir.y * 0.5 + 0.5);
@@ -223,9 +252,26 @@ void main() {
 		result = mix(scene, under, coverage);
 	}
 
-	// Meniscus: a thin dark band where the surface cuts across the lens.
+	// Meniscus: the thin dark lip right at the interface, where the surface is edge-on.
 	float line = 1.0 - smoothstep(0.0, thickness * 2.0, abs(submersion));
-	result *= 1.0 - 0.65 * line;
+	result *= 1.0 - 0.5 * line;
+
+	// Froth. A sea like this never gives you a clean waterline: it tears along the chop,
+	// foams white, and drags a cloud of air down with you as you go under.
+	if (foam > 0.0) {
+		float t = p.effect.x;
+		float ragged = (vnoise(vec2(uv.x * 26.0, t * 0.9)) - 0.5) * 2.0
+		             + (vnoise(vec2(uv.x * 71.0, t * 1.7)) - 0.5);
+		float froth = 1.0 - smoothstep(0.0, band, abs(submersion - ragged * band * 0.35));
+		froth *= 0.1 + 0.9 * vnoise(vec2(uv.x * 150.0, uv.y * 150.0 - t * 3.0));
+		// Foam is only ever as bright as the light falling on it, so it greys out at night.
+		// The air dragged under is real geometry, not screen noise: see PlungeBubbles on
+		// the player, which emits by how hard you hit the water.
+		float lum = dot(result, vec3(0.299, 0.587, 0.114));
+		vec3 lit = min(p.sun_color.rgb, vec3(1.0));
+		result = mix(result, lit * clamp(lum * 1.6 + 0.25, 0.15, 1.0),
+				clamp(froth * 0.7, 0.0, 0.8) * foam);
+	}
 
 	imageStore(color_image, px, vec4(result, 1.0));
 }

@@ -3,7 +3,8 @@ class_name BubbleEmitter extends GPUParticles3D
 ## Bubbles rising to the surface from anything underwater. Ways to use it:
 ##  - trail: bubbles stream off it while it moves (creatures, propellers, a sinking package);
 ##  - breath: a small puff every `breath_interval` seconds (scuba divers, machines);
-##  - burst(): a one-off gush from script (a gasp, something cracking open);
+##  - burst(): a one-off gush from script, at a strength you choose (a gasp, a body hitting
+##    the water, something cracking open);
 ##  - stream: steady emission while `stream` > 0 (air escaping a drowned body, a leak).
 ## Only emits while under the water; finds the water node by itself (group "water").
 
@@ -37,7 +38,8 @@ const DRAW_SHADER := preload('res://assets/shaders/particles/water_speck.gdshade
 var _water : Node
 var _last_position := Vector3.INF
 var _breath_timer := 0.0
-var _burst_left := 0.0 # Seconds of full-rate emission still owed by burst()/breaths.
+var _burst_left := 0.0 # Seconds of emission still owed by burst()/breaths.
+var _burst_amount := 1.0 # How hard that burst emits (0..1).
 
 func _ready() -> void:
 	if not process_material:
@@ -56,15 +58,21 @@ func _ready() -> void:
 		var quad := QuadMesh.new()
 		quad.material = mat
 		draw_pass_1 = quad
-		for prop in [&'size_min', &'size_max', &'rise_speed', &'wobble', &'spawn_radius', &'bubble_color', &'bubble_texture', &'pixel_grid']:
-			set(prop, get(prop)) # Push the defaults into the materials.
+	# Whether the materials came from the scene or were just built, the exported values are
+	# the ones that count: push them in.
+	for prop in [&'size_min', &'size_max', &'rise_speed', &'wobble', &'spawn_radius', &'bubble_color', &'bubble_texture', &'pixel_grid']:
+		set(prop, get(prop))
 	layers = 1 << 19 # Water render layer: the sun shadow camera skips it (see water.gd).
 	amount_ratio = 0.0
 	emitting = false # Switched on by _physics_process() only when there's something to emit.
 	_breath_timer = randf() * breath_interval
 
-## A one-off gush of bubbles lasting `seconds` at full rate.
-func burst(seconds := 0.4) -> void:
+## A one-off gush of bubbles lasting `seconds`. `strength` (0..1) sets how much of the
+## particle budget it uses, so a body slipping in and a body crashing in look different.
+func burst(seconds := 0.4, strength := 1.0) -> void:
+	if seconds <= 0.0 or strength <= 0.0: return
+	if _burst_left <= 0.0 or strength > _burst_amount:
+		_burst_amount = clampf(strength, 0.0, 1.0)
 	_burst_left = maxf(_burst_left, seconds)
 
 func _physics_process(delta : float) -> void:
@@ -98,7 +106,8 @@ func _physics_process(delta : float) -> void:
 
 	var under := pos.y < surface - 0.05
 	var trail := trail_amount * smoothstep(0.2, trail_full_speed, velocity.length()) if trail_full_speed > 0.0 else 0.0
-	amount_ratio = clampf(maxf(maxf(trail, stream), 1.0 if _burst_left > 0.0 else 0.0), 0.0, 1.0) if under else 0.0
+	var bursting := _burst_amount if _burst_left > 0.0 else 0.0
+	amount_ratio = clampf(maxf(maxf(trail, stream), bursting), 0.0, 1.0) if under else 0.0
 	# amount_ratio = 0 alone doesn't stop a custom-shader particle system: switch emission off.
 	emitting = amount_ratio > 0.001
 

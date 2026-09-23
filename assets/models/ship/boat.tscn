@@ -381,9 +381,10 @@ full_speed = 4.0
 [node name="WakeBow" type="Node3D" parent="." unique_id=1570342202]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, -2.5, 0)
 script = ExtResource("20_wake")
-half_width = 4.5
-churn = 0.4
-edge_bias = 0.85
+half_width = 8.0
+foam = 0.49
+churn = 0.15
+edge_bias = 0.5
 full_speed = 4.0
 
 [node name="BowSprayPort" type="GPUParticles3D" parent="." unique_id=1570342203]
