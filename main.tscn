@@ -420,6 +420,12 @@ script = ExtResource("1_skarq")
 environment = SubResource("Environment_icybu")
 compositor = SubResource("Compositor_abqjc")
 
+[node name="Player" parent="." unique_id=939891512 node_paths=PackedStringArray("water") instance=ExtResource("16_player")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -83.44903, 10.32106, 9.36186)
+water = NodePath("../Water")
+jump_velocity = 7.0
+sink_speed = 3.0
+
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=2103121333]
 transform = Transform3D(0.945601, -0.0516921, 0.321197, -0.00840572, 0.983084, 0.18296, -0.325221, -0.175707, 0.929171, 0, 10, 0)
 shadow_bias = 0.0
@@ -429,13 +435,13 @@ shadow_blur = 5.0
 sky_mode = 1
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26.194424, 4.6162796, -6.0934296)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80.33385, 15.942773, 38.555534)
 script = ExtResource("60_rain")
 intensity = 0.01
 lens_drops_enabled = false
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26, 0, -6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 0, 39)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -518,12 +524,6 @@ water = NodePath("../../Water")
 parent = NodePath("..")
 cell_density_kg_per_m3 = 300.0
 calc_f_gravity = true
-
-[node name="Player" parent="." unique_id=939891512 node_paths=PackedStringArray("water") instance=ExtResource("16_player")]
-transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -83.44903, 10.32106, 9.36186)
-water = NodePath("../Water")
-jump_velocity = 7.0
-sink_speed = 3.0
 
 [node name="Island" parent="." unique_id=1072612934 instance=ExtResource("17_island")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 0, 120)
