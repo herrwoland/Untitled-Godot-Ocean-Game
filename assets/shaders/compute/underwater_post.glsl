@@ -40,7 +40,7 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 sun_color;       // rgb light colour * energy, w = max shaft march distance (m)
 	vec4 shafts;          // x focus map uv scale, y march steps, z forward scattering g, w contrast
 	vec4 shaft_tint;      // rgb tint, a = max brightness
-	vec4 shafts2;         // x threshold, y waterline churn (0..1), z unused, w lens submersion (m)
+	vec4 shafts2;         // x threshold, y waterline churn, z wave blocker count, w lens submersion (m)
 	vec4 shape_count;     // x = number of water shapes
 	vec4 shape_a[16];
 	vec4 shape_b[16];
@@ -49,6 +49,8 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 shadow_up;
 	vec4 shadow_fwd;
 	vec4 fog_gradient;    // x brightness looking straight down, y looking straight up
+	vec4 blocker_a[8];    // Wave blockers, see wave_blocker.gd: (pos.x, pos.z, frame cos, frame sin)
+	vec4 blocker_b[8];    // (half x / radius, half z / capsule half length, fade width, flags)
 } p;
 
 #include "water_shapes.glsli"
@@ -71,6 +73,33 @@ vec3 view_pos(vec2 uv, float depth) {
 	return v.xyz / v.w;
 }
 
+// Calm zones (ShoreCalm and the like) flatten the waves, so the surface here is not the one
+// the FFT alone would give. Without this the effect tests against a sea that is not being
+// drawn, and everything keyed to the waterline goes wrong near a shore.
+// Must mirror wave_blocker_eval() in water.gdshader and blocker_mask() in water.gd.
+float wave_blocker_mask(vec2 pos) {
+	float mask = 1.0;
+	int count = int(p.shafts2.z + 0.5);
+	for (int i = 0; i < count; i++) {
+		vec4 a = p.blocker_a[i];
+		vec4 b = p.blocker_b[i];
+		vec2 rel = pos - a.xy;
+		int flags = int(b.w + 0.5);
+		vec2 lp = vec2(a.z*rel.x + a.w*rel.y, -a.w*rel.x + a.z*rel.y);
+		float d;
+		if ((flags & 1) == 1) { // box footprint, rotated by yaw
+			vec2 q = abs(lp) - b.xy;
+			d = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0);
+		} else if ((flags & 4) == 4) { // capsule seen from above
+			d = length(vec2(max(abs(lp.x) - b.y, 0.0), lp.y)) - b.x;
+		} else { // circle
+			d = length(rel) - b.x;
+		}
+		mask = min(mask, smoothstep(0.0, max(b.z, 0.001), d));
+	}
+	return mask;
+}
+
 vec3 displacement(vec2 xz) {
 	vec3 d = vec3(0.0);
 	int n = int(p.absorption.a);
@@ -85,10 +114,11 @@ vec3 displacement(vec2 xz) {
 // `xz` with a couple of fixed-point iterations before reading the height.
 float wave_height(vec2 xz) {
 	vec2 shape = water_shapes(xz);
+	float calm = wave_blocker_mask(xz);
 	vec2 rest = xz;
 	vec3 d = vec3(0.0);
 	for (int i = 0; i < 3; i++) {
-		d = displacement(rest) * (1.0 - shape.y);
+		d = displacement(rest) * (1.0 - shape.y) * calm;
 		rest = xz - d.xz;
 	}
 	return p.effect2.y + d.y + shape.x;

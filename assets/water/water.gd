@@ -455,8 +455,12 @@ func _update_underwater_effect() -> void:
 	fx.waterline_foam = waterline_foam
 	fx.waterline_churn = _waterline_churn
 	var view_cam := _view_camera()
-	var lens_sub := (get_wave_height(view_cam.global_position, false) - view_cam.global_position.y) if view_cam else 0.0
+	# masked: the calm near a shore is part of the surface, so it is part of being underwater.
+	var lens_sub := (get_wave_height(view_cam.global_position) - view_cam.global_position.y) if view_cam else 0.0
 	fx.lens_submersion = lens_sub
+	fx.blocker_count = mini(_wave_blockers.size(), MAX_WAVE_BLOCKERS)
+	fx.blocker_a = _blocker_a
+	fx.blocker_b = _blocker_b
 	# The surface needs it too, to know whether a back face is the underside (see water.gdshader).
 	WATER_MAT.set_shader_parameter(&'camera_submersion', lens_sub)
 	fx.vignette = underwater_vignette
@@ -614,7 +618,7 @@ func _update_depth_lighting() -> void:
 	var cam := _view_camera()
 	var depth := 0.0
 	if dim_sunlight_underwater and cam:
-		depth = maxf(get_wave_height(cam.global_position, false) - cam.global_position.y, 0.0)
+		depth = maxf(get_wave_height(cam.global_position) - cam.global_position.y, 0.0)
 	_update_waterline_churn(cam)
 	var light := exp(-depth_darkening * depth)
 	_sun.light_energy = _sun_energy_base * light
@@ -628,7 +632,7 @@ func _update_waterline_churn(cam : Camera3D) -> void:
 	var delta := get_process_delta_time()
 	_waterline_churn = maxf(_waterline_churn - delta / maxf(waterline_churn_time, 0.05), 0.0)
 	if not cam or delta <= 0.0: return
-	var submersion := get_wave_height(cam.global_position, false) - cam.global_position.y
+	var submersion := get_wave_height(cam.global_position) - cam.global_position.y
 	if _last_cam_submersion != INF and absf(submersion) < 1.5:
 		var crossing_speed := absf(submersion - _last_cam_submersion) / delta
 		_waterline_churn = maxf(_waterline_churn, clampf(crossing_speed / 2.5, 0.0, 1.0))

@@ -7,7 +7,7 @@ class_name UnderwaterEffect extends CompositorEffect
 const SHADER_PATH := 'res://assets/shaders/compute/underwater_post.glsl'
 const COPY_SHADER_PATH := 'res://assets/shaders/compute/image_copy.glsl'
 const CAUSTICS_SHADER_PATH := 'res://assets/shaders/compute/caustics.glsl'
-const PARAMS_SIZE := 944 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow + fog gradient, std140.
+const PARAMS_SIZE := 1200 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow + fog gradient, std140.
 const MAX_WATER_SHAPES := 16
 const FOCUS_MAP_SIZE := 256
 const WATER_IOR := 1.333
@@ -26,6 +26,9 @@ var waterline_width := 2.5
 var waterline_foam := 0.8
 var waterline_churn := 0.0 # 0..1, spikes as the camera crosses the surface
 var lens_submersion := 0.0 # how far the camera itself is below the surface (m)
+var blocker_count := 0 # Wave blockers (ShoreCalm and the like), so the waterline matches the surface.
+var blocker_a := PackedVector4Array()
+var blocker_b := PackedVector4Array()
 var vignette := 0.35
 var silhouette_range := 45.0
 var fog_down := 0.35
@@ -247,7 +250,7 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 	var uv_scale := map_scales[0].x if not map_scales.is_empty() else 0.0
 	data.append_array([uv_scale * shaft_scale, float(shaft_steps), shaft_scattering, shaft_contrast])
 	data.append_array([shaft_tint.r, shaft_tint.g, shaft_tint.b, shaft_max_brightness])
-	data.append_array([shaft_threshold, waterline_churn, 0.0, lens_submersion])
+	data.append_array([shaft_threshold, waterline_churn, float(blocker_count), lens_submersion])
 	data.append_array([float(shape_count), 0.0, 0.0, 0.0])
 	for shapes in [shape_a, shape_b]:
 		for i in MAX_WATER_SHAPES:
@@ -260,6 +263,10 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 	data.append_array([sb.y.x, sb.y.y, sb.y.z, shadow_softness])
 	data.append_array([-sb.z.x, -sb.z.y, -sb.z.z, shadow_bias])
 	data.append_array([fog_down, fog_up, 0.0, 0.0])
+	for blockers in [blocker_a, blocker_b]:
+		for i in 8:
+			var v : Vector4 = blockers[i] if i < blockers.size() else Vector4.ZERO
+			data.append_array([v.x, v.y, v.z, v.w])
 	var bytes := data.to_byte_array()
 	_rd.buffer_update(_params_buffer, 0, bytes.size(), bytes)
 
