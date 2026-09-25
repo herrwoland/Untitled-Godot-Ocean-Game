@@ -266,7 +266,11 @@ void main() {
 		float exit_dist = view_dir.y > 1e-4 ? lens / view_dir.y : 1e4;
 		float dist = min(hit, max(exit_dist, 0.0));
 
-		vec3 under = blurred(suv, p.effect.z);
+		// Wobble and blur come from the lens being in the water, so they fade in as it goes
+		// under. What the water does to the light does not fade: the path above already says
+		// how much water there was. Fading that too lets you see clear to the sea floor for
+		// the moment you are only a few centimeters down.
+		vec3 under = mix(scene, blurred(suv, p.effect.z), wet);
 		// Light fades with depth. The scattered light you see along a view comes from the water
 		// it passes through (out to about the silhouette range), so looking up you see shallower,
 		// brighter water - a faint glow overhead even when deep - and looking down, only black.
@@ -283,8 +287,8 @@ void main() {
 		under += shafts_filtered(suv);
 
 		vec2 v = uv - 0.5;
-		under *= 1.0 - p.effect2.x * dot(v, v) * 2.0;
-		result = mix(scene, under, wet);
+		under *= 1.0 - p.effect2.x * dot(v, v) * 2.0 * wet;
+		result = under;
 	}
 
 	// Meniscus: the thin dark lip right at the interface, where the surface is edge-on.

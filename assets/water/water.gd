@@ -276,19 +276,6 @@ func _ready() -> void:
 	_displacement_update_rate = (1 / displacement_updates_per_second)
 	_setup_underwater_effect()
 
-## TEMPORARY, for chasing the dark upper half. F9 turns the full-screen underwater effect
-## off and on; F10 hides the water surface itself. Whatever survives F9 is drawn by the
-## surface material (water.gdshader), not by the post effect. Remove once we know.
-func _unhandled_input(event : InputEvent) -> void:
-	if Engine.is_editor_hint() or not event is InputEventKey or not event.pressed or event.echo:
-		return
-	if event.keycode == KEY_F9:
-		underwater_effect_enabled = not underwater_effect_enabled
-		print("[debug] underwater post effect: %s" % ("ON" if underwater_effect_enabled else "OFF"))
-	elif event.keycode == KEY_F10:
-		visible = not visible
-		print("[debug] water surface: %s" % ("SHOWN" if visible else "HIDDEN"))
-
 func _process(delta : float) -> void:
 	_update_wave_blockers()
 	_update_water_shapes(delta)

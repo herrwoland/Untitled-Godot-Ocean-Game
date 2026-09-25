@@ -47,9 +47,9 @@ var _deck: PhysicsBody3D = null
 var _deck_xform: Transform3D
 var _deck_coyote: float = 0.0
 var _deck_velocity := Vector3.ZERO # measured from the deck's movement, so it is right no
-                                   # matter what moves her: engine, waves or a creature
+								   # matter what moves her: engine, waves or a creature
 const DECK_COYOTE := 0.35 # keep carrying this long after the deck drops away, so a heaving
-                          # sea doesn't shake us loose every time contact is lost
+						  # sea doesn't shake us loose every time contact is lost
 var _climb_target = null # Vector3 deck position, set each frame by a ShipLadder while space is held
 
 const GRAVITY: float = 9.8
@@ -69,7 +69,11 @@ const GASP_AFTER_SECONDS := 4.0 # dives shorter than this surface without a gasp
 ## The sea passing exactly through the eyes draws a hard line across the middle of the view:
 ## a plane through a camera always projects to one. Keep the eyes this far clear of the
 ## surface, plainly above it or plainly under, rather than sitting in it (0 = allow it).
-@export_range(0.0, 0.5, 0.01) var eye_waterline_clearance: float = 0.18
+@export_range(0.0, 2.5, 0.01) var eye_waterline_clearance: float = 0.18
+## How quickly the eyes are moved out of that band. Higher snaps through the surface sooner
+## but reads as a jolt; lower is gentler but lingers in the waterline, which is what lets a
+## glimpse of the wrong world through.
+@export_range(1.0, 40.0, 0.5) var eye_waterline_speed: float = 10.0
 ## How fast the surface has to pass the eyes for the plunge to drag a full lungful of air
 ## under (m/s). Jumping off the deck is well past this; a wave washing over is not.
 @export var plunge_full_speed: float = 4.0
@@ -126,7 +130,7 @@ func _keep_eyes_clear_of_waterline(delta: float) -> void:
 			target = submersion + eye_waterline_clearance # hold them clear above
 		else:
 			target = submersion - eye_waterline_clearance # push them clear under
-	_eye_offset = lerpf(_eye_offset, target, 1.0 - exp(-delta * 10.0))
+	_eye_offset = lerpf(_eye_offset, target, 1.0 - exp(-delta * eye_waterline_speed))
 	head.position.y = _head_base_y + _eye_offset
 
 ## The air a body drags under with it. Slipping through the surface barely clouds the water;
