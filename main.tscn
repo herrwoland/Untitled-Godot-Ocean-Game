@@ -20,7 +20,7 @@
 [ext_resource type="PackedScene" uid="uid://c3q8m6t1p7f2a" path="res://assets/player/player.tscn" id="16_player"]
 [ext_resource type="PackedScene" uid="uid://c7pflpm1pnx7k" path="res://assets/models/island.tscn" id="17_island"]
 [ext_resource type="PackedScene" uid="uid://cf2rcpsk3hrt1" path="res://assets/ui/start_screen.tscn" id="18_start"]
-[ext_resource type="PackedScene" path="res://assets/ui/pause_menu.tscn" id="19_pause"]
+[ext_resource type="PackedScene" uid="uid://dsm5csm5s7y4k" path="res://assets/ui/pause_menu.tscn" id="19_pause"]
 [ext_resource type="PackedScene" uid="uid://dt05m04hsc0p0" path="res://assets/ui/settings_menu.tscn" id="21_settings"]
 [ext_resource type="Shader" uid="uid://bo8roxh5bsnai" path="res://assets/shaders/post/ps1_post.gdshader" id="24_ps1"]
 [ext_resource type="Script" uid="uid://cfdhchsvnkb3e" path="res://assets/ui/fps_meter.gd" id="25_fps"]
@@ -435,13 +435,13 @@ shadow_blur = 5.0
 sky_mode = 1
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80.33385, 15.942773, 38.555534)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -77.30661, -1.0005567, 31.874304)
 script = ExtResource("60_rain")
 intensity = 0.01
 lens_drops_enabled = false
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 0, 39)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -77, 0, 32)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -500,7 +500,7 @@ volume_db = -8.0
 autoplay = true
 
 [node name="Boat" parent="." unique_id=108108734 node_paths=PackedStringArray("water") instance=ExtResource("45_boat")]
-transform = Transform3D(-0.994964, -1.30385e-08, -0.10024, 7.31041e-08, 1, -2.87383e-08, 0.10024, 1.19209e-07, -0.994964, -79.8999, 5, 9.36186)
+transform = Transform3D(-0.994964, -1.30385e-08, -0.10024, 7.31041e-08, 1, -2.87383e-08, 0.10024, 1.19209e-07, -0.994964, -79.8999, 0.9267831, 9.36186)
 water = NodePath("../Water")
 
 [node name="Box Octet Experiment" type="RigidBody3D" parent="." unique_id=1036328041 node_paths=PackedStringArray("buoyant_cells", "mesh")]

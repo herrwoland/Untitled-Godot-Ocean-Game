@@ -78,10 +78,6 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 @export_range(0.0, 6.0, 0.1) var underwater_blur := 1.5
 ## Width of the dark meniscus line where a wave crosses the lens, in pixels.
 @export_range(0.0, 12.0, 0.1) var waterline_width := 2.5
-## How gradually the underwater look takes over the screen as the surface crosses the lens,
-## in pixels. Too narrow and it cuts a hard edge across the waves, the half below it lighter
-## than the half above. Separate from the line's own width so the meniscus stays crisp.
-@export_range(0.0, 200.0, 1.0) var waterline_softness := 120.0
 ## Froth and bubbles along that line. Widens into a churn of air as you go under.
 @export_range(0.0, 2.0, 0.01) var waterline_foam := 0.8
 ## How long the churn of air takes to clear after the camera crosses the surface (s).
@@ -457,8 +453,12 @@ func _update_underwater_effect() -> void:
 	fx.blur = underwater_blur
 	fx.waterline_width = waterline_width
 	fx.waterline_foam = waterline_foam
-	fx.waterline_softness = waterline_softness
 	fx.waterline_churn = _waterline_churn
+	var view_cam := _view_camera()
+	var lens_sub := (get_wave_height(view_cam.global_position, false) - view_cam.global_position.y) if view_cam else 0.0
+	fx.lens_submersion = lens_sub
+	# The surface needs it too, to know whether a back face is the underside (see water.gdshader).
+	WATER_MAT.set_shader_parameter(&'camera_submersion', lens_sub)
 	fx.vignette = underwater_vignette
 	fx.silhouette_range = silhouette_range
 	fx.fog_down = fog_brightness_down

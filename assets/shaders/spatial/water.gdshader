@@ -52,6 +52,9 @@ uniform float window_brightness : hint_range(0.0, 4.0) = 1.0;
 /** Blur toward the edge of the window, where the whole horizon gets squeezed together. */
 uniform float window_edge_blur : hint_range(0.0, 6.0) = 3.0;
 /** Colour of the lit water column, seen through total internal reflection. Also the underwater fog colour. */
+/** How far the camera itself is below the surface (m), fed by water.gd. Decides whether a
+ * back face is the underside we are looking up at, or a crest folding over in front of us. */
+uniform float camera_submersion = 0.0;
 uniform vec3 underwater_color : source_color = vec3(0.04, 0.13, 0.14);
 /** Per-meter extinction (r, g, b) used by the underwater screen effect. Red dies first. */
 uniform vec3 underwater_absorption = vec3(0.22, 0.06, 0.05);
@@ -484,10 +487,11 @@ void fragment() {
 	rain_wet = rain_intensity * rain_matte;
 	foam_factor = max(smoothstep(0.0, 1.0, gradient.z*0.75) * exp(-dist*0.0075), shape_foam);
 
-	// A back face is only the underside if the camera is actually below it. Otherwise it's a
-	// folding storm crest seen from above, which should keep the regular top shading.
-	vec3 world_frag = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	underside = (!FRONT_FACING && CAMERA_POSITION_WORLD.y < world_frag.y) ? 1.0 : 0.0;
+	// A back face is the underside when WE are under the water, not when this particular scrap
+	// of sea happens to sit above our eyes: that comparison is a horizontal plane at eye level,
+	// and it cuts a hard line across the waves, dark above it and lit below.
+	vec3 world_frag = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz; // used further down too
+	underside = (!FRONT_FACING && camera_submersion > 0.0) ? 1.0 : 0.0;
 
 	// Contact foam: distance to the nearest opaque surface near the waterline, found with a small
 	// screen-space search around this pixel (plus the point straight behind it), so the foam rings

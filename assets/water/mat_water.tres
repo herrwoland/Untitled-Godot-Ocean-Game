@@ -2,6 +2,8 @@
 
 [ext_resource type="Shader" uid="uid://cvi3oqudj1nsw" path="res://assets/shaders/spatial/water.gdshader" id="water_shader"]
 
+[sub_resource type="Texture2DRD" id="Texture2DRD_srbp3"]
+
 [resource]
 render_priority = 0
 shader = ExtResource("water_shader")
@@ -9,6 +11,9 @@ shader_parameter/backface_culling = false
 shader_parameter/depth_color_consumption = Vector3(7.5, 22, 38)
 shader_parameter/roughness = 0.65
 shader_parameter/normal_strength = 1.0
+shader_parameter/water_shape_count = 0
+shader_parameter/water_shape_a = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/water_shape_b = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 shader_parameter/wave_blocker_count = 0
 shader_parameter/wave_blocker_a = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 shader_parameter/wave_blocker_b = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
@@ -18,12 +23,39 @@ shader_parameter/ior_dispersion = 0.01
 shader_parameter/window_refraction_strength = 0.6
 shader_parameter/window_brightness = 1.13600005396
 shader_parameter/window_edge_blur = 3.0
-shader_parameter/underwater_color = Color(0.04, 0.13, 0.14, 1)
+shader_parameter/underwater_color = Color(0.23783314, 0, 0.093151726, 1)
 shader_parameter/underwater_absorption = Vector3(0.22, 0.06, 0.05)
+shader_parameter/rain_intensity = 0.01
+shader_parameter/rain_ripple_size = 0.7
+shader_parameter/rain_ripple_strength = 0.6
+shader_parameter/rain_ripple_speed = 1.3
+shader_parameter/rain_ripple_distance = 45.0
+shader_parameter/rain_matte = 0.6
+shader_parameter/rain_flatten = 0.25
+shader_parameter/rain_underside_rings = 1.2
+shader_parameter/rain_underside_refraction = 2.0
+shader_parameter/wake_map = SubResource("Texture2DRD_srbp3")
+shader_parameter/wake_map_rect = Vector4(-206.5, -96.5, 256, 1)
+shader_parameter/wake_foam_strength = 0.9
+shader_parameter/wake_foam_breakup = 0.4
+shader_parameter/wake_flatten = 0.35
+shader_parameter/wake_tint_color = Color(0.2, 0.42, 0.4, 1)
+shader_parameter/wake_tint_strength = 0.6
+shader_parameter/contact_foam_enabled = true
+shader_parameter/contact_foam_width = 2.50999994575914
+shader_parameter/contact_foam_samples = 16
+shader_parameter/contact_foam_strength = 0.85
+shader_parameter/contact_foam_breakup = 0.62999998591824
+shader_parameter/contact_foam_noise_scale = 0.909999983385
+shader_parameter/contact_foam_speed = 0.35
+shader_parameter/contact_foam_rings = 0.35
+shader_parameter/contact_tint_color = Color(0.49052882, 0.69566745, 0.6872876, 1)
+shader_parameter/contact_tint_width = 6.839999850837639
+shader_parameter/contact_tint_strength = 0.5
 shader_parameter/shafts_enabled = true
 shader_parameter/shaft_strength = 0.0499999988824
 shader_parameter/shaft_tint = Color(1, 1, 1, 1)
-shader_parameter/shaft_max_brightness = 0.42999999038864
+shader_parameter/shaft_max_brightness = 0.01999999955296
 shader_parameter/shaft_contrast = 1.0
 shader_parameter/shaft_threshold = 1.0
 shader_parameter/shaft_softness = 3.0
@@ -39,7 +71,7 @@ shader_parameter/caustic_max_brightness = 1.5
 shader_parameter/caustic_contrast = 1.0
 shader_parameter/caustic_darkening = 0.5
 shader_parameter/caustic_scale = 1.0
-shader_parameter/caustic_focus_depth = 6.0
-shader_parameter/caustic_fade_depth = 9.0
+shader_parameter/caustic_focus_depth = 1.4000000134110802
+shader_parameter/caustic_fade_depth = 15.500000223518
 shader_parameter/caustic_dispersion = 0.004
 shader_parameter/caustic_cascade = 1

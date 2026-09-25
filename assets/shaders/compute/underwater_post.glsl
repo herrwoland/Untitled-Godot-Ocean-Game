@@ -9,8 +9,10 @@ composite = "";
 
 #VERSION_DEFINES
 // Underwater screen effect (runs after transparents, see underwater_effect.gd).
-// Per pixel: is the camera's near plane below the FFT wave surface here? If so, apply
-// distance absorption/in-scattering, light shafts, wobble, blur and vignette. The waterline where a wave
+// Per pixel: how far does this ray travel through water before it leaves through the surface
+// or hits something? That length carries the absorption, in-scattering, shafts, wobble, blur
+// and vignette. Asking instead where the ray STARTS paints the sky with water colour whenever
+// the lens is near the surface, because the near plane is a few centimeters tall. The waterline where a wave
 // crosses the lens is torn up with froth and bubbles.
 // Two versions: `shafts` ray marches light shafts at half resolution (noisy, cheap), and
 // `composite` blurs them away while applying everything else at full resolution.
@@ -38,7 +40,7 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 sun_color;       // rgb light colour * energy, w = max shaft march distance (m)
 	vec4 shafts;          // x focus map uv scale, y march steps, z forward scattering g, w contrast
 	vec4 shaft_tint;      // rgb tint, a = max brightness
-	vec4 shafts2;         // x threshold, y waterline churn (0..1), z waterline softness (px), w unused
+	vec4 shafts2;         // x threshold, y waterline churn (0..1), z unused, w lens submersion (m)
 	vec4 shape_count;     // x = number of water shapes
 	vec4 shape_a[16];
 	vec4 shape_b[16];
@@ -179,7 +181,7 @@ void main() {
 	vec3 near_view = view_pos(uv, 1.0);
 	vec3 near_world = (p.cam_to_world * vec4(near_view, 1.0)).xyz;
 	vec3 shafts = vec3(0.0);
-	if (wave_height(near_world.xz) > near_world.y) { // Only underwater pixels need shafts.
+	if (p.shafts2.w > 0.0) { // Only while the lens itself is under.
 		float depth = textureLod(depth_tex, uv, 0.0).r;
 		float dist = depth <= 0.0 ? 1e4 : length(view_pos(uv, depth)); // depth 0 = far plane (sky).
 		vec3 ray_dir = normalize(mat3(p.cam_to_world) * near_view);
@@ -203,22 +205,22 @@ void main() {
 	// Waterline width is given in pixels; convert to meters on the (tiny) near plane.
 	float pixel_meters = length(view_pos(uv + vec2(0.0, 1.0) / pc.size, 1.0) - near_view);
 	float thickness = max(p.effect.w * pixel_meters, 1e-6);
-	// How gradually the underwater treatment takes over the screen. Held apart from the line's
-	// own width on purpose: a few pixels there keeps the meniscus crisp, but the same few
-	// pixels here cut a hard edge straight across the waves, lighter below than above.
-	float feather = max(p.shafts2.z * pixel_meters, thickness);
-	float coverage = smoothstep(-feather, feather, submersion);
+	// Is the lens in the water at all? Everything the water does to the picture follows from
+	// the path below, which falls to nothing by itself as we surface; this only fades the
+	// things that come from the lens being wet rather than from the water in front of it.
+	float lens = p.shafts2.w;
+	float wet = smoothstep(0.0, 0.08, lens);
 	// Froth reaches further than the line itself, and further still while you are going under.
 	// Pixel scale like the line: across the whole screen the near plane spans only a couple
 	// of centimeters of world height, so a band measured in meters would swallow the view.
 	float churn = p.shafts2.y;
 	float foam = p.effect2.w;
 	float band = thickness * (1.5 + 4.0 * churn);
-	float reach = max(max(3.0 * thickness, feather), foam > 0.0 ? band * 2.0 : 0.0);
-	if (coverage <= 0.0 && submersion < -reach) return; // Dry and away from the waterline.
+	float reach = max(3.0 * thickness, foam > 0.0 ? band * 2.0 : 0.0);
+	if (wet <= 0.0 && submersion < -reach) return; // Lens dry and away from the waterline.
 
 	vec3 result = scene;
-	if (coverage > 0.0) {
+	if (wet > 0.0) {
 		float t = p.effect.x;
 		vec2 wobble = vec2(sin(uv.y * 23.0 + t * 1.7) + sin(uv.y * 41.0 - t * 2.3) * 0.5,
 		                   cos(uv.x * 19.0 + t * 1.3) + cos(uv.x * 37.0 + t * 2.9) * 0.5);
@@ -226,16 +228,19 @@ void main() {
 
 		vec3 view_dir = normalize(mat3(p.cam_to_world) * view_pos(suv, 1.0));
 		float depth = textureLod(depth_tex, suv, 0.0).r;
-		// depth 0 = far plane (sky). Tempting to use where such a ray would leave the water
-		// instead, but that swings from metres (looking just up) to endless (looking just
-		// down) inside a degree of eye level, and draws a hard line right across the view.
-		float dist = depth <= 0.0 ? 1e4 : length(view_pos(suv, depth));
+		float hit = depth <= 0.0 ? 1e4 : length(view_pos(suv, depth)); // depth 0 = sky.
+		// A ray only carries water for as long as it is in the water. Looking up it leaves
+		// through the surface overhead, so the sky stays the sky even with the lens under;
+		// level or downward it never leaves, and we see the full murk. Applied to every
+		// pixel alike, so there is no seam between what the surface covers and what it does not.
+		float exit_dist = view_dir.y > 1e-4 ? lens / view_dir.y : 1e4;
+		float dist = min(hit, max(exit_dist, 0.0));
 
 		vec3 under = blurred(suv, p.effect.z);
 		// Light fades with depth. The scattered light you see along a view comes from the water
 		// it passes through (out to about the silhouette range), so looking up you see shallower,
 		// brighter water - a faint glow overhead even when deep - and looking down, only black.
-		float seen_depth = max(submersion - view_dir.y * min(dist, p.effect2.z), 0.0);
+		float seen_depth = max(lens - view_dir.y * min(dist, p.effect2.z), 0.0);
 		vec3 fog = p.fog_color.rgb * exp(-p.fog_color.a * seen_depth);
 		fog *= mix(p.fog_gradient.x, p.fog_gradient.y, view_dir.y * 0.5 + 0.5);
 		// Detail and colour are absorbed quickly (absorption), but the light scattered into the
@@ -249,7 +254,7 @@ void main() {
 
 		vec2 v = uv - 0.5;
 		under *= 1.0 - p.effect2.x * dot(v, v) * 2.0;
-		result = mix(scene, under, coverage);
+		result = mix(scene, under, wet);
 	}
 
 	// Meniscus: the thin dark lip right at the interface, where the surface is edge-on.
