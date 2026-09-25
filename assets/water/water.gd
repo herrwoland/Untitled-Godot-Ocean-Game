@@ -80,6 +80,12 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 @export_range(0.0, 12.0, 0.1) var waterline_width := 2.5
 ## Froth and bubbles along that line. Widens into a churn of air as you go under.
 @export_range(0.0, 2.0, 0.01) var waterline_foam := 0.8
+## Foam thrown up each time the head breaks the surface, in or out. How long it lasts (s).
+@export_range(0.0, 3.0, 0.05) var crossing_foam_time := 0.5
+## How much of it there is (0 = none).
+@export_range(0.0, 2.0, 0.05) var crossing_foam_strength := 1.0
+## Shape of the fade. 1 fades evenly; higher drops away sooner, lower lingers before going.
+@export_range(0.25, 6.0, 0.05) var crossing_foam_falloff := 2.0
 ## How long the churn of air takes to clear after the camera crosses the surface (s).
 @export_range(0.1, 4.0, 0.05) var waterline_churn_time := 0.9
 @export_range(0.0, 1.0, 0.01) var underwater_vignette := 0.35
@@ -168,6 +174,7 @@ var _sun : DirectionalLight3D
 var _shadow_viewport : SubViewport
 var _shadow_camera : Camera3D
 var _waterline_churn := 0.0
+var _crossing_foam := 0.0
 var _last_cam_submersion := INF
 var _shadow_capture : WaterShadowCapture
 var _wake_map : WakeMap
@@ -441,6 +448,7 @@ func _update_underwater_effect() -> void:
 	fx.waterline_width = waterline_width
 	fx.waterline_foam = waterline_foam
 	fx.waterline_churn = _waterline_churn
+	fx.crossing_foam = crossing_foam_strength * pow(_crossing_foam, crossing_foam_falloff)
 	var view_cam := _view_camera()
 	# masked: the calm near a shore is part of the surface, so it is part of being underwater.
 	var lens_sub := (get_wave_height(view_cam.global_position) - view_cam.global_position.y) if view_cam else 0.0
@@ -620,6 +628,11 @@ func _update_waterline_churn(cam : Camera3D) -> void:
 	_waterline_churn = maxf(_waterline_churn - delta / maxf(waterline_churn_time, 0.05), 0.0)
 	if not cam or delta <= 0.0: return
 	var submersion := get_wave_height(cam.global_position) - cam.global_position.y
+	# Breaking the surface, either way round, throws up foam: rises fast, then fades out.
+	# Full the instant the surface is broken, then down to nothing over crossing_foam_time.
+	_crossing_foam = maxf(_crossing_foam - delta / maxf(crossing_foam_time, 0.05), 0.0)
+	if _last_cam_submersion != INF and signf(submersion) != signf(_last_cam_submersion):
+		_crossing_foam = 1.0
 	if _last_cam_submersion != INF and absf(submersion) < 1.5:
 		var crossing_speed := absf(submersion - _last_cam_submersion) / delta
 		_waterline_churn = maxf(_waterline_churn, clampf(crossing_speed / 2.5, 0.0, 1.0))

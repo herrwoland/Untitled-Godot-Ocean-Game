@@ -1,11 +1,102 @@
-[gd_resource type="Theme" load_steps=2 format=3]
+[gd_resource type="Theme" format=3 uid="uid://c5l8fj4wotxq6"]
 
-[ext_resource type="FontFile" path="res://assets/fonts/GeistPixel-Regular-VariableFont_ELSH.ttf" id="1_font"]
+[ext_resource type="FontFile" uid="uid://dnbx31tlynakm" path="res://assets/fonts/GeistPixel-Regular-VariableFont_ELSH.ttf" id="1_font"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_none"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+content_margin_left = 10.0
+content_margin_top = 5.0
+content_margin_right = 10.0
+content_margin_bottom = 5.0
+bg_color = Color(0.14, 0.19, 0.21, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.42, 0.57, 0.59, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
+content_margin_left = 10.0
+content_margin_top = 5.0
+content_margin_right = 10.0
+content_margin_bottom = 5.0
+bg_color = Color(0.09, 0.12, 0.14, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.29, 0.31, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_press"]
+content_margin_left = 10.0
+content_margin_top = 5.0
+content_margin_right = 10.0
+content_margin_bottom = 5.0
+bg_color = Color(0.05, 0.07, 0.08, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.45, 0.62, 0.64, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+bg_color = Color(0.043, 0.063, 0.075, 0.93)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.27, 0.29, 0.8)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_on"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.11, 0.15, 0.17, 1)
+border_width_top = 2
+border_color = Color(0.45, 0.62, 0.64, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_off"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.055, 0.075, 0.086, 1)
+border_width_top = 2
+border_color = Color(0.13, 0.17, 0.19, 1)
 
 [resource]
 default_font = ExtResource("1_font")
 default_font_size = 12
+Button/colors/font_color = Color(0.76, 0.82, 0.83, 1)
+Button/colors/font_hover_color = Color(0.95, 0.98, 0.98, 1)
+Button/styles/focus = SubResource("StyleBoxEmpty_none")
+Button/styles/hover = SubResource("StyleBoxFlat_btn_hover")
+Button/styles/normal = SubResource("StyleBoxFlat_btn")
+Button/styles/pressed = SubResource("StyleBoxFlat_btn_press")
 HeaderLabel/base_type = &"Label"
+HeaderLabel/colors/font_color = Color(0.62, 0.74, 0.76, 1)
 HeaderLabel/font_sizes/font_size = 13
+Label/colors/font_color = Color(0.74, 0.79, 0.8, 1)
+OptionButton/styles/focus = SubResource("StyleBoxEmpty_none")
+OptionButton/styles/hover = SubResource("StyleBoxFlat_btn_hover")
+OptionButton/styles/normal = SubResource("StyleBoxFlat_btn")
+OptionButton/styles/pressed = SubResource("StyleBoxFlat_btn_press")
+Panel/styles/panel = SubResource("StyleBoxFlat_panel")
+PanelContainer/styles/panel = SubResource("StyleBoxFlat_panel")
+TabContainer/colors/font_hovered_color = Color(0.85, 0.92, 0.93, 1)
+TabContainer/colors/font_selected_color = Color(0.93, 0.97, 0.97, 1)
+TabContainer/colors/font_unselected_color = Color(0.5, 0.58, 0.6, 1)
+TabContainer/styles/panel = SubResource("StyleBoxFlat_panel")
+TabContainer/styles/tab_hovered = SubResource("StyleBoxFlat_tab_on")
+TabContainer/styles/tab_selected = SubResource("StyleBoxFlat_tab_on")
+TabContainer/styles/tab_unselected = SubResource("StyleBoxFlat_tab_off")
+TabContainer/styles/tabbar_background = SubResource("StyleBoxEmpty_none")
 TitleLabel/base_type = &"Label"
+TitleLabel/colors/font_color = Color(0.82, 0.88, 0.89, 1)
 TitleLabel/font_sizes/font_size = 24

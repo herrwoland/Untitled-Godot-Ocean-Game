@@ -20,5 +20,6 @@ mesh = SubResource("Mesh_eel")
 surface_material_override/0 = SubResource("Mat_eel")
 
 [node name="EelLoop" type="AudioStreamPlayer3D" parent="."]
+bus = &"SFX"
 autoplay = true
 max_distance = 60.0

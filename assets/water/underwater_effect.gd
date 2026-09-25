@@ -25,6 +25,7 @@ var blur := 1.5
 var waterline_width := 2.5
 var waterline_foam := 0.8
 var waterline_churn := 0.0 # 0..1, spikes as the camera crosses the surface
+var crossing_foam := 0.0 # 0..1, a burst thrown up as the head breaks the surface
 var lens_submersion := 0.0 # how far the camera itself is below the surface (m)
 var blocker_count := 0 # Wave blockers (ShoreCalm and the like), so the waterline matches the surface.
 var blocker_a := PackedVector4Array()
@@ -251,7 +252,7 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 	data.append_array([uv_scale * shaft_scale, float(shaft_steps), shaft_scattering, shaft_contrast])
 	data.append_array([shaft_tint.r, shaft_tint.g, shaft_tint.b, shaft_max_brightness])
 	data.append_array([shaft_threshold, waterline_churn, float(blocker_count), lens_submersion])
-	data.append_array([float(shape_count), 0.0, 0.0, 0.0])
+	data.append_array([float(shape_count), crossing_foam, 0.0, 0.0])
 	for shapes in [shape_a, shape_b]:
 		for i in MAX_WATER_SHAPES:
 			var v : Vector4 = shapes[i] if i < shapes.size() else Vector4.ZERO

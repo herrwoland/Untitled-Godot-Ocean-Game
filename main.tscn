@@ -414,8 +414,8 @@ transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -83.
 water = NodePath("../Water")
 jump_velocity = 7.0
 sink_speed = 3.0
-eye_waterline_clearance = 0.7
-eye_waterline_speed = 15.0
+eye_waterline_clearance = 0.9
+eye_waterline_speed = 16.0
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=2103121333]
 transform = Transform3D(0.945601, -0.0516921, 0.321197, -0.00840572, 0.983084, 0.18296, -0.325221, -0.175707, 0.929171, 0, 10, 0)

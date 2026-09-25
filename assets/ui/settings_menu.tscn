@@ -2,232 +2,259 @@
 
 [ext_resource type="Script" uid="uid://ypdxaubwyglf" path="res://assets/ui/settings_menu.gd" id="1_settings"]
 
-[node name="SettingsMenu" type="CanvasLayer" unique_id=746707942]
+[node name="SettingsMenu" type="CanvasLayer"]
 process_mode = 3
 visible = false
 script = ExtResource("1_settings")
 
-[node name="Background" type="ColorRect" parent="." unique_id=1146026980]
+[node name="Background" type="ColorRect" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0, 0, 0, 0.7)
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
 
-[node name="Panel" type="PanelContainer" parent="." unique_id=1131329185]
+[node name="Panel" type="PanelContainer" parent="."]
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -160.0
-offset_top = -240.0
-offset_right = 160.0
-offset_bottom = 240.0
+grow_horizontal = 2
+grow_vertical = 2
+custom_minimum_size = Vector2(420, 0)
 
-[node name="Margin" type="MarginContainer" parent="Panel" unique_id=1927752804]
+[node name="Margin" type="MarginContainer" parent="Panel"]
 layout_mode = 2
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
 
-[node name="VBox" type="VBoxContainer" parent="Panel/Margin" unique_id=1222061914]
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 8
 
-[node name="Title" type="Label" parent="Panel/Margin/VBox" unique_id=310850890]
+[node name="Title" type="Label" parent="Panel/Margin/VBox"]
 layout_mode = 2
 theme_type_variation = &"TitleLabel"
 text = "Settings"
-horizontal_alignment = 1
 
-[node name="DisplayHeader" type="Label" parent="Panel/Margin/VBox" unique_id=1578590475]
+[node name="Tabs" type="TabContainer" parent="Panel/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 250)
 layout_mode = 2
-theme_type_variation = &"HeaderLabel"
-text = "Display"
+size_flags_vertical = 3
 
-[node name="DisplayGrid" type="GridContainer" parent="Panel/Margin/VBox" unique_id=1200951591]
+[node name="Gameplay" type="VBoxContainer" parent="Panel/Margin/VBox/Tabs"]
 layout_mode = 2
+
+[node name="Grid" type="GridContainer" parent="Panel/Margin/VBox/Tabs/Gameplay"]
+layout_mode = 2
+theme_override_constants/v_separation = 6
 columns = 2
 
-[node name="FullscreenLabel" type="Label" parent="Panel/Margin/VBox/DisplayGrid" unique_id=890512923]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Fullscreen"
-
-[node name="FullscreenCheck" type="CheckButton" parent="Panel/Margin/VBox/DisplayGrid" unique_id=959338128]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="VsyncLabel" type="Label" parent="Panel/Margin/VBox/DisplayGrid" unique_id=820912689]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "VSync"
-
-[node name="VsyncCheck" type="CheckButton" parent="Panel/Margin/VBox/DisplayGrid" unique_id=890840995]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="GraphicsHeader" type="Label" parent="Panel/Margin/VBox" unique_id=1288671094]
-layout_mode = 2
-theme_type_variation = &"HeaderLabel"
-text = "Graphics"
-
-[node name="GraphicsGrid" type="GridContainer" parent="Panel/Margin/VBox" unique_id=1253269554]
-layout_mode = 2
-columns = 2
-
-[node name="RenderScaleLabel" type="Label" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=2134847306]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Render Scale"
-
-[node name="RenderScaleSlider" type="HSlider" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1545722525]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 0)
-layout_mode = 2
-size_flags_vertical = 4
-min_value = 0.5
-max_value = 1.0
-step = 0.05
-value = 1.0
-
-[node name="WaveResLabel" type="Label" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1661967156]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Wave Resolution"
-
-[node name="WaveResOption" type="OptionButton" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1109208913]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="MeshQualityLabel" type="Label" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1824284266]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Ocean Mesh Quality"
-
-[node name="MeshQualityOption" type="OptionButton" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1709252260]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="Ps1Label" type="Label" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1429637605]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "PS1 Mode"
-
-[node name="Ps1Check" type="CheckButton" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1332120932]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="WaterFxLabel" type="Label" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1570342501]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Water Effects"
-
-[node name="WaterFxOption" type="OptionButton" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1570342502]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="LensDropsLabel" type="Label" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1570342503]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Rain on Lens"
-
-[node name="LensDropsCheck" type="CheckButton" parent="Panel/Margin/VBox/GraphicsGrid" unique_id=1570342504]
-unique_name_in_owner = true
-layout_mode = 2
-button_pressed = true
-
-[node name="AudioHeader" type="Label" parent="Panel/Margin/VBox" unique_id=1245268071]
-layout_mode = 2
-theme_type_variation = &"HeaderLabel"
-text = "Audio"
-
-[node name="AudioGrid" type="GridContainer" parent="Panel/Margin/VBox" unique_id=301831459]
-layout_mode = 2
-columns = 2
-
-[node name="VolumeLabel" type="Label" parent="Panel/Margin/VBox/AudioGrid" unique_id=2025757496]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Master Volume"
-
-[node name="VolumeSlider" type="HSlider" parent="Panel/Margin/VBox/AudioGrid" unique_id=1146803889]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 0)
-layout_mode = 2
-size_flags_vertical = 4
-max_value = 1.0
-step = 0.05
-value = 1.0
-
-[node name="ControlsHeader" type="Label" parent="Panel/Margin/VBox" unique_id=1289852936]
-layout_mode = 2
-theme_type_variation = &"HeaderLabel"
-text = "Controls"
-
-[node name="ControlsGrid" type="GridContainer" parent="Panel/Margin/VBox" unique_id=1185003176]
-layout_mode = 2
-columns = 2
-
-[node name="SensitivityLabel" type="Label" parent="Panel/Margin/VBox/ControlsGrid" unique_id=514471715]
+[node name="SensitivityLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Gameplay/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Mouse Sensitivity"
 
-[node name="SensitivitySlider" type="HSlider" parent="Panel/Margin/VBox/ControlsGrid" unique_id=350335518]
+[node name="SensitivitySlider" type="HSlider" parent="Panel/Margin/VBox/Tabs/Gameplay/Grid"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 0)
 layout_mode = 2
 size_flags_vertical = 4
+custom_minimum_size = Vector2(140, 0)
 min_value = 0.5
 max_value = 10.0
 step = 0.25
 value = 2.5
 
-[node name="FovLabel" type="Label" parent="Panel/Margin/VBox/ControlsGrid" unique_id=1841231046]
+[node name="FovLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Gameplay/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Field of View"
 
-[node name="FovSlider" type="HSlider" parent="Panel/Margin/VBox/ControlsGrid" unique_id=876777452]
+[node name="FovSlider" type="HSlider" parent="Panel/Margin/VBox/Tabs/Gameplay/Grid"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 0)
 layout_mode = 2
 size_flags_vertical = 4
+custom_minimum_size = Vector2(140, 0)
 min_value = 50.0
 max_value = 110.0
 value = 75.0
 
-[node name="GameplayHeader" type="Label" parent="Panel/Margin/VBox" unique_id=1481232039]
-layout_mode = 2
-theme_type_variation = &"HeaderLabel"
-text = "Gameplay"
-
-[node name="GameplayGrid" type="GridContainer" parent="Panel/Margin/VBox" unique_id=980268997]
-layout_mode = 2
-columns = 2
-
-[node name="EnginePowerLabel" type="Label" parent="Panel/Margin/VBox/GameplayGrid" unique_id=452253641]
+[node name="EnginePowerLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Gameplay/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Ship Engine Power"
 
-[node name="EnginePowerSlider" type="HSlider" parent="Panel/Margin/VBox/GameplayGrid" unique_id=706568982]
+[node name="EnginePowerSlider" type="HSlider" parent="Panel/Margin/VBox/Tabs/Gameplay/Grid"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 0)
 layout_mode = 2
 size_flags_vertical = 4
+custom_minimum_size = Vector2(140, 0)
 min_value = 50000.0
 max_value = 50000000.0
 step = 25000.0
 value = 400000.0
 
-[node name="Spacer" type="Control" parent="Panel/Margin/VBox" unique_id=1912508133]
-custom_minimum_size = Vector2(0, 10)
+[node name="Video" type="VBoxContainer" parent="Panel/Margin/VBox/Tabs"]
+visible = false
 layout_mode = 2
 
-[node name="BackButton" type="Button" parent="Panel/Margin/VBox" unique_id=628672324]
+[node name="Grid" type="GridContainer" parent="Panel/Margin/VBox/Tabs/Video"]
+layout_mode = 2
+theme_override_constants/v_separation = 6
+columns = 2
+
+[node name="FullscreenLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Fullscreen"
+
+[node name="FullscreenCheck" type="CheckButton" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="VsyncLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "V-Sync"
+
+[node name="VsyncCheck" type="CheckButton" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="FpsLimitLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Frame Rate Limit"
+
+[node name="FpsLimitOption" type="OptionButton" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="RenderScaleLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Render Scale"
+
+[node name="RenderScaleSlider" type="HSlider" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(140, 0)
+min_value = 0.25
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="WaveResLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Wave Resolution"
+
+[node name="WaveResOption" type="OptionButton" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="MeshQualityLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Ocean Mesh Quality"
+
+[node name="MeshQualityOption" type="OptionButton" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="Ps1Label" type="Label" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "PS1 Filter"
+
+[node name="Ps1Check" type="CheckButton" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="WaterFxLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Water Effects"
+
+[node name="WaterFxOption" type="OptionButton" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="LensDropsLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Rain on Lens"
+
+[node name="LensDropsCheck" type="CheckButton" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="Audio" type="VBoxContainer" parent="Panel/Margin/VBox/Tabs"]
+visible = false
+layout_mode = 2
+
+[node name="Grid" type="GridContainer" parent="Panel/Margin/VBox/Tabs/Audio"]
+layout_mode = 2
+theme_override_constants/v_separation = 6
+columns = 2
+
+[node name="VolumeLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Audio/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Master Volume"
+
+[node name="VolumeSlider" type="HSlider" parent="Panel/Margin/VBox/Tabs/Audio/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(140, 0)
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="SfxLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Audio/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Sound Effects"
+
+[node name="SfxSlider" type="HSlider" parent="Panel/Margin/VBox/Tabs/Audio/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(140, 0)
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="MusicLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Audio/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Music"
+
+[node name="MusicSlider" type="HSlider" parent="Panel/Margin/VBox/Tabs/Audio/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(140, 0)
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="BackButton" type="Button" parent="Panel/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Back"

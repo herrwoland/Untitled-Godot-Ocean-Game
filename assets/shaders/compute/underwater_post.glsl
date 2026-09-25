@@ -41,7 +41,7 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 shafts;          // x focus map uv scale, y march steps, z forward scattering g, w contrast
 	vec4 shaft_tint;      // rgb tint, a = max brightness
 	vec4 shafts2;         // x threshold, y waterline churn, z wave blocker count, w lens submersion (m)
-	vec4 shape_count;     // x = number of water shapes
+	vec4 shape_count;     // x = number of water shapes, y = waterline foam burst (0..1)
 	vec4 shape_a[16];
 	vec4 shape_b[16];
 	vec4 shadow_origin;   // Sun shadow map, see water_shadow.glsli.
@@ -244,8 +244,11 @@ void main() {
 	// Pixel scale like the line: across the whole screen the near plane spans only a couple
 	// of centimeters of world height, so a band measured in meters would swallow the view.
 	float churn = p.shafts2.y;
-	float foam = p.effect2.w;
-	float band = thickness * (1.5 + 4.0 * churn);
+	// A burst thrown up each time the head breaks the surface, either way (see water.gd's
+	// crossing_foam_*). It widens the band and thickens the froth, then dies away.
+	float burst = p.shape_count.y;
+	float foam = p.effect2.w * (1.0 + burst * 2.0);
+	float band = thickness * (1.5 + 4.0 * churn + 10.0 * burst);
 	float reach = max(3.0 * thickness, foam > 0.0 ? band * 2.0 : 0.0);
 	if (wet <= 0.0 && submersion < -reach) return; // Lens dry and away from the waterline.
 

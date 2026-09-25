@@ -230,6 +230,7 @@ anchor_bottom = 1.0
 mouse_filter = 2
 
 [node name="HeartbeatPlayer" type="AudioStreamPlayer" parent="." unique_id=1949790051]
+bus = &"SFX"
 volume_db = -40.0
 
 [node name="OxygenController" type="Node" parent="." unique_id=1983899619 node_paths=PackedStringArray("player", "overlay_rect", "heartbeat_player", "breath_bubbles")]
@@ -273,5 +274,7 @@ grow_vertical = 2
 script = ExtResource("2_crosshair")
 
 [node name="SplashPlayer" type="AudioStreamPlayer" parent="." unique_id=347770916]
+bus = &"SFX"
 
 [node name="GaspPlayer" type="AudioStreamPlayer" parent="." unique_id=1124802907]
+bus = &"SFX"
