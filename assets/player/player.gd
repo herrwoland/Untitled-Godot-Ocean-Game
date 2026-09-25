@@ -63,7 +63,6 @@ var _lowpass_idx: int = -1
 var _last_eye_submersion: float = INF
 var _head_base_y: float = 1.6
 var _eye_offset: float = 0.0
-var _eye_side: float = 1.0 # +1 keeps the eyes above the water, -1 keeps them under
 var _ears_underwater: bool = false
 var _submerged_at_msec: int = 0 # when the ears last went under, for the surfacing gasp
 
@@ -73,10 +72,11 @@ const GASP_AFTER_SECONDS := 4.0 # dives shorter than this surface without a gasp
 ## a plane through a camera always projects to one. Keep the eyes this far clear of the
 ## surface, plainly above it or plainly under, rather than sitting in it (0 = allow it).
 @export_range(0.0, 2.5, 0.01) var eye_waterline_clearance: float = 0.18
-## How quickly the eyes are moved out of that band. Higher snaps through the surface sooner
-## but reads as a jolt; lower is gentler but lingers in the waterline, which is what lets a
-## glimpse of the wrong world through.
+## How quickly the eyes follow that push. Higher is more immediate, lower is softer.
 @export_range(1.0, 40.0, 0.5) var eye_waterline_speed: float = 10.0
+## How many times faster than the body the eyes cross the surface. 1 disables the rush; the
+## higher it is, the briefer the moment spent in the waterline -- and the sharper the plunge.
+@export_range(1.0, 15.0, 0.5) var eye_waterline_rush: float = 6.0
 ## How fast the surface has to pass the eyes for the plunge to drag a full lungful of air
 ## under (m/s). Jumping off the deck is well past this; a wave washing over is not.
 @export var plunge_full_speed: float = 4.0
@@ -117,23 +117,27 @@ func _update_underwater_audio(delta: float) -> void:
 				and gasp_player and gasp_player.stream and not captured:
 			gasp_player.play() # breaking the surface after a long dive
 
-## Nudges the eyes out of the waterline. Which side we take is settled while we are plainly
-## on one of them, so a wave washing past cannot make the view flick between the two.
+## Rushes the eyes through the waterline instead of parking them clear of it. Holding them
+## to one side means the offset grows exactly as fast as the body sinks, so the view stops
+## dead while the body keeps going: you float on the surface, snap under, then hang there on
+## the way back up. Here they always travel the same way the body does, only several times
+## faster across the surface, so the crossing is quick without ever stalling.
 func _keep_eyes_clear_of_waterline(delta: float) -> void:
 	var target := 0.0
 	if water and eye_waterline_clearance > 0.0 and state != State.PILOT and not captured:
 		# Work from where the head would sit untouched, never from the nudged position, or the
-		# nudge chases its own tail and settles halfway into the very band it is avoiding.
+		# nudge chases its own tail.
 		var eye := camera.global_position
 		var rest_eye := eye.y - _eye_offset
 		var submersion: float = water.get_wave_height(eye) - rest_eye
-		if absf(submersion) > eye_waterline_clearance:
-			_eye_side = -1.0 if submersion > 0.0 else 1.0 # commit while the answer is clear
-			target = 0.0
-		elif _eye_side > 0.0:
-			target = submersion + eye_waterline_clearance # hold them clear above
-		else:
-			target = submersion - eye_waterline_clearance # push them clear under
+		# tanh rises to the clearance and stays there, so the eyes never turn back on the body
+		# -- a push that peaks and returns hands back the distance it gained, which stalls the
+		# view just as badly as parking it did. The wide falloff then gives that distance back
+		# over meters, where a few per cent of lost speed cannot be felt.
+		var width := eye_waterline_clearance / maxf(eye_waterline_rush - 1.0, 0.1)
+		var falloff := maxf(6.0 * eye_waterline_clearance, 3.0)
+		var fade := submersion / falloff
+		target = -eye_waterline_clearance * tanh(submersion / width) * exp(-fade * fade)
 	_eye_offset = lerpf(_eye_offset, target, 1.0 - exp(-delta * eye_waterline_speed))
 	head.position.y = _head_base_y + _eye_offset
 
