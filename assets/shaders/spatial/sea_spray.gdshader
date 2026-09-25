@@ -9,8 +9,8 @@ global uniform vec4 water_color : source_color;
 global uniform vec4 foam_color : source_color;
 
 uniform float max_alpha : hint_range(0, 1) = 0.666;
-uniform sampler2D albedo_texture : source_color, repeat_enable;
-uniform sampler2D dissolve_texture : source_color, repeat_enable;
+uniform sampler2D albedo_texture : source_color, repeat_enable, filter_nearest;
+uniform sampler2D dissolve_texture : source_color, repeat_enable, filter_nearest;
 
 varying float dissolve_factor;
 varying float alpha_fade;

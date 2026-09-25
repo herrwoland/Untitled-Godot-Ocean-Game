@@ -23,6 +23,9 @@ enum State { WALK, SWIM, PILOT }
 @onready var collider: CollisionShape3D = $Collider
 @onready var carry_controller: Node = $CarryController
 @onready var splash_particles: GPUParticles3D = $SplashParticles
+## The small, quick splash thrown up each time the head crosses the waterline, either way.
+## Tune it on the node: amount, lifetime and the process material's speeds and scale.
+@onready var head_splash: GPUParticles3D = get_node_or_null(^'HeadSplash')
 @onready var surface_ripples: GPUParticles3D = $SurfaceRipples
 @onready var splash_player: AudioStreamPlayer = get_node_or_null(^'SplashPlayer')
 ## Air dragged under as we break the surface. Not breath -- see OxygenController for that;
@@ -106,6 +109,7 @@ func _update_underwater_audio(delta: float) -> void:
 	if underwater != _ears_underwater:
 		_ears_underwater = underwater
 		AudioServer.set_bus_effect_enabled(0, _lowpass_idx, underwater)
+		_splash_at_head(camera.global_position.y + submersion)
 		if underwater:
 			_plunge(crossing_speed)
 			_submerged_at_msec = Time.get_ticks_msec()
@@ -132,6 +136,14 @@ func _keep_eyes_clear_of_waterline(delta: float) -> void:
 			target = submersion - eye_waterline_clearance # push them clear under
 	_eye_offset = lerpf(_eye_offset, target, 1.0 - exp(-delta * eye_waterline_speed))
 	head.position.y = _head_base_y + _eye_offset
+
+## A small splash where the head goes through the surface, in or out. The big SplashParticles
+## is the whole body hitting the water; this is just the head, so it is quicker and lighter.
+func _splash_at_head(surface_y: float) -> void:
+	if not head_splash:
+		return
+	head_splash.global_position = Vector3(camera.global_position.x, surface_y, camera.global_position.z)
+	head_splash.restart()
 
 ## The air a body drags under with it. Slipping through the surface barely clouds the water;
 ## jumping off the deck takes a great gout of it down.

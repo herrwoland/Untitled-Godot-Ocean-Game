@@ -106,6 +106,21 @@ particles_anim_loop = false
 [sub_resource type="QuadMesh" id="QuadMesh_d5dr7"]
 material = SubResource("StandardMaterial3D_ouxva")
 
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_headsplash"]
+particle_flag_align_y = true
+emission_shape = 1
+emission_sphere_radius = 0.22
+direction = Vector3(0, 2, 0)
+spread = 62.0
+initial_velocity_min = 1.6
+initial_velocity_max = 3.8
+gravity = Vector3(0, -9.8, 0)
+scale_min = 0.03
+scale_max = 0.5
+
+[sub_resource type="QuadMesh" id="QuadMesh_headsplash"]
+material = SubResource("StandardMaterial3D_ouxva")
+
 [node name="Player" type="CharacterBody3D" unique_id=555801128 groups=["player"]]
 collision_layer = 2
 collision_mask = 3
@@ -241,6 +256,17 @@ heartbeat_player = NodePath("../HeartbeatPlayer")
 breath_bubbles = NodePath("../Head/Camera3D/BreathBubbles")
 max_breath = 20.0
 flash_start_intensity = 0.1
+
+[node name="HeadSplash" type="GPUParticles3D" parent="." unique_id=771203046]
+top_level = true
+emitting = false
+amount = 30
+lifetime = 0.38
+one_shot = true
+explosiveness = 1.0
+randomness = 0.4
+process_material = SubResource("ParticleProcessMaterial_headsplash")
+draw_pass_1 = SubResource("QuadMesh_headsplash")
 
 [node name="SplashParticles" type="GPUParticles3D" parent="." unique_id=345984492]
 top_level = true

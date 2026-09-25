@@ -313,6 +313,7 @@ void main() {
 		vec3 lit = min(p.sun_color.rgb, vec3(1.0));
 		result = mix(result, lit * clamp(lum * 1.6 + 0.25, 0.15, 1.0),
 				clamp(froth * 0.7, 0.0, 0.8) * foam);
+
 	}
 
 	imageStore(color_image, px, vec4(result, 1.0));
