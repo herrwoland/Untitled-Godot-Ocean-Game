@@ -11,7 +11,32 @@ render_mode world_vertex_coords, depth_draw_always, cull_disabled;
 global uniform vec4 water_color : source_color;
 global uniform vec4 foam_color : source_color;
 uniform bool backface_culling = true; // Toggle in the material inspector: discards back faces when on.
-uniform vec3 depth_color_consumption = vec3(7.5, 22.0, 38.0);
+/** Meters of water that swallow red, green and blue. Short values are a churned storm sea
+ * where a metre already greens things and three swallow them; long ones read as clear
+ * tropical water you can see a hull through. */
+uniform vec3 depth_color_consumption = vec3(2.5, 8.0, 14.0);
+/** How much of what lies just under the surface survives being tinted by the water, before
+ * depth_color_consumption starts eating it with distance. 0 leaves the sea opaque from above;
+ * 1 lets something touching the underside show through untouched. Low values are honest for a
+ * churned-up storm sea, higher ones for calm water you can see into. */
+uniform float water_clarity : hint_range(0.0, 1.0) = 0.65;
+/** How far the surface bends what you see through it. Without this, whatever is under the
+ * water sits dead still like it is behind glass; with it, the waves drag it about, which is
+ * most of what tells the eye it is looking into water at all. */
+uniform float surface_refraction : hint_range(0.0, 1.5) = 0.35;
+/** How deep the water has to be before it glows back at you as brightly as it can. Anything
+ * lying nearer than this blocks part of that glow and reads as a shadow: the shorter it is,
+ * the sooner a body has to be to loom out of the water. */
+uniform float water_scatter_range : hint_range(0.5, 60.0) = 9.0;
+/** How strongly something dark lying under the surface darkens the water above it. This is
+ * laid over the foam as well, on purpose: in a sea this broken the whitecaps would otherwise
+ * paint over anything down there, and a body big enough to loom should dim the lot. */
+uniform float submerged_shadow : hint_range(0.0, 1.0) = 0.7;
+/** How far down a dark mass can still darken the water above it. Kept apart from the murk on
+ * purpose: the sea swallows colour within a few meters, but something the size of a whale
+ * twenty meters down should still put a shadow on the surface, and tying the two together
+ * means anything deep enough to be worth seeing is already gone. */
+uniform float submerged_shadow_range : hint_range(1.0, 120.0) = 45.0;
 
 // Radial water shapes (domes, ring swells) from WaterDeformer nodes. Set every frame by water.gd.
 group_uniforms water_shapes;
@@ -546,39 +571,59 @@ void fragment() {
 		fresnel = 0.0;
 	} else {
 	// ===================== shine through ===================================#
-	// Proximity Fade
+	// Look through the surface along a ray bent by its slope. How far it bends depends on how
+	// deep the thing behind lies -- a sea floor metres down swims about, something just under
+	// the surface barely moves -- so read the depth straight through first, then bend by it.
 	float depth_tex = texture(depth_texture, SCREEN_UV).r;
-	//float depth_tex_blur = textureLod(depth_texture, SCREEN_UV, 16.0).r;
-	//if (depth_tex > 0.0001 && abs(depth_tex - depth_tex_blur) < 0.000001)
-		//{ALPHA *= 0.99;}
 	vec4 world_pos = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, depth_tex, 1.0);
 	world_pos.xyz /= world_pos.w;
+	float through = clamp(VERTEX.z - world_pos.z, 0.0, 8.0); // meters of water in the way
+	vec3 refr_n = normalize(vec3(-gradient.x, 1.0, -gradient.y));
+	vec2 look_uv = SCREEN_UV + (VIEW_MATRIX * vec4(refr_n, 0.0)).xy
+			* surface_refraction * through / max(-VERTEX.z, 1.0);
+	look_uv = clamp(look_uv, vec2(0.002), vec2(0.998));
+	depth_tex = texture(depth_texture, look_uv).r;
+	world_pos = INV_PROJECTION_MATRIX * vec4(look_uv * 2.0 - 1.0, depth_tex, 1.0);
+	world_pos.xyz /= world_pos.w;
+	if (world_pos.z > VERTEX.z) {
+		// That sample sits in front of the water, so bending to it would drag something above
+		// the surface down into it. Look straight through instead.
+		look_uv = SCREEN_UV;
+		depth_tex = texture(depth_texture, SCREEN_UV).r;
+		world_pos = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, depth_tex, 1.0);
+		world_pos.xyz /= world_pos.w;
+	}
 	float smooth_alpha = 1.0 - smoothstep(world_pos.z + 0.66, world_pos.z, VERTEX.z);
 	ALPHA *= clamp(smooth_alpha, 0.00, 1.0);
 	if (ALPHA < 0.9){
 		foam_factor = clamp(foam_factor + 0.5 - ALPHA, 0.0, 1.0);
 	}
 
-	// Depth color tinting of submerged objects
-	float depth_visibility_range = clamp(max(depth_color_consumption.r, max(depth_color_consumption.g,depth_color_consumption.b)),0.0,200.0);
-	float factor_translucency =  1.0 - smoothstep(world_pos.z + depth_visibility_range, world_pos.z, VERTEX.z);
-	factor_translucency = clamp(factor_translucency,0.35,1.0);
-	vec3 screen_albedo = texture(screen_texture, SCREEN_UV, 0.0).rgb;
-	vec3 depth_water_color = mix(screen_albedo, water_color.rgb, factor_translucency);
-
-	float smooth_red = 0.0 + smoothstep(world_pos.z + depth_color_consumption.r, world_pos.z, VERTEX.z);
-	float smooth_green = 0.0 + smoothstep(world_pos.z + depth_color_consumption.g, world_pos.z, VERTEX.z);
-	float smooth_blue = 0.0 + smoothstep(world_pos.z + depth_color_consumption.b, world_pos.z, VERTEX.z);
-	vec3 color_shallow = max(vec3(smooth_red, smooth_green, smooth_blue) * depth_water_color, water_color.rgb);
-	//vec3 color_shallow = vec3(smooth_red, smooth_green, smooth_blue) * depth_water_color;
-
-
-	depth_water_color = mix(color_shallow, water_color.rgb, factor_translucency);
+	// What survives the water in the way: each channel absorbed over the distance the light
+	// travelled through it, so red goes first and the rest follows. Written this way on
+	// purpose -- the old form floored the result at the water colour, so nothing under the
+	// surface could ever read DARKER than the water, and anything lurking down there was
+	// wiped out rather than showing as a shadow.
+	vec3 screen_albedo = texture(screen_texture, look_uv, 0.0).rgb;
+	float through_water = max(VERTEX.z - world_pos.z, 0.0);
+	vec3 survives = exp(-through_water / max(depth_color_consumption, vec3(0.01))) * water_clarity;
+	// The sea's colour is light scattered back out of the water column, so it builds up with
+	// depth rather than simply being there. Something lying in the way cuts the column short
+	// and takes that glow with it -- which is what makes a body under the surface read as a
+	// shadow instead of fading into the same flat colour as the open sea.
+	float lit_column = 1.0 - exp(-through_water / max(water_scatter_range, 0.1));
+	vec3 depth_water_color = screen_albedo * survives + water_color.rgb * lit_column;
 	// ===================== shine through ===================================#
 	depth_water_color = mix(depth_water_color, contact_tint_color, contact.y);
 	depth_water_color = mix(depth_water_color, wake_tint_color, wake.y * wake_tint_strength);
 	ALBEDO = mix(depth_water_color, foam_color.rgb, foam_factor * foam_alpha * foam_alpha);
 	ALBEDO = mix(ALBEDO, foam_color.rgb, contact.x);
+	// A dark mass under the water swallows the light that would come back up through it, so
+	// the surface above goes dim -- foam and all. This is what turns something down there
+	// from a smudge into a shadow.
+	float blocking = exp(-through_water / max(submerged_shadow_range, 1.0))
+			* clamp(1.0 - dot(screen_albedo, vec3(0.3333)), 0.0, 1.0);
+	ALBEDO *= 1.0 - blocking * submerged_shadow;
 	foam_factor = max(foam_factor, contact.x); // Contact foam is matte and lit like foam too.
 	float wet_roughness = mix(roughness, max(roughness, 0.85), rain_wet); // Rain: matte, hazy surface.
 	fresnel = mix(pow(1.0 - dot(VIEW, NORMAL), 5.0*exp(-2.69*wet_roughness)) / (1.0 + 22.7*pow(wet_roughness, 1.5)), 1.0, REFLECTANCE);

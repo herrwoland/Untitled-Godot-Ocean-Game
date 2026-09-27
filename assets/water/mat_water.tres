@@ -2,15 +2,23 @@
 
 [ext_resource type="Shader" uid="uid://cvi3oqudj1nsw" path="res://assets/shaders/spatial/water.gdshader" id="water_shader"]
 
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_gj4d1"]
+
 [sub_resource type="Texture2DRD" id="Texture2DRD_srbp3"]
 
 [resource]
 render_priority = 0
 shader = ExtResource("water_shader")
 shader_parameter/backface_culling = false
-shader_parameter/depth_color_consumption = Vector3(7.5, 22, 38)
-shader_parameter/roughness = 0.65
+shader_parameter/depth_color_consumption = Vector3(2.5, 8, 14)
+shader_parameter/water_clarity = 0.65
+shader_parameter/surface_refraction = 0.35
+shader_parameter/water_scatter_range = 9.0
+shader_parameter/submerged_shadow = 0.9430000447925
+shader_parameter/submerged_shadow_range = 80.9930037996675
+shader_parameter/roughness = 0.4
 shader_parameter/normal_strength = 1.0
+shader_parameter/foam_noise_tex = SubResource("NoiseTexture2D_gj4d1")
 shader_parameter/water_shape_count = 0
 shader_parameter/water_shape_a = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 shader_parameter/water_shape_b = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
@@ -23,8 +31,8 @@ shader_parameter/ior_dispersion = 0.01
 shader_parameter/window_refraction_strength = 0.6
 shader_parameter/window_brightness = 1.13600005396
 shader_parameter/window_edge_blur = 3.0
-shader_parameter/camera_submersion = -9.079918265342712
-shader_parameter/underwater_color = Color(0.04, 0.13, 0.14, 1)
+shader_parameter/camera_submersion = -64.68393087387085
+shader_parameter/underwater_color = Color(0.02745098, 0.08235294, 0.28235295, 1)
 shader_parameter/underwater_absorption = Vector3(0.22, 0.06, 0.05)
 shader_parameter/rain_intensity = 0.01
 shader_parameter/rain_ripple_size = 0.7
@@ -36,7 +44,7 @@ shader_parameter/rain_flatten = 0.25
 shader_parameter/rain_underside_rings = 1.2
 shader_parameter/rain_underside_refraction = 2.0
 shader_parameter/wake_map = SubResource("Texture2DRD_srbp3")
-shader_parameter/wake_map_rect = Vector4(-212.5, -184.5, 256, 1)
+shader_parameter/wake_map_rect = Vector4(-239, -154, 256, 1)
 shader_parameter/wake_foam_strength = 0.9
 shader_parameter/wake_foam_breakup = 0.4
 shader_parameter/wake_flatten = 0.35
