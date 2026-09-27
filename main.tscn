@@ -4,7 +4,6 @@
 [ext_resource type="Shader" uid="uid://frqgg80eqd3c" path="res://assets/shaders/compute/sky.gdshader" id="2_getpj"]
 [ext_resource type="Script" uid="uid://dddasf5sla0ws" path="res://assets/water/wave_cascade_parameters.gd" id="2_pw5n6"]
 [ext_resource type="Script" uid="uid://p02gk5akocn8" path="res://assets/water/caustics_effect.gd" id="3_0cbny"]
-[ext_resource type="ArrayMesh" uid="uid://qexqjidelskc" path="res://assets/water/clipmap_high_8k.obj" id="4_0n3wm"]
 [ext_resource type="Script" uid="uid://x8fjyd40yp7v" path="res://assets/water/underwater_effect.gd" id="4_hrvbo"]
 [ext_resource type="ArrayMesh" uid="uid://mkodygt504hm" path="res://assets/water/clipmap_low.obj" id="4_vivmo"]
 [ext_resource type="Material" uid="uid://byumtcccq4ew3" path="res://assets/water/mat_water.tres" id="5_lt75t"]
@@ -12,6 +11,7 @@
 [ext_resource type="Script" uid="uid://bdjbwk3saoju4" path="res://assets/water/water.gd" id="7_s0x5e"]
 [ext_resource type="AudioStream" uid="uid://ck6vmandgjhy0" path="res://assets/wind_loop.wav" id="8_6r5si"]
 [ext_resource type="Shader" uid="uid://bjmoda33o8qkd" path="res://assets/shaders/spatial/sea_spray.gdshader" id="8_eu8jb"]
+[ext_resource type="ArrayMesh" uid="uid://qexqjidelskc" path="res://assets/water/clipmap_high_8k.obj" id="8_hrvbo"]
 [ext_resource type="Material" uid="uid://5xqyddws6rt5" path="res://assets/water/mat_spray.tres" id="9_skbf4"]
 [ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="10_spqpo"]
 [ext_resource type="Texture2D" uid="uid://b6322bl0qxuss" path="res://assets/textures/Ground057_1K-PNG_Color.png" id="11_0n3wm"]
@@ -128,6 +128,74 @@ script = ExtResource("4_hrvbo")
 
 [sub_resource type="Compositor" id="Compositor_abqjc"]
 compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_uypp3"), SubResource("CompositorEffect_blkrb")])
+
+[sub_resource type="Gradient" id="Gradient_qnost"]
+offsets = PackedFloat32Array(0.2, 1)
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_wnkbs"]
+noise_type = 2
+frequency = 0.03
+cellular_jitter = 3.0
+cellular_return_type = 0
+domain_warp_enabled = true
+domain_warp_type = 1
+domain_warp_amplitude = 50.0
+domain_warp_fractal_type = 2
+domain_warp_fractal_lacunarity = 1.5
+domain_warp_fractal_gain = 1.0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_f6a44"]
+noise = SubResource("FastNoiseLite_wnkbs")
+color_ramp = SubResource("Gradient_qnost")
+seamless = true
+
+[sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_0cbny"]
+_shader_parameters = {
+&"bias_distance": null,
+&"blend_sharpness": null,
+&"depth_blur": null,
+&"enable_macro_variation": null,
+&"enable_projection": null,
+&"flat_terrain_normals": null,
+&"macro_variation1": null,
+&"macro_variation2": null,
+&"macro_variation_slope": null,
+&"mipmap_bias": null,
+&"noise1_angle": null,
+&"noise1_offset": null,
+&"noise1_scale": null,
+&"noise2_scale": null,
+&"noise_texture": SubResource("NoiseTexture2D_f6a44"),
+&"projection_threshold": null
+}
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hrvbo"]
+transparency = 4
+cull_mode = 2
+vertex_color_use_as_albedo = true
+backlight_enabled = true
+backlight = Color(0.5, 0.5, 0.5, 1)
+distance_fade_mode = 1
+distance_fade_min_distance = 128.0
+distance_fade_max_distance = 96.0
+
+[sub_resource type="Terrain3DMeshAsset" id="Terrain3DMeshAsset_uypp3"]
+generated_type = 1
+height_offset = 0.5
+material_override = SubResource("StandardMaterial3D_hrvbo")
+last_lod = 0
+last_shadow_lod = 0
+lod0_range = 128.0
+
+[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_6iyjs"]
+name = "Ground057_1K-PNG_Color"
+albedo_texture = ExtResource("11_0n3wm")
+normal_texture = ExtResource("99_gnorm")
+
+[sub_resource type="Terrain3DAssets" id="Terrain3DAssets_4w656"]
+mesh_list = Array[Terrain3DMeshAsset]([SubResource("Terrain3DMeshAsset_uypp3")])
+texture_list = Array[Terrain3DTextureAsset]([SubResource("Terrain3DTextureAsset_6iyjs")])
 
 [sub_resource type="Resource" id="Resource_adqv5"]
 script = ExtResource("2_pw5n6")
@@ -327,80 +395,15 @@ emission_enabled = true
 emission = Color(1, 0.9, 0.6, 1)
 emission_energy_multiplier = 8.0
 
-[sub_resource type="Gradient" id="Gradient_qnost"]
-offsets = PackedFloat32Array(0.2, 1)
-colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
-
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_wnkbs"]
-noise_type = 2
-frequency = 0.03
-cellular_jitter = 3.0
-cellular_return_type = 0
-domain_warp_enabled = true
-domain_warp_type = 1
-domain_warp_amplitude = 50.0
-domain_warp_fractal_type = 2
-domain_warp_fractal_lacunarity = 1.5
-domain_warp_fractal_gain = 1.0
-
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_f6a44"]
-noise = SubResource("FastNoiseLite_wnkbs")
-color_ramp = SubResource("Gradient_qnost")
-seamless = true
-
-[sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_0cbny"]
-_shader_parameters = {
-&"bias_distance": null,
-&"blend_sharpness": null,
-&"depth_blur": null,
-&"enable_macro_variation": null,
-&"enable_projection": null,
-&"flat_terrain_normals": null,
-&"macro_variation1": null,
-&"macro_variation2": null,
-&"macro_variation_slope": null,
-&"mipmap_bias": null,
-&"noise1_angle": null,
-&"noise1_offset": null,
-&"noise1_scale": null,
-&"noise2_scale": null,
-&"noise_texture": SubResource("NoiseTexture2D_f6a44"),
-&"projection_threshold": null
-}
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hrvbo"]
-transparency = 4
-cull_mode = 2
-vertex_color_use_as_albedo = true
-backlight_enabled = true
-backlight = Color(0.5, 0.5, 0.5, 1)
-distance_fade_mode = 1
-distance_fade_min_distance = 128.0
-distance_fade_max_distance = 96.0
-
-[sub_resource type="Terrain3DMeshAsset" id="Terrain3DMeshAsset_uypp3"]
-generated_type = 1
-height_offset = 0.5
-material_override = SubResource("StandardMaterial3D_hrvbo")
-last_lod = 0
-last_shadow_lod = 0
-lod0_range = 128.0
-
-[sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_6iyjs"]
-name = "Ground057_1K-PNG_Color"
-albedo_texture = ExtResource("11_0n3wm")
-normal_texture = ExtResource("99_gnorm")
-
-[sub_resource type="Terrain3DAssets" id="Terrain3DAssets_4w656"]
-mesh_list = Array[Terrain3DMeshAsset]([SubResource("Terrain3DMeshAsset_uypp3")])
-texture_list = Array[Terrain3DTextureAsset]([SubResource("Terrain3DTextureAsset_6iyjs")])
-
 [sub_resource type="BoxShape3D" id="BoxShape3D_shorecalm"]
 size = Vector3(52.04123, 8, 110)
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_testhole"]
 height = 12.0
 radius = 5.0
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_5s6u7"]
+height = 4.961426
 
 [node name="Main" type="Node3D" unique_id=503649113]
 script = ExtResource("1_skarq")
@@ -426,20 +429,28 @@ shadow_blur = 5.0
 sky_mode = 1
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 240.60611, 522.3992, 266.4979)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -139.18721, 8.547561, 20.71859)
 script = ExtResource("60_rain")
 intensity = 0.01
 lens_drops_enabled = false
 
+[node name="Terrain3D" type="Terrain3D" parent="." unique_id=454773932]
+data_directory = "res://assets/Terrain3D"
+material = SubResource("Terrain3DMaterial_0cbny")
+assets = SubResource("Terrain3DAssets_4w656")
+top_level = true
+metadata/_edit_lock_ = true
+
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 241, 0, 267)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -139, 0, 21)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
 cast_shadow = 0
 extra_cull_margin = 1000.0
-mesh = ExtResource("4_0n3wm")
+mesh = ExtResource("8_hrvbo")
 script = ExtResource("7_s0x5e")
+foam_color = Color(0.8520676, 0.8132686, 0.7798851, 1)
 parameters = Array[ExtResource("2_pw5n6")]([SubResource("Resource_adqv5"), SubResource("Resource_luhq0"), SubResource("Resource_83u3u")])
 marine_snow_amount = 8000
 marine_snow_size = 0.009
@@ -464,6 +475,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_2cqfq")
 
 [node name="ocean_floor" type="MeshInstance3D" parent="Water" unique_id=267143067]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -200, 0)
+visible = false
 mesh = SubResource("PlaneMesh_gngh3")
 surface_material_override/0 = SubResource("StandardMaterial3D_qnost")
 
@@ -517,7 +529,7 @@ cell_density_kg_per_m3 = 300.0
 calc_f_gravity = true
 
 [node name="Island" parent="." unique_id=1072612934 instance=ExtResource("17_island")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, 0, 120)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, -8.565828, 120)
 
 [node name="StartScreen" parent="." unique_id=1207969224 instance=ExtResource("18_start")]
 
@@ -560,7 +572,7 @@ mesh = SubResource("BoxMesh_shore")
 surface_material_override/0 = SubResource("StandardMaterial3D_shore")
 
 [node name="House_01" parent="." unique_id=1399797306 instance=ExtResource("25_wnkbs")]
-transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -133.12311, 3, 10)
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -133.12311, 4.601178, 10)
 
 [node name="Shack" type="StaticBody3D" parent="." unique_id=2092962252]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -132, 3, 10)
@@ -893,13 +905,6 @@ orbit_depth_range = Vector2(-1400, -800)
 [node name="SanityDirector" type="Node" parent="." unique_id=1057535268]
 script = ExtResource("37_sanity")
 
-[node name="Terrain3D" type="Terrain3D" parent="." unique_id=454773932]
-data_directory = "res://assets/Terrain3D"
-material = SubResource("Terrain3DMaterial_0cbny")
-assets = SubResource("Terrain3DAssets_4w656")
-top_level = true
-metadata/_edit_lock_ = true
-
 [node name="ShoreCalm" type="Area3D" parent="." unique_id=590891729]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -138.98691, 0, 10)
 collision_layer = 0
@@ -914,7 +919,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.9793854, 0, 0)
 shape = SubResource("BoxShape3D_shorecalm")
 
 [node name="TestWaveHole" type="Area3D" parent="." unique_id=1426995111]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -63.637383, 0, 35)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 85.387695, 0, 131.02925)
 collision_layer = 0
 collision_mask = 0
 monitoring = false
@@ -941,7 +946,14 @@ player = NodePath("../Player")
 script = ExtResource("42_sting")
 
 [node name="HunterFish" parent="." unique_id=2037867007 instance=ExtResource("50_hrvbo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -60.803406, -81.338844, 66.23544)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -60.803406, -21.532173, 66.23544)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1794267363]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.98754764, 0)
+mesh = SubResource("CylinderMesh_5s6u7")
+
+[node name="water_test_cam" type="Camera3D" parent="." unique_id=874141532]
+transform = Transform3D(-0.9902683, 0.065872595, -0.122594856, 0, 0.8808907, 0.47331968, 0.13917147, 0.46871346, -0.87231815, -66.901695, 8.194256, 11.157707)
 
 [editable path="House_01"]
 [editable path="StonyBeach/Light_House_0_1"]
