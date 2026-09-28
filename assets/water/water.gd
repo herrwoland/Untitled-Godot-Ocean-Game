@@ -204,6 +204,10 @@ const WATER_RENDER_LAYER := 20 # Render layer of the water surface/spray (skippe
 const WATER_LAYER_BIT := 1 << (WATER_RENDER_LAYER - 1)
 const MAX_WATER_SHAPES := 16 # Matches the water shader and effect arrays.
 const MAX_GLOWS := 16 # UnderwaterGlow nodes; matches the water shader and effect arrays.
+const MAX_DRY_VOLUMES := 4 # DryVolume nodes; matches the water shader arrays.
+var _dry_volumes : Array = []
+var _dry_signature := []
+var _dry_maps := Texture2DArray.new()
 var _glow_count := 0
 var _glow_a := PackedVector4Array()
 var _glow_b := PackedVector4Array()
@@ -263,10 +267,13 @@ func blocker_mask(global_position: Vector3) -> float:
 			mask = minf(mask, blocker.attenuation(global_position))
 	return mask
 
-## True inside a HOLE blocker: there is no water surface here at all.
+## True inside a HOLE blocker or a DryVolume (eg. the inside of a hull): there is no water here.
 func is_water_hole(global_position: Vector3) -> bool:
 	for blocker in _wave_blockers:
 		if is_instance_valid(blocker) and blocker.mode == 1 and blocker.contains(global_position):
+			return true
+	for volume in _dry_volumes:
+		if is_instance_valid(volume) and volume.contains(global_position):
 			return true
 	return false
 
@@ -294,6 +301,7 @@ func _process(delta : float) -> void:
 	_update_wave_blockers()
 	_update_water_shapes(delta)
 	_update_glows()
+	_update_dry_volumes()
 	_update_underwater_effect()
 	_update_wakes(delta)
 	_update_marine_snow()
@@ -460,7 +468,11 @@ func _update_underwater_effect() -> void:
 	var view_cam := _view_camera()
 	# masked: the calm near a shore is part of the surface, so it is part of being underwater.
 	var lens_sub := (get_wave_height(view_cam.global_position) - view_cam.global_position.y) if view_cam else 0.0
+	# Inside a hull (DryVolume) the sea outside may stand higher than your eyes: still dry.
+	var lens_dry := view_cam != null and _in_dry_volume(view_cam.global_position)
+	if lens_dry: lens_sub = minf(lens_sub, -1.0)
 	fx.lens_submersion = lens_sub
+	fx.lens_dry = lens_dry
 	fx.blocker_count = mini(_wave_blockers.size(), MAX_WAVE_BLOCKERS)
 	fx.blocker_a = _blocker_a
 	fx.blocker_b = _blocker_b
@@ -560,6 +572,40 @@ func _update_wave_blockers() -> void:
 	WATER_MAT.set_shader_parameter(&'wave_blocker_count', count)
 	WATER_MAT.set_shader_parameter(&'wave_blocker_a', _blocker_a)
 	WATER_MAT.set_shader_parameter(&'wave_blocker_b', _blocker_b)
+
+func _in_dry_volume(world_pos : Vector3) -> bool:
+	for volume in _dry_volumes:
+		if is_instance_valid(volume) and volume.contains(world_pos):
+			return true
+	return false
+
+## Uploads the DryVolume nodes (their baked maps, and where they are now) to the water shader,
+## which leaves the surface out inside them.
+func _update_dry_volumes() -> void:
+	_dry_volumes.clear()
+	for volume in get_tree().get_nodes_in_group(&'dry_volume'):
+		if volume.enabled and volume.map and _dry_volumes.size() < MAX_DRY_VOLUMES:
+			_dry_volumes.append(volume)
+	var signature := []
+	for volume in _dry_volumes: signature.append([volume.get_instance_id(), volume.bake_version])
+	if signature != _dry_signature:
+		_dry_signature = signature
+		var images : Array[Image] = []
+		for volume in _dry_volumes: images.append(volume.map)
+		if not images.is_empty():
+			_dry_maps.create_from_images(images)
+			WATER_MAT.set_shader_parameter(&'dry_maps', _dry_maps)
+	var rows := PackedVector4Array()
+	var bounds := PackedVector4Array()
+	rows.resize(MAX_DRY_VOLUMES * 3)
+	bounds.resize(MAX_DRY_VOLUMES)
+	for i in _dry_volumes.size():
+		var r : Array[Vector4] = _dry_volumes[i].pack_rows()
+		for k in 3: rows[i * 3 + k] = r[k]
+		bounds[i] = _dry_volumes[i].bounds
+	WATER_MAT.set_shader_parameter(&'dry_count', _dry_volumes.size())
+	WATER_MAT.set_shader_parameter(&'dry_rows', rows)
+	WATER_MAT.set_shader_parameter(&'dry_bounds', bounds)
 
 ## Uploads the UnderwaterGlow nodes nearest the camera to the water shader and underwater effect.
 func _update_glows() -> void:

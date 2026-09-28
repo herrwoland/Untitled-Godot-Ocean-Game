@@ -41,7 +41,7 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 shafts;          // x focus map uv scale, y march steps, z forward scattering g, w contrast
 	vec4 shaft_tint;      // rgb tint, a = max brightness
 	vec4 shafts2;         // x threshold, y waterline churn, z wave blocker count, w lens submersion (m)
-	vec4 shape_count;     // x = number of water shapes, y = waterline foam burst (0..1)
+	vec4 shape_count;     // x = number of water shapes, y = waterline foam burst (0..1), z = 1 if the lens is in a DryVolume
 	vec4 shape_a[16];
 	vec4 shape_b[16];
 	vec4 shadow_origin;   // Sun shadow map, see water_shadow.glsli.
@@ -252,6 +252,8 @@ void main() {
 void main() {
 	ivec2 px = ivec2(gl_GlobalInvocationID.xy);
 	if (any(greaterThanEqual(px, ivec2(pc.size)))) return;
+	// Inside a hull (DryVolume) the sea outside may stand above the lens, but none of it is here.
+	if (p.shape_count.z > 0.5) return;
 	vec2 uv = (vec2(px) + 0.5) / pc.size;
 
 	// Where this pixel's ray starts (near plane, reverse-z => depth 1.0), in world space.

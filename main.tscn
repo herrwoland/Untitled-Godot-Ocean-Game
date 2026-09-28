@@ -10,7 +10,7 @@
 [ext_resource type="AudioStream" uid="uid://cvvn0vke5comw" path="res://assets/ocean_loop.wav" id="6_jpklm"]
 [ext_resource type="Script" uid="uid://bdjbwk3saoju4" path="res://assets/water/water.gd" id="7_s0x5e"]
 [ext_resource type="AudioStream" uid="uid://ck6vmandgjhy0" path="res://assets/wind_loop.wav" id="8_6r5si"]
-[ext_resource type="Resource" uid="uid://bft1s4cy0rgi6" path="res://assets/weather/presets/calm.tres" id="8_blkrb"]
+[ext_resource type="Resource" path="res://assets/weather/presets/stormy.tres" id="8_abqjc"]
 [ext_resource type="Shader" uid="uid://bjmoda33o8qkd" path="res://assets/shaders/spatial/sea_spray.gdshader" id="8_eu8jb"]
 [ext_resource type="ArrayMesh" uid="uid://qexqjidelskc" path="res://assets/water/clipmap_high_8k.obj" id="8_hrvbo"]
 [ext_resource type="Material" uid="uid://5xqyddws6rt5" path="res://assets/water/mat_spray.tres" id="9_skbf4"]
@@ -67,19 +67,19 @@ seamless = true
 shader = ExtResource("2_getpj")
 shader_parameter/noise_texture = SubResource("NoiseTexture2D_1u8w0")
 shader_parameter/cloud_scale = 0.12
-shader_parameter/coverage = 0.65
-shader_parameter/density = 5.0
+shader_parameter/coverage = 0.8290000393775
+shader_parameter/density = 8.9230004000925
 shader_parameter/warp_strength = 0.3
 shader_parameter/wind_direction = Vector2(1, 0.35)
-shader_parameter/wind_speed = 0.005
+shader_parameter/wind_speed = 0.015
 shader_parameter/scud_speed_mult = 2.2
 shader_parameter/cloud_lit_color = Color(0.5816137, 0.4793473, 0.537673, 1)
 shader_parameter/cloud_dark_color = Color(0.035, 0.04, 0.055, 1)
-shader_parameter/zenith_color = Color(0.12, 0.13, 0.16, 1)
-shader_parameter/horizon_color = Color(0.42, 0.43, 0.44, 1)
+shader_parameter/zenith_color = Color(0.05, 0.06, 0.08, 1)
+shader_parameter/horizon_color = Color(0.3, 0.31, 0.32, 1)
 shader_parameter/ground_color = Color(0.02, 0.03, 0.04, 1)
-shader_parameter/sun_glow = 0.6
-shader_parameter/lightning_strength = 0.0
+shader_parameter/sun_glow = 0.35
+shader_parameter/lightning_strength = 0.4310000204725
 shader_parameter/exposure = 1.0
 shader_parameter/sunset_color = Color(0.9, 0.45, 0.2, 1)
 shader_parameter/sunset_strength = 1.0
@@ -105,7 +105,8 @@ fog_height_density = 16.0
 fog_depth_curve = 0.25
 fog_depth_begin = 200.0
 fog_depth_end = 350.0
-volumetric_fog_density = 0.004
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.003
 volumetric_fog_length = 500.0
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_uypp3"]
@@ -202,18 +203,18 @@ texture_list = Array[Terrain3DTextureAsset]([SubResource("Terrain3DTextureAsset_
 [sub_resource type="Resource" id="Resource_adqv5"]
 script = ExtResource("2_pw5n6")
 tile_length = Vector2(88, 88)
-displacement_scale = 0.5
-wind_speed = 4.0
+displacement_scale = 0.65
+wind_speed = 10.0
 wind_direction = 20.0
 fetch_length = 150.0
 spread = 0.2
-foam_amount = 1.5
+foam_amount = 8.0
 
 [sub_resource type="Resource" id="Resource_luhq0"]
 script = ExtResource("2_pw5n6")
 tile_length = Vector2(57, 57)
 displacement_scale = 0.45
-wind_speed = 2.5
+wind_speed = 5.0
 wind_direction = 15.0
 fetch_length = 150.0
 spread = 0.4
@@ -224,12 +225,11 @@ script = ExtResource("2_pw5n6")
 tile_length = Vector2(16, 16)
 displacement_scale = 0.0
 normal_scale = 0.25
-wind_speed = 8.0
 wind_direction = 20.0
 fetch_length = 550.0
 spread = 0.4
 whitecap = 0.25
-foam_amount = 0.5
+foam_amount = 3.0
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_k6xhe"]
 
@@ -424,8 +424,7 @@ eye_waterline_clearance = 0.9
 eye_waterline_speed = 16.0
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=2103121333]
-transform = Transform3D(0.9456009, -0.051692076, 0.3211967, -0.008405721, 0.98308396, 0.18296014, -0.32522106, -0.17570698, 0.92917114, 0, 10, 0)
-light_energy = 1.3
+transform = Transform3D(0.9456009, -0.051692072, 0.3211967, -0.008405721, 0.9830839, 0.18296014, -0.32522106, -0.17570697, 0.92917114, 0, 10, 0)
 shadow_bias = 0.0
 shadow_normal_bias = 6.464
 shadow_opacity = 0.8
@@ -433,15 +432,14 @@ shadow_blur = 5.0
 sky_mode = 1
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.683281, 22.65631, -54.52013)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25.466202, 33.200905, -14.410673)
 script = ExtResource("60_rain")
-intensity = 0.0
-wind_strength = 2.0
+intensity = 0.01
 lens_drops_enabled = false
 
 [node name="Weather" type="Node" parent="." unique_id=1337985377 node_paths=PackedStringArray("water", "sun", "world_environment", "world_fog", "rain")]
 script = ExtResource("70_weather")
-preset = ExtResource("8_blkrb")
+preset = ExtResource("8_abqjc")
 water = NodePath("../Water")
 sun = NodePath("../Sun")
 world_environment = NodePath("../Environment")
@@ -465,7 +463,7 @@ creature_count = 20
 stalker_count = 20
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -54)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, -14)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -473,7 +471,7 @@ cast_shadow = 0
 extra_cull_margin = 1000.0
 mesh = ExtResource("8_hrvbo")
 script = ExtResource("7_s0x5e")
-water_color = Color(0.03137255, 0.10980392, 0.2, 1)
+water_color = Color(0.015245283, 0.08465283, 0.16941565, 1)
 foam_color = Color(0.8520676, 0.8132686, 0.7798851, 1)
 parameters = Array[ExtResource("2_pw5n6")]([SubResource("Resource_adqv5"), SubResource("Resource_luhq0"), SubResource("Resource_83u3u")])
 underwater_distortion = 0.001
@@ -516,12 +514,12 @@ material = SubResource("FogMaterial_riff4")
 
 [node name="OceanAudioPlayer" type="AudioStreamPlayer" parent="." unique_id=275062109]
 stream = ExtResource("6_jpklm")
-volume_db = 13.5
+volume_db = 15.0
 autoplay = true
 
 [node name="WindAudioPlayer" type="AudioStreamPlayer" parent="." unique_id=381288878]
 stream = ExtResource("8_6r5si")
-volume_db = -28.833334
+volume_db = -30.0
 autoplay = true
 
 [node name="MusicPlayer" type="AudioStreamPlayer" parent="." unique_id=799557590]
@@ -529,7 +527,7 @@ volume_db = -8.0
 autoplay = true
 
 [node name="Boat" parent="." unique_id=108108734 node_paths=PackedStringArray("water") instance=ExtResource("45_boat")]
-transform = Transform3D(-0.994964, -1.30385e-08, -0.10024, 7.31041e-08, 1, -2.87383e-08, 0.10024, 1.19209e-07, -0.994964, -57.013474, 0.9267831, 9.36186)
+transform = Transform3D(-0.994964, -1.30385e-08, -0.10024, 7.31041e-08, 1, -2.87383e-08, 0.10024, 1.19209e-07, -0.994964, -57.013474, 0.04465723, 9.36186)
 water = NodePath("../Water")
 
 [node name="Box Octet Experiment" type="RigidBody3D" parent="." unique_id=1036328041 node_paths=PackedStringArray("buoyant_cells", "mesh")]

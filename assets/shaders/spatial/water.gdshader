@@ -45,6 +45,28 @@ uniform vec4 water_shape_a[16];
 uniform vec4 water_shape_b[16];
 group_uniforms;
 
+// DryVolume nodes (the inside of a hull...): no surface inside them. Set every frame by water.gd.
+group_uniforms dry_volumes;
+uniform int dry_count = 0;
+uniform vec4 dry_rows[12];  // World-to-local transform, 3 rows per volume.
+uniform vec4 dry_bounds[4]; // Area the map covers in local space: (x, z, size x, size z).
+uniform sampler2DArray dry_maps : filter_nearest, repeat_disable; // (bottom, top) per spot, local.
+group_uniforms;
+
+// Inside a DryVolume? Must mirror DryVolume.contains().
+bool in_dry_volume(vec3 world) {
+	for (int i = 0; i < dry_count; i++) {
+		vec4 w = vec4(world, 1.0);
+		vec3 p = vec3(dot(dry_rows[i * 3], w), dot(dry_rows[i * 3 + 1], w), dot(dry_rows[i * 3 + 2], w));
+		vec4 b = dry_bounds[i];
+		vec2 uv = (p.xz - b.xy) / b.zw;
+		if (any(lessThan(uv, vec2(0.0))) || any(greaterThanEqual(uv, vec2(1.0)))) continue;
+		vec2 span = textureLod(dry_maps, vec3(uv, float(i)), 0.0).rg;
+		if (p.y > span.x && p.y < span.y) return true;
+	}
+	return false;
+}
+
 group_uniforms wave_blockers;
 uniform int wave_blocker_count = 0;
 uniform vec4 wave_blocker_a[8]; // (pos.x, pos.z, frame cos, frame sin)
@@ -517,6 +539,9 @@ void fragment() {
 	}
 	if (blocker_hole > 0.5) {
 		discard; // inside a HOLE wave blocker there is no water surface at all
+	}
+	if (dry_count > 0 && in_dry_volume((INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz)) {
+		discard; // inside a hull (DryVolume): the sea stops at its walls
 	}
 	float map_size = float(textureSize(normals, 0).x);
 	float dist = length(VERTEX.xz);

@@ -4,6 +4,8 @@
 [ext_resource type="Script" uid="uid://dsn01qhv7ioi3" path="res://assets/scripts/buoyant_cell.gd" id="2_cell"]
 [ext_resource type="Script" uid="uid://c7n8dp7f8tkeu" path="res://assets/scripts/world/wave_blocker.gd" id="3_2ib73"]
 [ext_resource type="Script" uid="uid://4j6vkvpadkr7" path="res://assets/player/camera.gd" id="3_camera"]
+[ext_resource type="PackedScene" uid="uid://ugpufvfhqy06" path="res://assets/models/boat/boat_wave_blocker.glb" id="3_f2dya"]
+[ext_resource type="Script" uid="uid://clj7h2sfw06rd" path="res://assets/scripts/world/dry_volume.gd" id="4_51f5f"]
 [ext_resource type="Script" uid="uid://cuk3h1rdwodek" path="res://assets/scripts/world/coord_device.gd" id="4_device"]
 [ext_resource type="Script" uid="uid://b3s502b801kf" path="res://assets/scripts/helm_interactable.gd" id="5_helm"]
 [ext_resource type="Script" uid="uid://cs2x7rmusrtt6" path="res://assets/scripts/interactables/ship_ladder.gd" id="6_ladder"]
@@ -15,6 +17,8 @@
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_82xsv"]
 size = Vector3(44, 8.062927, 13.075356)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vqht1"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_2ib73"]
 radius = 4.768
@@ -193,6 +197,13 @@ metadata/_edit_lock_ = true
 [node name="StaticBody3D" parent="boat/top_door_001" parent_id_path=PackedInt32Array(331109473, 1731473996) index="0" unique_id=1953849692]
 collision_layer = 2
 
+[node name="boat_wave_blocker" parent="boat" unique_id=748553163 instance=ExtResource("3_f2dya")]
+visible = false
+
+[node name="wave_blocker" parent="boat/boat_wave_blocker" index="0" unique_id=880754740]
+surface_material_override/0 = SubResource("StandardMaterial3D_vqht1")
+script = ExtResource("4_51f5f")
+
 [node name="water_repell" type="Area3D" parent="boat" unique_id=2046199635]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1660378, 0)
 visible = false
@@ -201,7 +212,6 @@ collision_mask = 0
 monitoring = false
 monitorable = false
 script = ExtResource("3_2ib73")
-mode = 1
 
 [node name="TestWaveHoleShape" type="CollisionShape3D" parent="boat/water_repell" unique_id=1245307623]
 transform = Transform3D(1, 0, 4.2563406e-20, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0.09279599, -0.17924118, 2.5448785)
@@ -356,21 +366,21 @@ transform = Transform3D(-10, 0, 1.509958e-06, 0, 10, 0, -1.509958e-06, 0, -10, 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8624725, -0.49571723, -5.9231167)
 
 [node name="EngineLoop" type="AudioStreamPlayer3D" parent="." unique_id=1949703198]
-bus = &"SFX"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, -1, 0)
 max_distance = 80.0
+bus = &"SFX"
 
 [node name="HullWaterLoop" type="AudioStreamPlayer3D" parent="." unique_id=1764020330]
-bus = &"SFX"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 autoplay = true
 max_distance = 40.0
+bus = &"SFX"
 
 [node name="CreakLoop" type="AudioStreamPlayer3D" parent="." unique_id=772925528]
-bus = &"SFX"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 autoplay = true
 max_distance = 25.0
+bus = &"SFX"
 
 [node name="WakeStern" type="Node3D" parent="." unique_id=1570342201]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, -2.5, 0)
@@ -416,5 +426,6 @@ script = ExtResource("21_spray")
 throw_direction = Vector3(0, 1, -0.7)
 
 [editable path="boat"]
+[editable path="boat/boat_wave_blocker"]
 [editable path="LadderPort/StairsModel/ladder"]
 [editable path="LadderStarboard/StairsModel/ladder"]
