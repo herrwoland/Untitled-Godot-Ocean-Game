@@ -138,6 +138,16 @@ vec2 rain_ripples(vec2 world_xz, float time, out float rings) {
 	return slope * rain_ripple_strength * 0.35;
 }
 
+// UnderwaterGlow nodes (lamps, lures, glowing things under the water), set every frame by water.gd.
+group_uniforms underwater_glow;
+/** How brightly underwater glows light up the water seen from above it (0 = not at all). With
+ *  the camera under the water it's the Water node's underwater_glow_strength instead. */
+uniform float glow_above_water : hint_range(0.0, 4.0, 0.01) = 1.0;
+uniform int glow_count = 0;
+uniform vec4 glow_a[16]; // (position, core size)
+uniform vec4 glow_b[16]; // (colour * strength, reach)
+group_uniforms;
+
 /** Seamless foam pattern the wake and contact foam are cut from (bright = foam). */
 uniform sampler2D foam_pattern_tex : repeat_enable, filter_linear_mipmap;
 
@@ -344,6 +354,25 @@ float foam_gaps(vec2 uv, vec2 drift) {
 	float p = texture(foam_pattern_tex, uv + drift).r * 0.7
 	        + texture(foam_pattern_tex, uv * 2.7 - drift.yx * 1.8).r * 0.3;
 	return 1.0 - smoothstep(0.4, 0.9, p);
+}
+
+// Light the UnderwaterGlow nodes throw into the water along a ray (origin o, unit dir d, `len`
+// meters of water). Must mirror underwater_glow() in underwater_post.glsl, which explains it.
+vec3 underwater_glow(vec3 o, vec3 d, float len) {
+	vec3 sum = vec3(0.0);
+	for (int i = 0; i < glow_count; i++) {
+		vec4 a = glow_a[i];
+		vec4 b = glow_b[i];
+		vec3 to_light = a.xyz - o;
+		float t0 = dot(to_light, d);
+		float size = max(a.w, 0.01);
+		float h = sqrt(max(dot(to_light, to_light) - t0 * t0, 0.0) + size * size);
+		float along = (atan((len - t0) / h) + atan(t0 / h)) * size / (h * PI);
+		float murk = 3.0 / max(b.w, 1.0);
+		float fade = exp(-murk * (length(to_light) + max(h - size, 0.0)));
+		sum += b.rgb * max(along, 0.0) * fade;
+	}
+	return sum;
 }
 
 vec3 scene_world_at(sampler2D depth_tex, vec2 uv, mat4 inv_proj, mat4 inv_view, out bool sky) {
@@ -633,6 +662,17 @@ void fragment() {
 	float wet_roughness = mix(roughness, max(roughness, 0.85), rain_wet); // Rain: matte, hazy surface.
 	fresnel = mix(pow(1.0 - dot(VIEW, NORMAL), 5.0*exp(-2.69*wet_roughness)) / (1.0 + 22.7*pow(wet_roughness, 1.5)), 1.0, REFLECTANCE);
 	ROUGHNESS = (1.0 - fresnel) * foam_factor + 0.4; // Roughness is proportional to foam/fog amount and fresnel.
+
+	// Underwater glows seen through the surface: the lit water along the view ray, bent down
+	// into the sea, for as far as the ray goes before it hits something. Foam is in the way.
+	if (glow_count > 0 && glow_above_water > 0.0) {
+		vec3 view_ray = normalize(world_frag - CAMERA_POSITION_WORLD);
+		vec3 into_sea = refract(view_ray, normalize(vec3(-gradient.x, 1.0, -gradient.y)), 1.0 / water_ior);
+		if (dot(into_sea, into_sea) < 0.5) into_sea = view_ray;
+		float water_len = depth_tex > 0.0 ? min(length(world_pos.xyz - VERTEX), 2000.0) : 2000.0; // 0 = nothing behind.
+		vec3 glow = underwater_glow(world_frag, into_sea, water_len);
+		EMISSION += glow * glow_above_water * (1.0 - fresnel) * (1.0 - clamp(foam_factor * foam_alpha * foam_alpha, 0.0, 1.0));
+	}
 
 	gradient *= mix(0.015, normal_strength, exp(-dist*0.0175)); // Blend normal with terrain normal as distance increases.
 	gradient.xy += shape.yz; // Water shapes are large and smooth, never faded with distance.

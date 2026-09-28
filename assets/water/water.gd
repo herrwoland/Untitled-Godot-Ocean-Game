@@ -99,6 +99,9 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 ## Dim the sun and sky light as the camera goes deeper (same rate as depth_darkening), so
 ## everything around you is lit like it is that deep. Lamps and other local lights stay bright.
 @export var dim_sunlight_underwater := true
+## Brightness of UnderwaterGlow nodes with the camera under the water (0 = off). Seen from above
+## the water it's the water material's glow_above_water instead.
+@export_range(0.0, 4.0, 0.01) var underwater_glow_strength := 1.0
 
 ## Shadows of things above the water (boats, creatures, cliffs) cut through the underwater light
 ## shafts and caustics. A small hidden camera renders the scene from the sun, depth only.
@@ -200,6 +203,10 @@ const MAX_WAVE_BLOCKERS := 8
 const WATER_RENDER_LAYER := 20 # Render layer of the water surface/spray (skipped by the sun shadow camera).
 const WATER_LAYER_BIT := 1 << (WATER_RENDER_LAYER - 1)
 const MAX_WATER_SHAPES := 16 # Matches the water shader and effect arrays.
+const MAX_GLOWS := 16 # UnderwaterGlow nodes; matches the water shader and effect arrays.
+var _glow_count := 0
+var _glow_a := PackedVector4Array()
+var _glow_b := PackedVector4Array()
 var _water_shapes_a := PackedVector4Array()
 var _water_shapes_b := PackedVector4Array()
 var _water_shape_count := 0
@@ -286,6 +293,7 @@ func _ready() -> void:
 func _process(delta : float) -> void:
 	_update_wave_blockers()
 	_update_water_shapes(delta)
+	_update_glows()
 	_update_underwater_effect()
 	_update_wakes(delta)
 	_update_marine_snow()
@@ -456,6 +464,10 @@ func _update_underwater_effect() -> void:
 	fx.blocker_count = mini(_wave_blockers.size(), MAX_WAVE_BLOCKERS)
 	fx.blocker_a = _blocker_a
 	fx.blocker_b = _blocker_b
+	fx.glow_count = _glow_count
+	fx.glow_a = _glow_a
+	fx.glow_b = _glow_b
+	fx.glow_strength = underwater_glow_strength
 	# The surface needs it too, to know whether a back face is the underside (see water.gdshader).
 	WATER_MAT.set_shader_parameter(&'camera_submersion', lens_sub)
 	fx.vignette = underwater_vignette
@@ -548,6 +560,25 @@ func _update_wave_blockers() -> void:
 	WATER_MAT.set_shader_parameter(&'wave_blocker_count', count)
 	WATER_MAT.set_shader_parameter(&'wave_blocker_a', _blocker_a)
 	WATER_MAT.set_shader_parameter(&'wave_blocker_b', _blocker_b)
+
+## Uploads the UnderwaterGlow nodes nearest the camera to the water shader and underwater effect.
+func _update_glows() -> void:
+	var glows := []
+	for glow in get_tree().get_nodes_in_group(&'underwater_glow'):
+		if glow.is_visible_in_tree(): glows.append(glow)
+	var cam := _view_camera()
+	if cam and glows.size() > MAX_GLOWS:
+		var eye := cam.global_position
+		glows.sort_custom(func(a, b): return a.global_position.distance_squared_to(eye) < b.global_position.distance_squared_to(eye))
+	_glow_count = mini(glows.size(), MAX_GLOWS)
+	_glow_a.resize(MAX_GLOWS)
+	_glow_b.resize(MAX_GLOWS)
+	for i in _glow_count:
+		_glow_a[i] = glows[i].pack_a()
+		_glow_b[i] = glows[i].pack_b()
+	WATER_MAT.set_shader_parameter(&'glow_count', _glow_count)
+	WATER_MAT.set_shader_parameter(&'glow_a', _glow_a)
+	WATER_MAT.set_shader_parameter(&'glow_b', _glow_b)
 
 func _update_scales_uniform() -> void:
 	map_scales.resize(len(parameters))

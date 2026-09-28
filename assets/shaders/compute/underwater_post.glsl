@@ -51,6 +51,9 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 fog_gradient;    // x brightness looking straight down, y looking straight up
 	vec4 blocker_a[8];    // Wave blockers, see wave_blocker.gd: (pos.x, pos.z, frame cos, frame sin)
 	vec4 blocker_b[8];    // (half x / radius, half z / capsule half length, fade width, flags)
+	vec4 glow_info;       // x = number of UnderwaterGlow nodes, y = overall strength
+	vec4 glow_a[16];      // (position, core size)
+	vec4 glow_b[16];      // (colour * strength, reach)
 } p;
 
 #include "water_shapes.glsli"
@@ -146,6 +149,31 @@ vec3 blurred(vec2 uv, float radius_px) {
 	c += textureLod(source_tex, uv + vec2( r.x, -r.y), 0.0).rgb * 0.15;
 	c += textureLod(source_tex, uv + vec2(-r.x, -r.y), 0.0).rgb * 0.15;
 	return c;
+}
+
+// Light the UnderwaterGlow nodes throw into the murk along a view ray (origin o, unit dir d,
+// `len` meters of water), like lamps in volumetric fog. Closed form of the in-scattering along
+// the ray: it falls off with the square of the distance from the light, softened inside a core
+// of radius `size` so it stays finite, and is normalised so that looking straight through a
+// light gives exactly its strength. Must mirror underwater_glow() in water.gdshader.
+vec3 underwater_glow(vec3 o, vec3 d, float len) {
+	vec3 sum = vec3(0.0);
+	int count = int(p.glow_info.x + 0.5);
+	for (int i = 0; i < count; i++) {
+		vec4 a = p.glow_a[i];
+		vec4 b = p.glow_b[i];
+		vec3 to_light = a.xyz - o;
+		float t0 = dot(to_light, d); // Where along the ray it passes closest to the light.
+		float size = max(a.w, 0.01);
+		float h = sqrt(max(dot(to_light, to_light) - t0 * t0, 0.0) + size * size);
+		float along = (atan((len - t0) / h) + atan(t0 / h)) * size / (h * 3.14159265);
+		// The murk between us and the light hides it by about `reach`, and it also dims the light
+		// on its way out to the ray before it scatters towards us, which keeps the halo compact.
+		float murk = 3.0 / max(b.w, 1.0);
+		float fade = exp(-murk * (length(to_light) + max(h - size, 0.0)));
+		sum += b.rgb * max(along, 0.0) * fade;
+	}
+	return sum;
 }
 
 // 3x3 tent of bilinear taps over the half-res shaft buffer: hides the ray march dither.
@@ -286,6 +314,8 @@ void main() {
 		vec3 transmittance = exp(-p.absorption.rgb * dist);
 		float scattered = 1.0 - exp(-dist / max(p.effect2.z, 1.0));
 		under = under * transmittance + fog * scattered;
+		// Lamps and glowing things light up the water around them, over the same stretch of it.
+		if (p.glow_info.x > 0.5) under += underwater_glow(p.cam_to_world[3].xyz, view_dir, dist) * p.glow_info.y;
 
 		under += shafts_filtered(suv);
 

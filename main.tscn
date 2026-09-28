@@ -49,6 +49,7 @@
 [ext_resource type="PackedScene" path="res://assets/models/package.tscn" id="44_package"]
 [ext_resource type="PackedScene" uid="uid://c1a5366rpgr2k" path="res://assets/models/ship/boat.tscn" id="45_boat"]
 [ext_resource type="PackedScene" uid="uid://c4j4cc8pl3fqr" path="res://assets/models/creatures/hunter_fish.tscn" id="50_hrvbo"]
+[ext_resource type="Script" uid="uid://csyjpi4nlac4u" path="res://assets/scripts/world/underwater_glow.gd" id="53_abqjc"]
 [ext_resource type="Script" uid="uid://c7xykbyb5m0er" path="res://assets/scripts/world/rain.gd" id="60_rain"]
 [ext_resource type="Script" uid="uid://5j2rqum415rn" path="res://assets/weather/weather.gd" id="70_weather"]
 [ext_resource type="Texture2D" path="res://assets/textures/Ground057_1K-PNG_Normal.res" id="99_gnorm"]
@@ -104,7 +105,6 @@ fog_height_density = 16.0
 fog_depth_curve = 0.25
 fog_depth_begin = 200.0
 fog_depth_end = 350.0
-volumetric_fog_enabled = true
 volumetric_fog_density = 0.004
 volumetric_fog_length = 500.0
 
@@ -406,7 +406,7 @@ height = 12.0
 radius = 5.0
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_5s6u7"]
-height = 4.961426
+height = 15.95
 
 [node name="Main" type="Node3D" unique_id=503649113]
 script = ExtResource("1_skarq")
@@ -433,7 +433,7 @@ shadow_blur = 5.0
 sky_mode = 1
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6000595, -6.5594673, 128.68738)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.683281, 22.65631, -54.52013)
 script = ExtResource("60_rain")
 intensity = 0.0
 wind_strength = 2.0
@@ -455,8 +455,17 @@ assets = SubResource("Terrain3DAssets_4w656")
 top_level = true
 metadata/_edit_lock_ = true
 
+[node name="CreatureDirector" type="Node3D" parent="." unique_id=77054325 node_paths=PackedStringArray("player", "water")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 713.01324, 0, 0)
+script = ExtResource("35_creatures")
+creature_scene = ExtResource("50_hrvbo")
+player = NodePath("../Player")
+water = NodePath("../Water")
+creature_count = 20
+stalker_count = 20
+
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 129)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -54)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -467,6 +476,8 @@ script = ExtResource("7_s0x5e")
 water_color = Color(0.03137255, 0.10980392, 0.2, 1)
 foam_color = Color(0.8520676, 0.8132686, 0.7798851, 1)
 parameters = Array[ExtResource("2_pw5n6")]([SubResource("Resource_adqv5"), SubResource("Resource_luhq0"), SubResource("Resource_83u3u")])
+underwater_distortion = 0.001
+underwater_blur = 0.5
 marine_snow_amount = 8000
 marine_snow_size = 0.009
 marine_snow_sink = 0.08
@@ -907,16 +918,6 @@ spot_range = 900.0
 spot_attenuation = 0.6
 spot_angle = 4.0
 
-[node name="CreatureDirector" type="Node3D" parent="." unique_id=77054325 node_paths=PackedStringArray("player", "water")]
-script = ExtResource("35_creatures")
-player = NodePath("../Player")
-water = NodePath("../Water")
-creature_count = 2
-stalker_count = 2
-hunt_depth = 6.0
-orbit_radius_range = Vector2(1800, 4200)
-orbit_depth_range = Vector2(-1400, -800)
-
 [node name="SanityDirector" type="Node" parent="." unique_id=1057535268]
 script = ExtResource("37_sanity")
 
@@ -961,7 +962,16 @@ player = NodePath("../Player")
 script = ExtResource("42_sting")
 
 [node name="HunterFish" parent="." unique_id=2037867007 instance=ExtResource("50_hrvbo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.909653, -5.7041216, 66.23544)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 86.672325, -21.21131, -12.386536)
+
+[node name="UnderwaterGlow" type="Node3D" parent="HunterFish" unique_id=507328574]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.225838, -0.6602993, -6.5473404)
+script = ExtResource("53_abqjc")
+color = Color(1, 0.075666666, 0.060000002, 1)
+strength = 6.68
+size = 3.1999999999999997
+reach = 91.0
+metadata/_custom_type_script = "uid://csyjpi4nlac4u"
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1794267363]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.98754764, 0)

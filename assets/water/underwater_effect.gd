@@ -7,8 +7,9 @@ class_name UnderwaterEffect extends CompositorEffect
 const SHADER_PATH := 'res://assets/shaders/compute/underwater_post.glsl'
 const COPY_SHADER_PATH := 'res://assets/shaders/compute/image_copy.glsl'
 const CAUSTICS_SHADER_PATH := 'res://assets/shaders/compute/caustics.glsl'
-const PARAMS_SIZE := 1200 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow + fog gradient, std140.
+const PARAMS_SIZE := 1728 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow + fog gradient + 2x8 vec4 blockers + glow info + 2x16 vec4 glows, std140.
 const MAX_WATER_SHAPES := 16
+const MAX_GLOWS := 16
 const FOCUS_MAP_SIZE := 256
 const WATER_IOR := 1.333
 
@@ -55,6 +56,10 @@ var shadow_transform := Transform3D() # Shadow camera: origin, basis x = right, 
 var shadow_half_size := 64.0
 var shadow_softness := 1.0
 var shadow_bias := 0.3
+var glow_count := 0 # UnderwaterGlow nodes: (pos, core size), (colour * strength, reach).
+var glow_a := PackedVector4Array()
+var glow_b := PackedVector4Array()
+var glow_strength := 1.0
 
 var _rd : RenderingDevice
 var _shader : RID
@@ -267,6 +272,11 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 	for blockers in [blocker_a, blocker_b]:
 		for i in 8:
 			var v : Vector4 = blockers[i] if i < blockers.size() else Vector4.ZERO
+			data.append_array([v.x, v.y, v.z, v.w])
+	data.append_array([float(mini(glow_count, MAX_GLOWS)), glow_strength, 0.0, 0.0])
+	for glows in [glow_a, glow_b]:
+		for i in MAX_GLOWS:
+			var v : Vector4 = glows[i] if i < glows.size() else Vector4.ZERO
 			data.append_array([v.x, v.y, v.z, v.w])
 	var bytes := data.to_byte_array()
 	_rd.buffer_update(_params_buffer, 0, bytes.size(), bytes)
