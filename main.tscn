@@ -50,6 +50,8 @@
 [ext_resource type="PackedScene" uid="uid://c4j4cc8pl3fqr" path="res://assets/models/creatures/hunter_fish.tscn" id="50_hrvbo"]
 [ext_resource type="Script" uid="uid://c7xykbyb5m0er" path="res://assets/scripts/world/rain.gd" id="60_rain"]
 [ext_resource type="Texture2D" path="res://assets/textures/Ground057_1K-PNG_Normal.res" id="99_gnorm"]
+[ext_resource type="Script" path="res://assets/weather/weather.gd" id="70_weather"]
+[ext_resource type="Resource" path="res://assets/weather/presets/stormy.tres" id="71_stormy"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_d13ii"]
 seed = 666
@@ -429,10 +431,19 @@ shadow_blur = 5.0
 sky_mode = 1
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -139.18721, 8.547561, 20.71859)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.492226, 26.49704, 51.877995)
 script = ExtResource("60_rain")
 intensity = 0.01
 lens_drops_enabled = false
+
+[node name="Weather" type="Node" parent="." node_paths=PackedStringArray("water", "sun", "world_environment", "world_fog", "rain")]
+script = ExtResource("70_weather")
+preset = ExtResource("71_stormy")
+water = NodePath("../Water")
+sun = NodePath("../Sun")
+world_environment = NodePath("../Environment")
+world_fog = NodePath("../FogVolume")
+rain = NodePath("../Rain")
 
 [node name="Terrain3D" type="Terrain3D" parent="." unique_id=454773932]
 data_directory = "res://assets/Terrain3D"
@@ -442,7 +453,7 @@ top_level = true
 metadata/_edit_lock_ = true
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -139, 0, 21)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, 52)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -450,6 +461,7 @@ cast_shadow = 0
 extra_cull_margin = 1000.0
 mesh = ExtResource("8_hrvbo")
 script = ExtResource("7_s0x5e")
+water_color = Color(0.03137255, 0.10980392, 0.2, 1)
 foam_color = Color(0.8520676, 0.8132686, 0.7798851, 1)
 parameters = Array[ExtResource("2_pw5n6")]([SubResource("Resource_adqv5"), SubResource("Resource_luhq0"), SubResource("Resource_83u3u")])
 marine_snow_amount = 8000
@@ -946,7 +958,7 @@ player = NodePath("../Player")
 script = ExtResource("42_sting")
 
 [node name="HunterFish" parent="." unique_id=2037867007 instance=ExtResource("50_hrvbo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -60.803406, -21.532173, 66.23544)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.909653, -17.608864, 66.23544)
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1794267363]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.98754764, 0)

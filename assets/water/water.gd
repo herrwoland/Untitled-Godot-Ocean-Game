@@ -598,6 +598,21 @@ func set_effects_quality(level : int) -> void:
 func _sun_base_energy() -> float:
 	return _sun_energy_base if _sun_energy_base >= 0.0 else _sun.light_energy
 
+## Sun, ambient and sky energy as they are above the water (x, y, z), or -1 for any not yet
+## remembered (then the live value is still the surface one). Used by weather presets, since the
+## live values are dimmed while the camera is under water.
+func get_surface_lighting() -> Vector3:
+	return Vector3(_sun_energy_base, _env_ambient_base, _env_sky_energy_base)
+
+## Sets the above-water sun, ambient and sky energy the depth dimming works from. Returns false
+## if they aren't remembered yet, in which case set the live values instead.
+func set_surface_lighting(energy : Vector3) -> bool:
+	if _sun_energy_base < 0.0 or _env_ambient_base < 0.0: return false
+	_sun_energy_base = energy.x
+	_env_ambient_base = energy.y
+	_env_sky_energy_base = energy.z
+	return true
+
 ## Sunlight and skylight only reach the depth through the water: dim them as the camera sinks.
 ## The originals are remembered and put back when the camera surfaces (and in the editor).
 func _update_depth_lighting() -> void:
