@@ -11,5 +11,3 @@ extends Resource
 @export var wake_swaps: Dictionary = {}
 ## Extra swaps fired the moment the player returns home (witnessed absence).
 @export var return_home_swaps: Dictionary = {}
-## Weather the day wakes up to (assets/weather/presets). Empty keeps whatever it is.
-@export var sea_state: SeaState

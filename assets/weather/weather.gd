@@ -38,6 +38,15 @@ const WAVE_UPDATE_INTERVAL := 0.1
 		preset = value
 		if is_node_ready() and value: apply(value)
 
+@export_group('Days')
+## Weather each day wakes up to. Empty keeps whatever the weather is.
+@export var day_1 : SeaState
+@export var day_2 : SeaState
+@export var day_3 : SeaState
+@export var day_4 : SeaState
+@export var day_5 : SeaState
+@export_group('')
+
 @export var water : MeshInstance3D
 @export var sun : DirectionalLight3D
 @export var world_environment : WorldEnvironment
@@ -60,7 +69,18 @@ func _ready() -> void:
 	add_to_group(&'weather')
 	# In the editor the scene already holds the look (tweaks made after picking a preset
 	# included), so it's only applied when a preset is picked.
-	if not Engine.is_editor_hint() and preset: apply(preset)
+	if Engine.is_editor_hint(): return
+	if preset: apply(preset)
+	var bus := get_node_or_null(^'/root/EventBus')
+	if bus: bus.day_started.connect(_on_day_started)
+
+## The weather set for `day` (1 = first), or null.
+func day_weather(day : int) -> SeaState:
+	return get('day_%d' % day) as SeaState if day >= 1 and day <= 5 else null
+
+func _on_day_started(day : int) -> void:
+	var state := day_weather(day)
+	if state: transition_to(state)
 
 ## Switches to `state` at once.
 func apply(state : SeaState) -> void:

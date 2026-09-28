@@ -51,9 +51,6 @@ func _on_day_started(_day: int) -> void:
 	boat.linear_velocity = Vector3.ZERO
 	boat.angular_velocity = Vector3.ZERO
 
-	if cfg.sea_state:
-		get_tree().call_group(&'weather', &'transition_to', cfg.sea_state, 0.0)
-
 	# Nothing is carried on a new morning.
 	get_tree().get_first_node_in_group(&'carry_controller').reset_day()
 
