@@ -138,6 +138,9 @@ vec2 rain_ripples(vec2 world_xz, float time, out float rings) {
 	return slope * rain_ripple_strength * 0.35;
 }
 
+/** Seamless foam pattern the wake and contact foam are cut from (bright = foam). */
+uniform sampler2D foam_pattern_tex : repeat_enable, filter_linear_mipmap;
+
 // Ship wakes: world-space trail map (r = foam, g = churn) around the camera, from wake_map.gd.
 group_uniforms wake;
 uniform sampler2D wake_map : filter_linear, repeat_disable;
@@ -147,6 +150,10 @@ uniform float wake_foam_strength : hint_range(0.0, 1.0, 0.01) = 0.9;
 /** Breaks the wake foam into patches and streaks. High values can cut a faint wake away
  *  entirely, so keep it below the strength the boat lays down (WakeEmitter's foam). */
 uniform float wake_foam_breakup : hint_range(0.0, 1.0, 0.01) = 0.4;
+/** World size (m) of one tile of the foam pattern. */
+uniform float wake_foam_tile_size : hint_range(1.0, 64.0, 0.1) = 12.0;
+/** How much the pattern's gaps show through thick foam (0 = solid white fresh wake). */
+uniform float wake_foam_lace : hint_range(0.0, 1.0, 0.01) = 0.6;
 /** How much churned wake water flattens the waves (a ship leaves a smoother lane behind it). */
 uniform float wake_flatten : hint_range(0.0, 1.0, 0.01) = 0.35;
 /** Colour of churned wake water. */
@@ -177,8 +184,8 @@ uniform int contact_foam_samples : hint_range(0, 32) = 16;
 uniform float contact_foam_strength : hint_range(0.0, 1.0, 0.01) = 0.85;
 /** Breaks the foam into patches: 0 = solid band, 1 = scattered clumps. */
 uniform float contact_foam_breakup : hint_range(0.0, 1.0, 0.01) = 0.45;
-/** Size of the foam clumps (m). */
-uniform float contact_foam_noise_scale : hint_range(0.1, 10.0, 0.01) = 1.2;
+/** World size (m) of one tile of the foam pattern. */
+uniform float contact_foam_tile_size : hint_range(1.0, 64.0, 0.1) = 7.3;
 /** How fast the foam churns. */
 uniform float contact_foam_speed : hint_range(0.0, 3.0, 0.01) = 0.35;
 /** Rings of foam pulsing out from the contact line (0 = none). */
@@ -324,23 +331,19 @@ vec4 water_shapes_eval(vec2 p, out float foam) {
 	return result;
 }
 
-// Cheap 2D value noise and fbm for the contact foam (foam_noise_tex may be unassigned).
 float hash12(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
 	p3 += dot(p3, p3.yzx + 33.33);
 	return fract((p3.x + p3.y) * p3.z);
 }
-float value_noise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	vec2 u = f * f * (3.0 - 2.0 * f);
-	return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), u.x),
-	           mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x), u.y);
-}
-float foam_fbm(vec2 p, float t) {
-	return 0.55 * value_noise(p + vec2(t, 0.7 * t))
-	     + 0.30 * value_noise(p * 2.3 - vec2(0.6 * t, 1.1 * t))
-	     + 0.15 * value_noise(p * 5.1 + vec2(1.3 * t, -0.4 * t));
+
+// Gaps in the foam pattern: 0 in its foam cells, 1 in the open water between them. Two layers
+// drifting apart so it never looks frozen or tiled. The pattern's red runs ~0.4 in the open
+// water to ~0.9 in the foam.
+float foam_gaps(vec2 uv, vec2 drift) {
+	float p = texture(foam_pattern_tex, uv + drift).r * 0.7
+	        + texture(foam_pattern_tex, uv * 2.7 - drift.yx * 1.8).r * 0.3;
+	return 1.0 - smoothstep(0.4, 0.9, p);
 }
 
 vec3 scene_world_at(sampler2D depth_tex, vec2 uv, mat4 inv_proj, mat4 inv_view, out bool sky) {
@@ -358,7 +361,8 @@ vec2 contact_foam_eval(float gap, vec2 world_xz, float time) {
 	if (!contact_foam_enabled) return vec2(0.0);
 	float near = 1.0 - clamp(gap / contact_foam_width, 0.0, 1.0);
 	float t = time * contact_foam_speed;
-	float n = foam_fbm(world_xz / contact_foam_noise_scale, t);
+	// Kept off 0 so the faint, noisy edge of the contact search never turns into foam.
+	float n = 0.3 + 0.6 * foam_gaps(world_xz / contact_foam_tile_size, t * vec2(0.125, 0.09));
 	// Rings: bands at fixed distances from the contact line, drifting outwards.
 	float rings = 0.5 + 0.5 * sin(gap / contact_foam_width * 9.0 - time * 2.2 + n * 3.0);
 	float shape = pow(near, 1.5) + contact_foam_rings * rings * near * (1.0 - near) * 1.5;
@@ -544,10 +548,11 @@ void fragment() {
 	}
 	vec2 contact = contact_foam_eval(contact_gap, world_frag.xz, TIME);
 
-	// Ship wake: foam broken into streaks by noise, plus lighter churned water.
+	// Ship wake: foam cut from the foam pattern (two drifting layers), plus lighter churned water.
 	vec2 wake = wake_sample(world_frag.xz);
-	float wake_noise = foam_fbm(world_frag.xz * 0.7, TIME * 0.25) * 0.7 + foam_fbm(world_frag.xz * 2.3, TIME * 0.4) * 0.3;
+	float wake_noise = foam_gaps(world_frag.xz / wake_foam_tile_size, TIME * vec2(0.004, 0.003));
 	float wake_foam = smoothstep(wake_noise * wake_foam_breakup, wake_noise * wake_foam_breakup + 0.25, wake.x) * wake_foam_strength;
+	wake_foam *= 1.0 - wake_foam_lace * wake_noise; // Keeps the lace visible in thick fresh foam too.
 	contact.x = max(contact.x, wake_foam);
 	gradient.xy *= 1.0 - wake_flatten * wake.y;
 
