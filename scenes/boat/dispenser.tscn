@@ -1,0 +1,247 @@
+[gd_scene format=3 uid="uid://dj8t1o61d618s"]
+
+[ext_resource type="PackedScene" uid="uid://bgnvin677rq0" path="res://assets/models/boat/dispenser_body.glb" id="1_uawhp"]
+[ext_resource type="Script" uid="uid://itovvjjwqrs5" path="res://scenes/boat/dispenser.gd" id="1_v0lfl"]
+[ext_resource type="PackedScene" uid="uid://dwfvh2i3ba1dq" path="res://assets/models/boat/dispenser_door_1.glb" id="2_v0lfl"]
+[ext_resource type="PackedScene" uid="uid://bqbs2iu8erms6" path="res://assets/models/boat/dispenser_door_2.glb" id="3_v7pm1"]
+[ext_resource type="PackedScene" uid="uid://cepspq3fa7cqs" path="res://assets/models/boat/dispenser_door_3.glb" id="4_q3wrn"]
+[ext_resource type="PackedScene" uid="uid://b4ggquqtvybs5" path="res://assets/models/boat/dispenser_door_4.glb" id="5_2ja2y"]
+[ext_resource type="PackedScene" uid="uid://6e2u8ui7ihyo" path="res://assets/models/boat/dispenser_handle.glb" id="6_4654q"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_5s6u7"]
+height = 0.9717102
+radius = 0.1303711
+
+[sub_resource type="Animation" id="Animation_uawhp"]
+length = 0.001
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("handle_hinge:rotation:z")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("door/door_hinge_1:rotation:z")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("door/door_hinge_2:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("door/door_hinge_3:rotation:z")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("door/door_hinge_4:rotation:z")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+
+[sub_resource type="Animation" id="Animation_v7pm1"]
+resource_name = "close"
+length = 0.5
+step = 0.05
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("handle_hinge:rotation:z")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(2),
+"points": PackedFloat32Array(0, -0.016666671, -0.001454441, 0, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("door/door_hinge_1:rotation:z")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(2, 0),
+"points": PackedFloat32Array(-1.8227041, 0, 0, 0.03333333, 0.303784, 0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0.3, 0.5)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("door/door_hinge_2:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(2, 2),
+"points": PackedFloat32Array(-1.2864093, 0, 0, 0.06666667, 0, 0, -0.06666667, 0, 0, 0),
+"times": PackedFloat32Array(0.2, 0.4)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("door/door_hinge_3:rotation:z")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(2, 2),
+"points": PackedFloat32Array(-0.8030279, 0, 0, 0.083333336, 0, 0, -0.083333336, 0, 0, 0),
+"times": PackedFloat32Array(0.099999994, 0.35)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("door/door_hinge_4:rotation:z")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(2, 2),
+"points": PackedFloat32Array(-0.57438713, 0, 0, 0.083333336, 0, 0, -0.083333336, 0, 0, 0),
+"times": PackedFloat32Array(0, 0.25)
+}
+
+[sub_resource type="Animation" id="Animation_v0lfl"]
+resource_name = "open"
+length = 1.2
+step = 0.1
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("handle_hinge:rotation:z")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0, 0, 0, 0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.44346163, 0.25954866, 1.3919063, -0.10777676, -0.19397998, 0, 0, 1.4042407, -0.016666666, 0, 0.016666666, 0, 1.3919063, -0.03333333, 0, 0, 0, 0, -0.050000004, 0.23198439, 0, 0, 0.1015377, -0.016666671, -0.016922949, 0, 0, -0.008726646, -0.016666662, 0.018377392, 0, 0, 0, -0.016666671, -0.001454441, 0, 0),
+"times": PackedFloat32Array(0, 0.40000004, 0.5, 0.6, 0.90000004, 1, 1.1, 1.2)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("door/door_hinge_1:rotation:z")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0, -1.823521, -0.016666671, 0.30392018, 0, 0),
+"times": PackedFloat32Array(0.6, 0.8)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("door/door_hinge_2:rotation:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0, -1.2864093, -0.016666671, 0.21440156, 0, 0),
+"times": PackedFloat32Array(0.70000005, 0.90000004)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("door/door_hinge_3:rotation:z")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0, -0.8030279, -0.016666662, 0.133838, 0, 0),
+"times": PackedFloat32Array(0.8, 1)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("door/door_hinge_4:rotation:z")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0, -0.57438713, -0.016666671, 0.09573119, 0, 0),
+"times": PackedFloat32Array(0.90000004, 1.1)
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_v7pm1"]
+_data = {
+&"RESET": SubResource("Animation_uawhp"),
+&"close": SubResource("Animation_v7pm1"),
+&"open": SubResource("Animation_v0lfl")
+}
+
+[node name="dispenser" type="Node3D" unique_id=1913581995]
+script = ExtResource("1_v0lfl")
+
+[node name="dispenser_body" parent="." unique_id=2105385063 instance=ExtResource("1_uawhp")]
+
+[node name="handle_hinge" type="Node3D" parent="." unique_id=855388416]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5446349, -0.122972, 0.6849203)
+
+[node name="dispenser_handle" parent="handle_hinge" unique_id=496124461 instance=ExtResource("6_4654q")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5446349, 0.122972, -0.6849203)
+
+[node name="HandleInteractable" type="Area3D" parent="handle_hinge" unique_id=1265299878]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.19144726)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="handle_hinge/HandleInteractable" unique_id=224539233]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7181854, 0)
+shape = SubResource("CylinderShape3D_5s6u7")
+
+[node name="door" type="Node3D" parent="." unique_id=372195199]
+
+[node name="door_hinge_1" type="Node3D" parent="door" unique_id=1309757303]
+transform = Transform3D(0.99999994, 0, 0, 0, 0.99999994, 0, 0, 0, 1, 0.545963, 0.41217315, 0)
+
+[node name="dispenser_door_1" parent="door/door_hinge_1" unique_id=1580820074 instance=ExtResource("2_v0lfl")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.545963, -0.41217315, 0)
+
+[node name="door_hinge_2" type="Node3D" parent="door" unique_id=1971933745]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.545963, 0.41217315, 0)
+
+[node name="dispenser_door_2" parent="door/door_hinge_2" unique_id=949496160 instance=ExtResource("3_v7pm1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.545963, -0.41217315, 0)
+
+[node name="door_hinge_3" type="Node3D" parent="door" unique_id=10109614]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.545963, 0.41217315, 0)
+
+[node name="dispenser_door_3" parent="door/door_hinge_3" unique_id=346736848 instance=ExtResource("4_q3wrn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.545963, -0.41217315, 0)
+
+[node name="door_hinge_4" type="Node3D" parent="door" unique_id=1994627589]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.545963, 0.41217315, 0)
+
+[node name="dispenser_door_4" parent="door/door_hinge_4" unique_id=867221265 instance=ExtResource("5_2ja2y")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.545963, -0.41217315, 0)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=389031377]
+libraries/ = SubResource("AnimationLibrary_v7pm1")
+
+[editable path="handle_hinge/dispenser_handle"]
