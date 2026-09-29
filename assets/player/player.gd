@@ -11,7 +11,8 @@ enum State { WALK, SWIM, PILOT }
 @export var swim_speed: float = 3.5
 @export var jump_velocity: float = 4.5
 @export var mouse_sensitivity: float = 0.0025
-@export var turn_speed: float = 2.0 # radians/sec, for keyboard look (Q/R) when the mouse isn't captured
+@export var turn_speed: float = 2.0 # radians/sec, for keyboard look (Q/R or arrow keys), eg. over a remote desktop
+@export var look_speed: float = 1.5 # radians/sec, for keyboard look up/down (arrow keys)
 @export var swim_enter_depth: float = 0.6 # how deep water must be over the feet before we start swimming
 @export var swim_exit_depth: float = 0.45 # while grounded, water shallower than this switches back to walking (wading)
 @export var sink_speed: float = 1.0 # constant downward speed while swimming unless swim_up is held
@@ -231,6 +232,9 @@ func _process_turn_keys(delta: float) -> void:
 	var turn := Input.get_action_strength(&'turn_left') - Input.get_action_strength(&'turn_right')
 	if turn != 0.0:
 		head.rotation.y += turn * turn_speed * delta
+	var pitch := Input.get_action_strength(&'look_up') - Input.get_action_strength(&'look_down')
+	if pitch != 0.0:
+		camera.rotation.x = clampf(camera.rotation.x + pitch * look_speed * delta, -PI / 2.0, PI / 2.0)
 
 ## Called each frame by a ShipLadder while the player is on it and holding jump.
 func request_climb(deck_position: Vector3) -> void:
