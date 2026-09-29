@@ -778,6 +778,17 @@ func _update_marine_snow() -> void:
 	mat.set_shader_parameter(&'square', marine_snow_square)
 	mat.set_shader_parameter(&'water_level', global_position.y)
 	mat.set_shader_parameter(&'depth_darkening', depth_darkening)
+	apply_glows_to(mat)
+
+## Hands this frame's UnderwaterGlow nodes to a speck material (water_speck.gdshader), so marine
+## snow and bubbles catch their light.
+func apply_glows_to(mat : ShaderMaterial) -> void:
+	mat.set_shader_parameter(&'glow_count', _glow_count)
+	mat.set_shader_parameter(&'glow_a', _glow_a)
+	mat.set_shader_parameter(&'glow_b', _glow_b)
+	mat.set_shader_parameter(&'glow_strength', underwater_glow_strength)
+	var cam := _view_camera()
+	if cam: mat.set_shader_parameter(&'viewport_height', cam.get_viewport().get_visible_rect().size.y)
 
 ## Stamps every WakeEmitter's path into the wake map and hands it to the water material.
 func _update_wakes(delta : float) -> void:

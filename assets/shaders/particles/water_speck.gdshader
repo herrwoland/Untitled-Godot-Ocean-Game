@@ -36,9 +36,51 @@ uniform float sun_scatter : hint_range(0.0, 4.0, 0.01) = 0.8;
 uniform float local_scatter : hint_range(0.0, 12.0, 0.01) = 5.0;
 /** How much more a speck glows when it's between the camera and the light (0 = even). */
 uniform float forward_scatter : hint_range(0.0, 0.95, 0.01) = 0.6;
+/** Strength of UnderwaterGlow nodes on the specks. Much stronger than the glow's own halo on
+ *  purpose: a speck scatters far more light than the same patch of clear water. */
+uniform float glow_scatter : hint_range(0.0, 400.0, 0.1) = 100.0;
+/** A speck lit by an UnderwaterGlow is a pinpoint of light: however far and small, it's drawn at
+ *  least this many pixels across (dimmed to match), so it glints instead of vanishing between
+ *  pixels. Unlit specks keep their real size. */
+uniform float glint_min_pixels : hint_range(0.0, 6.0, 0.1) = 2.5;
 group_uniforms;
 
+// UnderwaterGlow nodes, set every frame by script (water.gd's apply_glows_to()). They aren't
+// Godot lights, so light() never sees them: they are added here instead.
+uniform int glow_count = 0;
+uniform vec4 glow_a[16]; // (position, core size)
+uniform vec4 glow_b[16]; // (colour * strength, reach)
+uniform float glow_strength = 1.0; // The Water node's underwater_glow_strength.
+uniform float viewport_height = 720.0; // Pixels, for glint_min_pixels.
+
 varying float depth_light;
+varying vec3 glow_light; // UnderwaterGlow light on this speck, worked out once per speck.
+
+// Henyey-Greenstein phase, normalised so 1 = the same brightness as isotropic scattering.
+float scatter_phase(float cos_theta, float g) {
+	float g2 = g * g;
+	return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * cos_theta, 1.5);
+}
+
+// Light the UnderwaterGlow nodes shine on a speck: falls off with the square of the distance
+// (softened inside the glow's core), dimmed by the murk on the way (same `reach` as the halo in
+// the water), and much brighter when the speck is backlit, between us and the light.
+vec3 glow_on_speck(vec3 pos, vec3 to_camera) {
+	vec3 sum = vec3(0.0);
+	for (int i = 0; i < glow_count; i++) {
+		vec4 a = glow_a[i];
+		vec4 b = glow_b[i];
+		vec3 to_light = a.xyz - pos;
+		float r2 = dot(to_light, to_light);
+		float r = sqrt(r2);
+		float size = max(a.w, 0.01);
+		float falloff = size * size / (r2 + size * size);
+		float murk = exp(-3.0 / max(b.w, 1.0) * max(r - size, 0.0));
+		float phase = min(scatter_phase(dot(to_light / max(r, 1e-4), -to_camera), forward_scatter), 4.0);
+		sum += b.rgb * falloff * murk * phase;
+	}
+	return sum;
+}
 
 float bayer4(vec2 p) {
 	ivec2 i = ivec2(mod(p, 4.0));
@@ -47,10 +89,27 @@ float bayer4(vec2 p) {
 }
 
 void vertex() {
+	vec3 pos = MODEL_MATRIX[3].xyz;
+	vec3 scale = vec3(length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz), length(MODEL_MATRIX[2].xyz));
+	depth_light = exp(-depth_darkening * max(water_level - pos.y, 0.0));
+	glow_light = vec3(0.0);
+	float grow = 1.0;
+	if (glow_count > 0) {
+		vec3 to_camera = CAMERA_POSITION_WORLD - pos;
+		float dist = max(length(to_camera), 0.01);
+		glow_light = glow_on_speck(pos, to_camera / dist) * glow_scatter * glow_strength;
+		// Lit specks glint: keep them at least glint_min_pixels across, dimmed by how much they
+		// grew (by the width, not the area: a pinpoint that bright still catches the eye).
+		float pixels = scale.y * abs(PROJECTION_MATRIX[1][1]) * viewport_height * 0.5 / dist;
+		// Only specks lit well past the surrounding water glint: grown, a faintly lit one would just
+		// be a bigger dark dot.
+		float lit = smoothstep(0.5, 2.0, dot(glow_light, vec3(0.3333)));
+		grow = mix(1.0, clamp(glint_min_pixels / max(pixels, 1e-3), 1.0, 3.0), lit);
+		glow_light /= grow;
+	}
 	// Camera-facing billboard, keeping the particle's scale.
 	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
-	MODELVIEW_MATRIX = MODELVIEW_MATRIX * mat4(vec4(length(MODEL_MATRIX[0].xyz), 0, 0, 0), vec4(0, length(MODEL_MATRIX[1].xyz), 0, 0), vec4(0, 0, length(MODEL_MATRIX[2].xyz), 0), vec4(0, 0, 0, 1));
-	depth_light = exp(-depth_darkening * max(water_level - MODEL_MATRIX[3].y, 0.0));
+	MODELVIEW_MATRIX = MODELVIEW_MATRIX * mat4(vec4(scale.x * grow, 0, 0, 0), vec4(0, scale.y * grow, 0, 0), vec4(0, 0, scale.z * grow, 0), vec4(0, 0, 0, 1));
 }
 
 void fragment() {
@@ -74,13 +133,7 @@ void fragment() {
 	}
 	ALBEDO = c;
 	NORMAL = vec3(0.0, 0.0, 1.0); // Faces the camera; scattering ignores it anyway.
-	EMISSION = c * ambient_glow * depth_light;
-}
-
-// Henyey-Greenstein phase, normalised so 1 = the same brightness as isotropic scattering.
-float scatter_phase(float cos_theta, float g) {
-	float g2 = g * g;
-	return (1.0 - g2) / pow(1.0 + g2 - 2.0 * g * cos_theta, 1.5);
+	EMISSION = c * (ambient_glow * depth_light + glow_light);
 }
 
 void light() {

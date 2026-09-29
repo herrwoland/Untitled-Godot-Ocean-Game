@@ -92,6 +92,7 @@ func _physics_process(delta : float) -> void:
 		# Dim with depth like everything else underwater (see water.gd's depth_darkening).
 		draw_pass_1.material.set_shader_parameter(&'water_level', _water.global_position.y)
 		draw_pass_1.material.set_shader_parameter(&'depth_darkening', _water.get(&'depth_darkening'))
+		if _water.has_method(&'apply_glows_to'): _water.apply_glows_to(draw_pass_1.material)
 	var pm := process_material as ShaderMaterial
 	if pm:
 		pm.set_shader_parameter(&'surface_y', surface)
