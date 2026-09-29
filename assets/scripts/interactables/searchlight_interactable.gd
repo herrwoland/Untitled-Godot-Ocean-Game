@@ -31,8 +31,6 @@ extends Area3D
 @export var turn_sound_full_speed: float = 60.0
 @export var turn_sound_pitch_range := Vector2(0.9, 1.1)
 
-var highlight_material := preload("res://assets/scripts/interact_highlight_material.tres")
-
 var _rest: Basis
 var _yaw := 0.0 # radians, positive = left
 var _pitch := 0.0 # radians, positive = up
@@ -75,16 +73,9 @@ func aim(yaw_delta: float, pitch_delta: float) -> void:
 	# The light faces the hinge's +Z, so tipping it up is a negative turn about X.
 	hinge.transform.basis = _rest * Basis.from_euler(Vector3(-_pitch, _yaw, 0.0))
 
-## Overlays every MeshInstance3D at or below highlight_mesh, so it works both
-## on a single mesh and on an imported model with its own subtree.
+## Look and feel: the "Interact highlight" group in res://assets/settings/game_settings.tres.
 func set_highlighted(on: bool) -> void:
-	if highlight_mesh == null:
-		return
-	var meshes := highlight_mesh.find_children("*", "MeshInstance3D", true, false)
-	if highlight_mesh is MeshInstance3D:
-		meshes.append(highlight_mesh)
-	for m in meshes:
-		m.material_overlay = highlight_material if on else null
+	GameSettings.set_highlight(highlight_mesh, on)
 
 func toggle() -> void:
 	set_lit(not lit)

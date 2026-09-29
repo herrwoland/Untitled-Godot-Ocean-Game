@@ -60,8 +60,9 @@ func _physics_process(_delta: float) -> void:
 func set_highlighted(on: bool) -> void:
 	if _highlight_material:
 		_highlight_material.emission_enabled = on
-		_highlight_material.emission = Color(1.0, 0.95, 0.7)
-		_highlight_material.emission_energy_multiplier = 0.4
+		var settings := GameSettings.current() # "Item glow" in game_settings.tres
+		_highlight_material.emission = settings.item_glow_color
+		_highlight_material.emission_energy_multiplier = settings.item_glow_energy
 
 func interact(_player: Node) -> void:
 	get_tree().get_first_node_in_group(&'carry_controller').pick_up(self)
