@@ -76,6 +76,9 @@ group_uniforms;
 
 uniform float roughness : hint_range(0.0, 1.0) = 0.4;
 uniform float normal_strength : hint_range(0.0, 1.0) = 1.0; // Global normal strength
+/** Brightness of the glints lights leave on the waves: the sun or moon path, lamps on the
+ * water. Each glint already follows its light's colour and energy; this scales them all. */
+uniform float light_reflection : hint_range(0.0, 4.0, 0.01) = 1.0;
 uniform sampler2D foam_noise_tex : repeat_enable, filter_linear_mipmap;
 
 uniform sampler2D depth_texture : hint_depth_texture, filter_linear_mipmap;
@@ -734,7 +737,10 @@ void light() {
 		float view_mask = smith_masking_shadowing(wet_roughness, dot_nl);
 		float microfacet_distribution = ggx_distribution(dot(NORMAL, halfway), wet_roughness);
 		float geometric_attenuation = 1.0 / (1.0 + light_mask + view_mask);
-		SPECULAR_LIGHT += fresnel * microfacet_distribution * geometric_attenuation / (4.0 * dot_nv + 0.1) * ATTENUATION;
+		// LIGHT_COLOR is colour * energy * PI; divided back out so a light of energy 1 glints as it
+		// always did, a dim moon barely at all and a warm lamp warm.
+		SPECULAR_LIGHT += fresnel * microfacet_distribution * geometric_attenuation / (4.0 * dot_nv + 0.1) * ATTENUATION
+				* LIGHT_COLOR / PI * light_reflection;
 
 		// --- DIFFUSE ---
 		const vec3 sss_modifier = vec3(0.9,1.15,0.85); // Subsurface scattering produces a 'greener' color.
