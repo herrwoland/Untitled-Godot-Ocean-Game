@@ -101,16 +101,18 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 @export var dim_sunlight_underwater := true
 ## Brightness of UnderwaterGlow nodes with the camera under the water (0 = off). Seen from above
 ## the water it's the water material's glow_above_water instead.
-@export_range(0.0, 4.0, 0.01) var underwater_glow_strength := 1.0
+@export_range(0.0, 8.0, 0.01) var underwater_glow_strength := 1.0
 ## Brightness of the beams lamps throw through the water with the camera under it, like the
 ## sun's light shafts but from scene lights (0 = off). A lamp joins by being in the
 ## `underwater_beam` group (the searchlight adds itself): spot and omni lights, up to 8, the
 ## nearest ones count. They use the light's own colour, energy, range and cone.
-@export_range(0.0, 4.0, 0.01) var light_beam_strength := 1.0
+@export_range(0.0, 8.0, 0.01) var light_beam_strength := 0.5
 ## How much a beam favours looking straight into the lamp. 0 = the beam glows the same from
 ## every side; towards 1 it is nearly invisible side-on and blinding head-on (the sun's shafts
 ## use 0.6). Lower reads better as a searchlight cutting through the dark.
 @export_range(0.0, 0.95, 0.01) var light_beam_scattering := 0.25
+## Samples per lamp along each view ray. Fewer is cheaper but grainier.
+@export_range(4, 64, 1) var light_beam_quality := 24
 
 ## Shadows of things above the water (boats, creatures, cliffs) cut through the underwater light
 ## shafts and caustics. A small hidden camera renders the scene from the sun, depth only.
@@ -225,7 +227,6 @@ var _beam_count := 0
 var _beam_a := PackedVector4Array()
 var _beam_b := PackedVector4Array()
 var _beam_c := PackedVector4Array()
-var _beam_distance := 0.0
 var _water_shapes_a := PackedVector4Array()
 var _water_shapes_b := PackedVector4Array()
 var _water_shape_count := 0
@@ -501,7 +502,7 @@ func _update_underwater_effect() -> void:
 	fx.beam_b = _beam_b
 	fx.beam_c = _beam_c
 	fx.beam_strength = light_beam_strength
-	fx.beam_distance = _beam_distance
+	fx.beam_steps = light_beam_quality
 	fx.beam_scattering = light_beam_scattering
 	# The surface needs it too, to know whether a back face is the underside (see water.gdshader).
 	WATER_MAT.set_shader_parameter(&'camera_submersion', lens_sub)
@@ -648,7 +649,6 @@ func _update_beams() -> void:
 	_beam_a.resize(MAX_BEAMS)
 	_beam_b.resize(MAX_BEAMS)
 	_beam_c.resize(MAX_BEAMS)
-	_beam_distance = 0.0
 	for i in _beam_count:
 		var light: Light3D = lights[i]
 		var p := light.global_position
@@ -665,8 +665,6 @@ func _update_beams() -> void:
 			_beam_b[i] = Vector4(0.0, 0.0, 0.0, -2.0) # no cone: every direction is inside
 			_beam_c[i] = Vector4(energy.r, energy.g, energy.b, -1.0)
 		_beam_a[i] = Vector4(p.x, p.y, p.z, reach)
-		_beam_distance = maxf(_beam_distance, eye.distance_to(p) + reach)
-	_beam_distance = minf(_beam_distance, 120.0)
 
 func _update_glows() -> void:
 	var glows := []

@@ -12,10 +12,10 @@
 [ext_resource type="AudioStream" uid="uid://ck6vmandgjhy0" path="res://assets/wind_loop.wav" id="8_6r5si"]
 [ext_resource type="Resource" path="res://assets/weather/presets/stormy.tres" id="8_abqjc"]
 [ext_resource type="Shader" uid="uid://bjmoda33o8qkd" path="res://assets/shaders/spatial/sea_spray.gdshader" id="8_eu8jb"]
-[ext_resource type="ArrayMesh" uid="uid://qexqjidelskc" path="res://assets/water/clipmap_high_8k.obj" id="8_hrvbo"]
 [ext_resource type="Material" uid="uid://5xqyddws6rt5" path="res://assets/water/mat_spray.tres" id="9_skbf4"]
 [ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="10_spqpo"]
 [ext_resource type="Texture2D" uid="uid://b6322bl0qxuss" path="res://assets/textures/Ground057_1K-PNG_Color.png" id="11_0n3wm"]
+[ext_resource type="ArrayMesh" uid="uid://ix4vp1y05f1s" path="res://assets/water/clipmap_high.obj" id="14_abqjc"]
 [ext_resource type="Script" uid="uid://dsn01qhv7ioi3" path="res://assets/scripts/buoyant_cell.gd" id="14_vivmo"]
 [ext_resource type="Script" uid="uid://kwfe6bfkiqn2" path="res://assets/scripts/mass_calculation.gd" id="14_yaehf"]
 [ext_resource type="PackedScene" uid="uid://c3q8m6t1p7f2a" path="res://assets/player/player.tscn" id="16_player"]
@@ -279,6 +279,7 @@ shader_parameter/target_rows = 240.0
 shader_parameter/pixelate = false
 shader_parameter/color_levels = 16
 shader_parameter/dither_strength = 1.0
+shader_parameter/chromatic_aberration = 1.5
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_shore"]
 size = Vector3(60, 4, 60)
@@ -411,6 +412,9 @@ height = 15.95
 [node name="Main" type="Node3D" unique_id=503649113]
 script = ExtResource("1_skarq")
 
+[node name="PlayerSpawn" type="Marker3D" parent="." unique_id=1902926855]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -35.766594, 2.9718437, 8.251836)
+
 [node name="Environment" type="WorldEnvironment" parent="." unique_id=1400611425]
 environment = SubResource("Environment_icybu")
 compositor = SubResource("Compositor_abqjc")
@@ -425,6 +429,7 @@ eye_waterline_speed = 16.0
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=2103121333]
 transform = Transform3D(0.9456009, -0.051692072, 0.3211967, -0.008405721, 0.9830839, 0.18296014, -0.32522106, -0.17570697, 0.92917114, 0, 10, 0)
+visible = false
 shadow_bias = 0.0
 shadow_normal_bias = 6.464
 shadow_opacity = 0.8
@@ -432,7 +437,8 @@ shadow_blur = 5.0
 sky_mode = 1
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.524839, 8.60531, 4.6563835)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -59.50766, 18.942875, -14.369667)
+visible = false
 script = ExtResource("60_rain")
 intensity = 0.01
 lens_drops_enabled = false
@@ -459,23 +465,25 @@ script = ExtResource("35_creatures")
 creature_scene = ExtResource("50_hrvbo")
 player = NodePath("../Player")
 water = NodePath("../Water")
-creature_count = 20
-stalker_count = 20
+creature_count = 1
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0, 5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -59, 0, -14)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
 cast_shadow = 0
 extra_cull_margin = 1000.0
-mesh = ExtResource("8_hrvbo")
+mesh = ExtResource("14_abqjc")
 script = ExtResource("7_s0x5e")
 water_color = Color(0.015245283, 0.08465283, 0.16941565, 1)
 foam_color = Color(0.8520676, 0.8132686, 0.7798851, 1)
 parameters = Array[ExtResource("2_pw5n6")]([SubResource("Resource_adqv5"), SubResource("Resource_luhq0"), SubResource("Resource_83u3u")])
+mesh_quality = 1
 underwater_distortion = 0.001
 underwater_blur = 0.5
+light_beam_scattering = 0.01
+light_beam_quality = 6
 marine_snow_amount = 8000
 marine_snow_size = 0.009
 marine_snow_sink = 0.08
@@ -527,7 +535,7 @@ volume_db = -8.0
 autoplay = true
 
 [node name="Boat" parent="." unique_id=108108734 node_paths=PackedStringArray("water") instance=ExtResource("45_boat")]
-transform = Transform3D(-0.994964, -1.30385e-08, -0.10024, 7.31041e-08, 1, -2.87383e-08, 0.10024, 1.19209e-07, -0.994964, -57.013474, 0.04465723, 9.36186)
+transform = Transform3D(-0.9945876, 0.027497351, -0.10020208, 0.02735889, 0.9996217, 0.0027563104, 0.10023998, 1.13546314e-07, -0.9949639, -57.013474, 0.991477, 9.36186)
 water = NodePath("../Water")
 
 [node name="Box Octet Experiment" type="RigidBody3D" parent="." unique_id=1036328041 node_paths=PackedStringArray("buoyant_cells", "mesh")]
@@ -686,9 +694,6 @@ surface_material_override/0 = SubResource("StandardMaterial3D_bed")
 
 [node name="LetterPoint" parent="." unique_id=1405991154 instance=ExtResource("43_letter")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -129.4, 3.3, 10)
-
-[node name="PlayerSpawn" type="Marker3D" parent="." unique_id=1902926855]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -58.049118, 6.4744616, 8.251836)
 
 [node name="HomeZone" type="Area3D" parent="." unique_id=1786139595]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -132, 6, 10)
@@ -961,9 +966,11 @@ script = ExtResource("42_sting")
 
 [node name="HunterFish" parent="." unique_id=2037867007 instance=ExtResource("50_hrvbo")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 86.672325, -21.21131, -12.386536)
+visible = false
 
 [node name="UnderwaterGlow" type="Node3D" parent="HunterFish" unique_id=507328574]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.225838, -0.6602993, -6.5473404)
+visible = false
 script = ExtResource("53_abqjc")
 color = Color(1, 0.075666666, 0.060000002, 1)
 strength = 6.68
@@ -973,6 +980,7 @@ metadata/_custom_type_script = "uid://csyjpi4nlac4u"
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1794267363]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.98754764, 0)
+visible = false
 mesh = SubResource("CylinderMesh_5s6u7")
 
 [node name="water_test_cam" type="Camera3D" parent="." unique_id=874141532]

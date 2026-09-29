@@ -1,6 +1,8 @@
-[gd_resource type="Resource" script_class="GameSettings" format=3]
+[gd_resource type="Resource" script_class="GameSettings" format=3 uid="uid://djjcmq5nyr8js"]
 
-[ext_resource type="Script" path="res://assets/scripts/core/game_settings.gd" id="1_gs"]
+[ext_resource type="Script" uid="uid://omtk83hdwccl" path="res://assets/scripts/core/game_settings.gd" id="1_gs"]
 
 [resource]
 script = ExtResource("1_gs")
+highlight_energy = 0.4
+item_glow_energy = 0.1

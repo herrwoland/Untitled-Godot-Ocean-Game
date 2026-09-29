@@ -67,7 +67,7 @@ var beam_a := PackedVector4Array()
 var beam_b := PackedVector4Array()
 var beam_c := PackedVector4Array()
 var beam_strength := 1.0
-var beam_distance := 40.0 # How far along the view to look for beams (m).
+var beam_steps := 24 # Ray march steps per lamp.
 var beam_scattering := 0.25
 
 var _rd : RenderingDevice
@@ -287,7 +287,7 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 		for i in MAX_GLOWS:
 			var v : Vector4 = glows[i] if i < glows.size() else Vector4.ZERO
 			data.append_array([v.x, v.y, v.z, v.w])
-	data.append_array([float(mini(beam_count, MAX_BEAMS)), beam_strength, beam_distance, beam_scattering])
+	data.append_array([float(mini(beam_count, MAX_BEAMS)), beam_strength, float(beam_steps), beam_scattering])
 	for beams in [beam_a, beam_b, beam_c]:
 		for i in MAX_BEAMS:
 			var v : Vector4 = beams[i] if i < beams.size() else Vector4.ZERO

@@ -54,7 +54,7 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 glow_info;       // x = number of UnderwaterGlow nodes, y = overall strength
 	vec4 glow_a[16];      // (position, core size)
 	vec4 glow_b[16];      // (colour * strength, reach)
-	vec4 beam_info;       // x = number of light beams, y = overall strength, z = march distance (m), w = forward scattering g
+	vec4 beam_info;       // x = number of light beams, y = overall strength, z = march steps per lamp, w = forward scattering g
 	vec4 beam_a[8];       // Lamps shining into the water: (position, range)
 	vec4 beam_b[8];       // (direction it shines, cos of the cone edge; omni: -2)
 	vec4 beam_c[8];       // (colour * energy, cos where the cone reaches full brightness; omni: -1)
@@ -236,41 +236,61 @@ vec3 light_shafts(vec3 origin, vec3 dir, float max_dist, float jitter) {
 
 #ifdef MODE_SHAFTS
 // Beams of lamps (the searchlight, anything in the underwater_beam group) through the murk.
-// Marches the view ray and, at each step in the water, asks every lamp: is this point inside
-// your cone and range, and how much of your light survives the water it crossed to get here?
-// Only the stretch under the surface dims it (a lamp above the water shines through air first).
-// The surface itself is taken as flat and the beam as straight, not bent by refraction.
+// For each lamp, march only the stretch of the view ray that passes within its range and under
+// the surface, asking at each step: is this point inside your cone, and how much of your light
+// survives the water it crossed to get here? Only the underwater part of that path dims it (a
+// lamp above the water shines through air first). The surface is taken as flat and the beam as
+// straight, not bent by refraction.
+// A searchlight's mirror gathers its light into a beam, so it does not fade with the square of
+// the distance like a bare bulb: it holds up to about BEAM_THROW meters, then starts to spread.
+const float BEAM_THROW = 8.0;
+
 vec3 light_beams(vec3 origin, vec3 dir, float max_dist, float jitter) {
 	int count = int(p.beam_info.x + 0.5);
 	if (count == 0 || p.beam_info.y <= 0.0) return vec3(0.0);
-	int steps = max(int(p.shafts.y), 1);
-	float dt = min(max_dist, p.beam_info.z) / float(steps);
+	int steps = max(int(p.beam_info.z + 0.5), 1);
+	// Where the ray leaves the water going up (flat surface), else as far as it sees.
+	float wet_end = max_dist;
+	if (dir.y > 1e-4) wet_end = min(wet_end, max(p.effect2.y - origin.y, 0.0) / dir.y);
 	vec3 sum = vec3(0.0);
-	for (int i = 0; i < steps; i++) {
-		float t = (float(i) + jitter) * dt;
-		vec3 pos = origin + dir * t;
-		float depth = p.effect2.y - pos.y;
-		if (depth <= 0.0) continue;
-		for (int j = 0; j < count; j++) {
-			vec4 a = p.beam_a[j];
-			vec4 b = p.beam_b[j];
-			vec4 c = p.beam_c[j];
+	for (int j = 0; j < count; j++) {
+		vec4 a = p.beam_a[j];
+		vec4 b = p.beam_b[j];
+		vec4 c = p.beam_c[j];
+		// The part of the ray inside the lamp's range (a sphere around it).
+		vec3 oc = origin - a.xyz;
+		float half_b = dot(oc, dir);
+		float disc = half_b * half_b - (dot(oc, oc) - a.w * a.w);
+		if (disc <= 0.0) continue;
+		disc = sqrt(disc);
+		float t0 = max(-half_b - disc, 0.0);
+		float t1 = min(-half_b + disc, wet_end);
+		if (t1 <= t0) continue;
+		float dt = (t1 - t0) / float(steps);
+		float light_depth = p.effect2.y - a.y; // < 0: the lamp is above the water
+		vec3 lamp = vec3(0.0);
+		for (int i = 0; i < steps; i++) {
+			float t = t0 + (float(i) + jitter) * dt;
+			vec3 pos = origin + dir * t;
+			float depth = p.effect2.y - pos.y;
+			if (depth <= 0.0) continue;
 			vec3 from_light = pos - a.xyz;
 			float r2 = dot(from_light, from_light);
 			float r = sqrt(r2);
-			if (r >= a.w) continue;
 			vec3 l = from_light / max(r, 1e-4);
 			float cone = smoothstep(b.w, c.w, dot(l, b.xyz));
 			if (cone <= 0.0) continue;
-			float light_depth = p.effect2.y - a.y; // < 0: the lamp is above the water
 			float wet = light_depth >= 0.0 ? r : r * depth / max(depth - light_depth, 1e-3);
 			float range_fade = 1.0 - smoothstep(0.6 * a.w, a.w, r);
 			vec3 through = exp(-p.absorption.rgb * (wet + t)); // to the point, then on to us
 			float phase = phase_hg(dot(dir, -l), p.beam_info.w);
-			sum += c.rgb * (cone * range_fade * phase / (r2 + 1.0)) * through;
+			lamp += through * (cone * range_fade * phase / (1.0 + r2 / (BEAM_THROW * BEAM_THROW)));
 		}
+		sum += c.rgb * lamp * dt;
 	}
-	return sum * dt * p.beam_info.y;
+	// Soft ceiling: a strong beam saturates towards full brightness instead of clipping into
+	// a flat white shape, so standing right in it still shows its falloff.
+	return vec3(1.0) - exp(-sum * p.beam_info.y);
 }
 
 void main() {
