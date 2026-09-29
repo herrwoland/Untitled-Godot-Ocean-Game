@@ -47,6 +47,9 @@ func _ready() -> void:
 	if view_camera == null and hinge:
 		view_camera = hinge.find_children("*", "Camera3D", true, false).front() as Camera3D
 	_rest = hinge.transform.basis
+	# Its beam shows in the water around you when you dive (Water: light_beam_strength).
+	for light in hinge.find_children("*", "Light3D", true, false):
+		light.add_to_group(&'underwater_beam')
 	_collect_glowing_materials()
 	if turn_sound:
 		_turn_full_db = turn_sound.volume_db

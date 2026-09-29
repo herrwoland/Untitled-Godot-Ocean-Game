@@ -102,6 +102,15 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 ## Brightness of UnderwaterGlow nodes with the camera under the water (0 = off). Seen from above
 ## the water it's the water material's glow_above_water instead.
 @export_range(0.0, 4.0, 0.01) var underwater_glow_strength := 1.0
+## Brightness of the beams lamps throw through the water with the camera under it, like the
+## sun's light shafts but from scene lights (0 = off). A lamp joins by being in the
+## `underwater_beam` group (the searchlight adds itself): spot and omni lights, up to 8, the
+## nearest ones count. They use the light's own colour, energy, range and cone.
+@export_range(0.0, 4.0, 0.01) var light_beam_strength := 1.0
+## How much a beam favours looking straight into the lamp. 0 = the beam glows the same from
+## every side; towards 1 it is nearly invisible side-on and blinding head-on (the sun's shafts
+## use 0.6). Lower reads better as a searchlight cutting through the dark.
+@export_range(0.0, 0.95, 0.01) var light_beam_scattering := 0.25
 
 ## Shadows of things above the water (boats, creatures, cliffs) cut through the underwater light
 ## shafts and caustics. A small hidden camera renders the scene from the sun, depth only.
@@ -204,6 +213,7 @@ const WATER_RENDER_LAYER := 20 # Render layer of the water surface/spray (skippe
 const WATER_LAYER_BIT := 1 << (WATER_RENDER_LAYER - 1)
 const MAX_WATER_SHAPES := 16 # Matches the water shader and effect arrays.
 const MAX_GLOWS := 16 # UnderwaterGlow nodes; matches the water shader and effect arrays.
+const MAX_BEAMS := 8 # Lamps in the underwater_beam group; matches the underwater effect.
 const MAX_DRY_VOLUMES := 4 # DryVolume nodes; matches the water shader arrays.
 var _dry_volumes : Array = []
 var _dry_signature := []
@@ -211,6 +221,11 @@ var _dry_maps := Texture2DArray.new()
 var _glow_count := 0
 var _glow_a := PackedVector4Array()
 var _glow_b := PackedVector4Array()
+var _beam_count := 0
+var _beam_a := PackedVector4Array()
+var _beam_b := PackedVector4Array()
+var _beam_c := PackedVector4Array()
+var _beam_distance := 0.0
 var _water_shapes_a := PackedVector4Array()
 var _water_shapes_b := PackedVector4Array()
 var _water_shape_count := 0
@@ -301,6 +316,7 @@ func _process(delta : float) -> void:
 	_update_wave_blockers()
 	_update_water_shapes(delta)
 	_update_glows()
+	_update_beams()
 	_update_dry_volumes()
 	_update_underwater_effect()
 	_update_wakes(delta)
@@ -480,6 +496,13 @@ func _update_underwater_effect() -> void:
 	fx.glow_a = _glow_a
 	fx.glow_b = _glow_b
 	fx.glow_strength = underwater_glow_strength
+	fx.beam_count = _beam_count
+	fx.beam_a = _beam_a
+	fx.beam_b = _beam_b
+	fx.beam_c = _beam_c
+	fx.beam_strength = light_beam_strength
+	fx.beam_distance = _beam_distance
+	fx.beam_scattering = light_beam_scattering
 	# The surface needs it too, to know whether a back face is the underside (see water.gdshader).
 	WATER_MAT.set_shader_parameter(&'camera_submersion', lens_sub)
 	fx.vignette = underwater_vignette
@@ -608,6 +631,43 @@ func _update_dry_volumes() -> void:
 	WATER_MAT.set_shader_parameter(&'dry_bounds', bounds)
 
 ## Uploads the UnderwaterGlow nodes nearest the camera to the water shader and underwater effect.
+## Lamps shining into the water (group underwater_beam), nearest to the camera first. Lamps
+## that are switched off (hidden) or dark throw no beam.
+func _update_beams() -> void:
+	var cam := _view_camera()
+	var eye := cam.global_position if cam else Vector3.ZERO
+	var lights := []
+	if light_beam_strength > 0.0:
+		for light in get_tree().get_nodes_in_group(&'underwater_beam'):
+			if light is Light3D and light.is_visible_in_tree() and light.light_energy > 0.0 \
+					and (light is SpotLight3D or light is OmniLight3D):
+				lights.append(light)
+	if lights.size() > MAX_BEAMS:
+		lights.sort_custom(func(a, b): return a.global_position.distance_squared_to(eye) < b.global_position.distance_squared_to(eye))
+	_beam_count = mini(lights.size(), MAX_BEAMS)
+	_beam_a.resize(MAX_BEAMS)
+	_beam_b.resize(MAX_BEAMS)
+	_beam_c.resize(MAX_BEAMS)
+	_beam_distance = 0.0
+	for i in _beam_count:
+		var light: Light3D = lights[i]
+		var p := light.global_position
+		var energy := light.light_color * light.light_energy
+		var reach: float
+		if light is SpotLight3D:
+			reach = light.spot_range
+			var edge := deg_to_rad(light.spot_angle)
+			var forward := -light.global_basis.z.normalized() # a SpotLight3D shines along -Z
+			_beam_b[i] = Vector4(forward.x, forward.y, forward.z, cos(edge))
+			_beam_c[i] = Vector4(energy.r, energy.g, energy.b, cos(edge * 0.7))
+		else:
+			reach = light.omni_range
+			_beam_b[i] = Vector4(0.0, 0.0, 0.0, -2.0) # no cone: every direction is inside
+			_beam_c[i] = Vector4(energy.r, energy.g, energy.b, -1.0)
+		_beam_a[i] = Vector4(p.x, p.y, p.z, reach)
+		_beam_distance = maxf(_beam_distance, eye.distance_to(p) + reach)
+	_beam_distance = minf(_beam_distance, 120.0)
+
 func _update_glows() -> void:
 	var glows := []
 	for glow in get_tree().get_nodes_in_group(&'underwater_glow'):
