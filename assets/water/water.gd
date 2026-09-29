@@ -111,7 +111,11 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 ## every side; towards 1 it is nearly invisible side-on and blinding head-on (the sun's shafts
 ## use 0.6). Lower reads better as a searchlight cutting through the dark.
 @export_range(0.0, 0.95, 0.01) var light_beam_scattering := 0.25
-## Samples per lamp along each view ray. Fewer is cheaper but grainier.
+## How much the waves break a lamp's beam into streaks, like the sun's light shafts: 0 is a
+## smooth cone, 1 fully streaked. Only for lamps above the water (the light has to come through
+## the waves). Uses the same wave focus as the sun's shafts (water material, Light Shafts).
+@export_range(0.0, 1.0, 0.01) var light_beam_shafts := 0.7
+## Samples per lamp along each view ray. Fewer is cheaper but grainier (streaks want more).
 @export_range(4, 64, 1) var light_beam_quality := 24
 
 ## Shadows of things above the water (boats, creatures, cliffs) cut through the underwater light
@@ -504,6 +508,7 @@ func _update_underwater_effect() -> void:
 	fx.beam_strength = light_beam_strength
 	fx.beam_steps = light_beam_quality
 	fx.beam_scattering = light_beam_scattering
+	fx.beam_shafts = light_beam_shafts
 	# The surface needs it too, to know whether a back face is the underside (see water.gdshader).
 	WATER_MAT.set_shader_parameter(&'camera_submersion', lens_sub)
 	fx.vignette = underwater_vignette

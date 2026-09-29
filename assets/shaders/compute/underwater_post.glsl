@@ -58,6 +58,7 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 beam_a[8];       // Lamps shining into the water: (position, range)
 	vec4 beam_b[8];       // (direction it shines, cos of the cone edge; omni: -2)
 	vec4 beam_c[8];       // (colour * energy, cos where the cone reaches full brightness; omni: -1)
+	vec4 beam_info2;      // x = shafts (0 smooth cone .. 1 fully broken into streaks by the waves)
 } p;
 
 #include "water_shapes.glsli"
@@ -241,6 +242,11 @@ vec3 light_shafts(vec3 origin, vec3 dir, float max_dist, float jitter) {
 // survives the water it crossed to get here? Only the underwater part of that path dims it (a
 // lamp above the water shines through air first). The surface is taken as flat and the beam as
 // straight, not bent by refraction.
+// A lamp above the water shines down through the waves, which focus it like they focus the sun:
+// each point in the beam looks back along its light to where it came through the surface and
+// reads the focus map there. Along a line from the lamp that answer never changes, so the beam
+// breaks into streaks fanning out from where it enters the sea, swaying with the waves.
+// The focus map averages 1 (the waves only move light around), so the beam keeps its brightness.
 // A searchlight's mirror gathers its light into a beam, so it does not fade with the square of
 // the distance like a bare bulb: it holds up to about BEAM_THROW meters, then starts to spread.
 const float BEAM_THROW = 8.0;
@@ -281,10 +287,17 @@ vec3 light_beams(vec3 origin, vec3 dir, float max_dist, float jitter) {
 			float cone = smoothstep(b.w, c.w, dot(l, b.xyz));
 			if (cone <= 0.0) continue;
 			float wet = light_depth >= 0.0 ? r : r * depth / max(depth - light_depth, 1e-3);
+			float streaks = 1.0;
+			if (light_depth < 0.0 && p.beam_info2.x > 0.0) {
+				// Where the line from the lamp to here crosses the (flat) surface.
+				vec2 surface_xz = mix(pos.xz, a.xz, depth / (depth - light_depth));
+				float focus = textureLod(focus_tex, surface_xz * p.shafts.x, 0.0).r;
+				streaks = mix(1.0, min(focus, 4.0), p.beam_info2.x);
+			}
 			float range_fade = 1.0 - smoothstep(0.6 * a.w, a.w, r);
 			vec3 through = exp(-p.absorption.rgb * (wet + t)); // to the point, then on to us
 			float phase = phase_hg(dot(dir, -l), p.beam_info.w);
-			lamp += through * (cone * range_fade * phase / (1.0 + r2 / (BEAM_THROW * BEAM_THROW)));
+			lamp += through * (streaks * cone * range_fade * phase / (1.0 + r2 / (BEAM_THROW * BEAM_THROW)));
 		}
 		sum += c.rgb * lamp * dt;
 	}

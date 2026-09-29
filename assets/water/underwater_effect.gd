@@ -7,7 +7,7 @@ class_name UnderwaterEffect extends CompositorEffect
 const SHADER_PATH := 'res://assets/shaders/compute/underwater_post.glsl'
 const COPY_SHADER_PATH := 'res://assets/shaders/compute/image_copy.glsl'
 const CAUSTICS_SHADER_PATH := 'res://assets/shaders/compute/caustics.glsl'
-const PARAMS_SIZE := 2128 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow + fog gradient + 2x8 vec4 blockers + glow info + 2x16 vec4 glows + beam info + 3x8 vec4 beams, std140.
+const PARAMS_SIZE := 2144 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow + fog gradient + 2x8 vec4 blockers + glow info + 2x16 vec4 glows + beam info + 3x8 vec4 beams + beam info 2, std140.
 const MAX_WATER_SHAPES := 16
 const MAX_GLOWS := 16
 const MAX_BEAMS := 8
@@ -69,6 +69,7 @@ var beam_c := PackedVector4Array()
 var beam_strength := 1.0
 var beam_steps := 24 # Ray march steps per lamp.
 var beam_scattering := 0.25
+var beam_shafts := 0.7
 
 var _rd : RenderingDevice
 var _shader : RID
@@ -292,6 +293,7 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 		for i in MAX_BEAMS:
 			var v : Vector4 = beams[i] if i < beams.size() else Vector4.ZERO
 			data.append_array([v.x, v.y, v.z, v.w])
+	data.append_array([beam_shafts, 0.0, 0.0, 0.0])
 	var bytes := data.to_byte_array()
 	_rd.buffer_update(_params_buffer, 0, bytes.size(), bytes)
 
