@@ -1,0 +1,42 @@
+[gd_scene format=3 uid="uid://bm7u7ahddq8p"]
+
+[ext_resource type="PackedScene" uid="uid://cjxsgyqeg7dwr" path="res://scenes/navigation/number.tscn" id="1_00ddp"]
+[ext_resource type="Script" uid="uid://dde52ex7pe0nm" path="res://scenes/navigation/counter.gd" id="1_j485r"]
+[ext_resource type="PackedScene" uid="uid://cdftmyajg2vhs" path="res://assets/models/navigation/number_holder.glb" id="2_j485r"]
+[ext_resource type="Texture2D" uid="uid://cy4hv1gsya6js" path="res://assets/models/navigation/NW.png" id="4_fvp13"]
+
+[node name="counter" type="Node3D" unique_id=636053965]
+script = ExtResource("1_j485r")
+
+[node name="number_0" parent="." unique_id=358173208 instance=ExtResource("1_00ddp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.010209858, 0, 0)
+
+[node name="number_1" parent="." unique_id=897430019 instance=ExtResource("1_00ddp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12141365, 0, 0)
+
+[node name="number_2" parent="." unique_id=306071560 instance=ExtResource("1_00ddp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2339971, 0, 0)
+
+[node name="number_3" parent="." unique_id=985158237 instance=ExtResource("1_00ddp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.34700203, 0, 0)
+
+[node name="number_4" parent="." unique_id=813400161 instance=ExtResource("1_00ddp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.46148512, 0, 0)
+
+[node name="number_holder" parent="." unique_id=2038713967 instance=ExtResource("2_j485r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04222937, 0, 0)
+
+[node name="N" type="Sprite3D" parent="." unique_id=1887377040]
+transform = Transform3D(0.6769515, 0, 0, 0, 0.6769515, 0, 0, 0, 0.6769515, 0.12955855, -0.008933548, 0.08303334)
+texture_filter = 0
+texture = ExtResource("4_fvp13")
+region_enabled = true
+region_rect = Rect2(0, 0, 22.818783, 24.902946)
+
+[node name="W" type="Sprite3D" parent="." unique_id=545095300]
+transform = Transform3D(0.6769515, 0, 0, 0, 0.6769515, 0, 0, 0, 0.6769515, 0.12185708, -0.008933548, 0.08303334)
+visible = false
+texture_filter = 0
+texture = ExtResource("4_fvp13")
+region_enabled = true
+region_rect = Rect2(23.613335, 0.13191795, 22.818783, 24.902946)

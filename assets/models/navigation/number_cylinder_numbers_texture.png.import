@@ -2,20 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://v7fw2dgnk4hb"
-path.s3tc="res://.godot/imported/boat_0.1_WoodenPlanks05_1K_BaseColor.png.png-11fd61260d71ca884f55a0eb7b06ae72.s3tc.ctex"
+uid="uid://c1wdgapx7mdk0"
+path.s3tc="res://.godot/imported/number_cylinder_numbers_texture.png-7824458ab69a692e6f62ed2e1ea3fcd3.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 generator_parameters={
-"md5": "30b4cfa2bce29f1aa2718cc88015eefc"
+"md5": "f2905ce485446ab6fa3c7eaab99cd074"
 }
 
 [deps]
 
-source_file="res://assets/blender/boat_0.1_WoodenPlanks05_1K_BaseColor.png.png"
-dest_files=["res://.godot/imported/boat_0.1_WoodenPlanks05_1K_BaseColor.png.png-11fd61260d71ca884f55a0eb7b06ae72.s3tc.ctex"]
+source_file="res://assets/models/navigation/number_cylinder_numbers_texture.png"
+dest_files=["res://.godot/imported/number_cylinder_numbers_texture.png-7824458ab69a692e6f62ed2e1ea3fcd3.s3tc.ctex"]
 
 [params]
 

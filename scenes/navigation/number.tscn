@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://cjxsgyqeg7dwr"]
+
+[ext_resource type="PackedScene" uid="uid://34npyf5nk06c" path="res://assets/models/navigation/number_cylinder.glb" id="1_h0d6i"]
+[ext_resource type="Script" uid="uid://rbptbu8arhi3" path="res://scenes/navigation/number.gd" id="1_jlcum"]
+
+[node name="number" type="Node3D" unique_id=358173208]
+script = ExtResource("1_jlcum")
+
+[node name="number_cylinder" parent="." unique_id=1928350911 instance=ExtResource("1_h0d6i")]
+
+[editable path="number_cylinder"]

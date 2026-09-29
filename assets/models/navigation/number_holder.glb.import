@@ -3,18 +3,18 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://bs7x4dgp16lr5"
-path="res://.godot/imported/boat_0.1.glb-e5a25358ca4a84cceb8b0e888f36e5af.scn"
+uid="uid://cdftmyajg2vhs"
+path="res://.godot/imported/number_holder.glb-ef40d431b1755e8a006a24f89c0d74cc.scn"
 
 [deps]
 
-source_file="res://assets/models/boat/boat_0.1.glb"
-dest_files=["res://.godot/imported/boat_0.1.glb-e5a25358ca4a84cceb8b0e888f36e5af.scn"]
+source_file="res://assets/models/navigation/number_holder.glb"
+dest_files=["res://.godot/imported/number_holder.glb-ef40d431b1755e8a006a24f89c0d74cc.scn"]
 
 [params]
 
 nodes/root_type=""
-nodes/root_name="boat"
+nodes/root_name=""
 nodes/root_script=null
 mesh_library/use_node_names_as_mesh_names=false
 array_mesh/deduplicate_surfaces=true
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=0
+gltf/texture_map_mode=1

@@ -432,7 +432,7 @@ shadow_blur = 5.0
 sky_mode = 1
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25.466202, 33.200905, -14.410673)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.524839, 8.60531, 4.6563835)
 script = ExtResource("60_rain")
 intensity = 0.01
 lens_drops_enabled = false
@@ -463,7 +463,7 @@ creature_count = 20
 stalker_count = 20
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, -14)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0, 5)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")

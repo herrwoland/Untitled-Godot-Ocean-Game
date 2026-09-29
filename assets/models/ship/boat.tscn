@@ -2,11 +2,11 @@
 
 [ext_resource type="Script" uid="uid://cj1mrslpmgpi6" path="res://assets/models/ship/boat.gd" id="1_boat"]
 [ext_resource type="Script" uid="uid://dsn01qhv7ioi3" path="res://assets/scripts/buoyant_cell.gd" id="2_cell"]
+[ext_resource type="PackedScene" uid="uid://bm7u7ahddq8p" path="res://scenes/navigation/counter.tscn" id="2_vlsv3"]
 [ext_resource type="Script" uid="uid://c7n8dp7f8tkeu" path="res://assets/scripts/world/wave_blocker.gd" id="3_2ib73"]
 [ext_resource type="Script" uid="uid://4j6vkvpadkr7" path="res://assets/player/camera.gd" id="3_camera"]
 [ext_resource type="PackedScene" uid="uid://ugpufvfhqy06" path="res://assets/models/boat/boat_wave_blocker.glb" id="3_f2dya"]
 [ext_resource type="Script" uid="uid://clj7h2sfw06rd" path="res://assets/scripts/world/dry_volume.gd" id="4_51f5f"]
-[ext_resource type="Script" uid="uid://cuk3h1rdwodek" path="res://assets/scripts/world/coord_device.gd" id="4_device"]
 [ext_resource type="Script" uid="uid://b3s502b801kf" path="res://assets/scripts/helm_interactable.gd" id="5_helm"]
 [ext_resource type="Script" uid="uid://cs2x7rmusrtt6" path="res://assets/scripts/interactables/ship_ladder.gd" id="6_ladder"]
 [ext_resource type="PackedScene" uid="uid://bs7x4dgp16lr5" path="res://assets/models/boat/boat_0.1.glb" id="8_2ib73"]
@@ -17,6 +17,22 @@
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_82xsv"]
 size = Vector3(44, 8.062927, 13.075356)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vlsv3"]
+resource_name = "Material.001"
+cull_mode = 2
+albedo_color = Color(0.8935111, 0.906438, 0, 1)
+roughness = 0.5
+emission_enabled = true
+emission = Color(1, 0.8267404, 0.13788116, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kll55"]
+resource_name = "Material.001"
+cull_mode = 2
+albedo_color = Color(0.8935111, 0.906438, 0, 1)
+roughness = 0.5
+emission_enabled = true
+emission = Color(1, 0.8267404, 0.13788116, 1)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vqht1"]
 
@@ -158,49 +174,84 @@ transform = Transform3D(0.999998, 0, 2.57045e-07, 0, 0.999998, 0, -2.04891e-07, 
 shape = SubResource("BoxShape3D_82xsv")
 debug_color = Color(0.761639, 0.449833, 0.105389, 1)
 
+[node name="lights" type="Node3D" parent="." unique_id=635125895]
+
+[node name="cabin_light_1" type="OmniLight3D" parent="lights" unique_id=755157783]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.437637, 7.4419847, 1.640837)
+light_color = Color(1, 0.8286217, 0.43948364, 1)
+light_volumetric_fog_energy = 16.0
+light_specular = 0.0
+omni_range = 3.6505697
+
+[node name="cabin_light_2" type="OmniLight3D" parent="lights" unique_id=1827528259]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.437637, 7.4419847, -1.6186192)
+light_color = Color(1, 0.8286217, 0.43948364, 1)
+light_volumetric_fog_energy = 16.0
+light_specular = 0.0
+omni_range = 3.6505697
+
+[node name="head_light_1" type="SpotLight3D" parent="lights" unique_id=438758252]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -2.408451, 8.605911, -2.6960258)
+light_color = Color(0.99923044, 0.7511934, 0, 1)
+light_energy = 16.0
+light_volumetric_fog_energy = 16.0
+light_specular = 0.0
+spot_range = 33.261963
+spot_angle = 15.855578
+
+[node name="head_light_2" type="SpotLight3D" parent="lights" unique_id=1342475156]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -2.408451, 8.605911, 2.7679212)
+light_color = Color(0.99923044, 0.7511934, 0, 1)
+light_energy = 16.0
+light_volumetric_fog_energy = 16.0
+light_specular = 0.0
+spot_range = 33.261963
+spot_angle = 15.855578
+
+[node name="head_light_3" type="SpotLight3D" parent="lights" unique_id=627918536]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -23.113945, 4.6517377, 2.7679212)
+light_color = Color(0.99923044, 0.7511934, 0, 1)
+light_energy = 16.0
+light_volumetric_fog_energy = 16.0
+light_specular = 0.0
+spot_range = 33.261963
+spot_angle = 15.855578
+
+[node name="boat_navigation" type="Node3D" parent="." unique_id=280909978]
+transform = Transform3D(-3.322482e-08, 0.8786351, 0.76009506, 3.840634e-08, 0.7600953, -0.8786347, -1.1617846, 1.276975e-15, -5.078323e-08, -2.8771172, 7.4625273, 0.12755114)
+
+[node name="counter_N" parent="boat_navigation" unique_id=636053965 instance=ExtResource("2_vlsv3")]
+transform = Transform3D(0.99999994, 0, 0, 1.6940659e-21, 1, -2.019484e-28, 0, -1.009742e-28, 0.99999994, 0, 0, 0)
+
+[node name="counter_W" parent="boat_navigation" unique_id=1781973903 instance=ExtResource("2_vlsv3")]
+transform = Transform3D(0.9999999, -3.59e-43, 1.0658141e-14, 3.3881318e-21, 1, -4.038968e-28, -1.0658141e-14, -1.009742e-28, 0.9999999, 0, -0.25, 0)
+
 [node name="boat" parent="." unique_id=331109473 instance=ExtResource("8_2ib73")]
 transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, 1.508625, -3.5490909, 0)
 
-[node name="StaticBody3D" parent="boat/body" parent_id_path=PackedInt32Array(331109473, 2136809977) index="0" unique_id=60124819]
+[node name="StaticBody3D" parent="boat/body" parent_id_path=PackedInt32Array(331109473, 1689314866) index="0" unique_id=215088778]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/cabin" parent_id_path=PackedInt32Array(331109473, 242130612) index="0" unique_id=882874939]
+[node name="StaticBody3D" parent="boat/cabin" parent_id_path=PackedInt32Array(331109473, 1487314378) index="0" unique_id=1795681537]
 collision_layer = 2
 
-[node name="CollisionShape3D" parent="boat/cabin/StaticBody3D" index="0" unique_id=399572911]
-metadata/_edit_lock_ = true
-
-[node name="StaticBody3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 480545196) index="0" unique_id=820711434]
+[node name="StaticBody3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 2141932266) index="0" unique_id=1803973611]
 collision_layer = 2
 
-[node name="window_inside" parent="boat" index="3" unique_id=720526419]
-metadata/_edit_lock_ = true
-
-[node name="StaticBody3D" parent="boat/floor_top" parent_id_path=PackedInt32Array(331109473, 156844424) index="0" unique_id=1101496462]
+[node name="StaticBody3D" parent="boat/floor_top" parent_id_path=PackedInt32Array(331109473, 527810511) index="0" unique_id=1004507628]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/stairs_control/stair" parent_id_path=PackedInt32Array(331109473, 218840542) index="0" unique_id=1297987448]
-collision_layer = 2
+[node name="lamp_shielded_001" parent="boat" index="23" unique_id=1681041950]
+surface_material_override/0 = SubResource("StandardMaterial3D_vlsv3")
 
-[node name="StaticBody3D" parent="boat/back_railing" parent_id_path=PackedInt32Array(331109473, 252420435) index="0" unique_id=1708038223]
-collision_layer = 2
-
-[node name="StaticBody3D" parent="boat/control_steering/control_panel" parent_id_path=PackedInt32Array(331109473, 1276692023) index="0" unique_id=1234939786]
-collision_layer = 2
-
-[node name="StaticBody3D" parent="boat/top_door" parent_id_path=PackedInt32Array(331109473, 1160456845) index="0" unique_id=1128998539]
-collision_layer = 2
-
-[node name="window_outside" parent="boat" index="9" unique_id=2088313751]
-metadata/_edit_lock_ = true
-
-[node name="StaticBody3D" parent="boat/top_door_001" parent_id_path=PackedInt32Array(331109473, 1731473996) index="0" unique_id=1953849692]
-collision_layer = 2
+[node name="lamp_shielded_002" parent="boat" index="24" unique_id=1866026398]
+surface_material_override/0 = SubResource("StandardMaterial3D_kll55")
 
 [node name="boat_wave_blocker" parent="boat" unique_id=748553163 instance=ExtResource("3_f2dya")]
 visible = false
 
-[node name="wave_blocker" parent="boat/boat_wave_blocker" index="0" unique_id=880754740]
+[node name="wave_blocker" parent="boat/boat_wave_blocker" index="0" unique_id=1604891722]
+cast_shadow = 0
 surface_material_override/0 = SubResource("StandardMaterial3D_vqht1")
 script = ExtResource("4_51f5f")
 
@@ -218,7 +269,14 @@ transform = Transform3D(1, 0, 4.2563406e-20, 0, -4.371139e-08, -1, 0, 1, -4.3711
 shape = SubResource("CapsuleShape3D_2ib73")
 debug_color = Color(0.97, 0, 0.4688336, 1)
 
-[node name="ShipModel" type="Node3D" parent="." unique_id=912749708]
+[node name="StaticBody3D" parent="boat/stairs_control/stair" parent_id_path=PackedInt32Array(331109473, 1829500148) index="0" unique_id=1792612063]
+collision_layer = 2
+
+[node name="StaticBody3D" parent="boat/top_door" parent_id_path=PackedInt32Array(331109473, 1006945286) index="0" unique_id=1621486315]
+collision_layer = 2
+
+[node name="StaticBody3D" parent="boat/top_door_001" parent_id_path=PackedInt32Array(331109473, 264253194) index="0" unique_id=1100068355]
+collision_layer = 2
 
 [node name="FS Cell" type="MeshInstance3D" parent="." unique_id=544734856 node_paths=PackedStringArray("parent")]
 transform = Transform3D(1, 6.217249e-15, 0, -1.5543122e-15, 1, 2.4868996e-14, 0, 0, 1, -16, -0.9220474, -9.56982)
@@ -302,26 +360,16 @@ transform = Transform3D(-0.0471064, 0, 0.998889, 0, 1, 0, -0.998889, 0, -0.04710
 far = 10000.0
 script = ExtResource("3_camera")
 
-[node name="CoordDevice" type="Label3D" parent="." unique_id=1883220637]
-transform = Transform3D(2.4335947e-09, 6.3130143e-22, 0.19999994, -4.052314e-15, 0.2, 5.3290697e-15, -0.19999994, -1.998402e-15, 2.4335947e-09, -3.0367432, 5.5119705, -0.11337018)
-pixel_size = 0.008
-render_priority = 4
-modulate = Color(1, 0.75, 0.35, 1)
-text = "0000.0 N  0000.0 W"
-font_size = 48
-script = ExtResource("4_device")
-
 [node name="HelmPosition" type="Marker3D" parent="." unique_id=1679096902]
 transform = Transform3D(1, 8.881784e-16, 0, -1.5543122e-15, 1, 3.5527137e-15, 0, 0, 1, -2.218934, 4.3993506, 0.0023938417)
 
-[node name="HelmInteractable" type="Area3D" parent="." unique_id=646670221 node_paths=PackedStringArray("ship", "helm_marker", "highlight_mesh")]
+[node name="HelmInteractable" type="Area3D" parent="." unique_id=646670221 node_paths=PackedStringArray("ship", "helm_marker")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5875483, 4.885566, 0.0027356148)
 collision_layer = 4
 collision_mask = 0
 script = ExtResource("5_helm")
 ship = NodePath("..")
 helm_marker = NodePath("../HelmPosition")
-highlight_mesh = NodePath("../boat/control_steering/control_panel")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="HelmInteractable" unique_id=122829786]
 transform = Transform3D(-4.371139e-08, -1, -7.1054274e-15, 1, -4.371139e-08, -3.105881e-22, 0, 0, 1, -0.002090454, 0.25847006, -0.013819218)
