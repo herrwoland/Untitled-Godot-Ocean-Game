@@ -79,7 +79,7 @@ func reset_day() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if current:
 		_inspect_input(event)
-	elif event.is_action_pressed(&'inspect_carried') and not carried.is_empty() and player.state != 2: # not while piloting
+	elif event.is_action_pressed(&'inspect_carried') and not carried.is_empty() and player.state < 2: # not while piloting or at a station
 		_cycle_index = _cycle_index % carried.size()
 		begin_inspect(carried[_cycle_index])
 		_cycle_index += 1

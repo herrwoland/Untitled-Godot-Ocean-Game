@@ -1,9 +1,9 @@
 extends CharacterBody3D
-## First person player controller with three states: walking, swimming and
-## piloting a ship's helm. Swim state is driven by comparing the player's feet
+## First person player controller with four states: walking, swimming, piloting
+## a ship's helm and operating a mounted station (eg. the searchlight). Swim state is driven by comparing the player's feet
 ## height against the wave height sampled from `water`.
 
-enum State { WALK, SWIM, PILOT }
+enum State { WALK, SWIM, PILOT, OPERATE }
 
 @export var water: Node
 @export var walk_speed: float = 5.0
@@ -37,6 +37,7 @@ enum State { WALK, SWIM, PILOT }
 var state: State = State.WALK
 var piloted_ship: Node = null
 var helm_marker: Node3D = null
+var station: Node = null # the mounted station (eg. searchlight) we are operating
 var hovered_interactable: Object = null
 var inspecting: bool = false # set by InspectionController; freezes movement and look
 var captured: bool = false # in a hunter's jaws; the CreatureDirector drives our position
@@ -179,6 +180,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if inspecting:
 		return # the InspectionController owns input while an item is held up
+	if state == State.OPERATE:
+		_station_input(event)
+		return
 	if state == State.PILOT and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
 		return
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
@@ -214,7 +218,7 @@ func _physics_process(delta: float) -> void:
 		_process_climb(delta)
 		_climb_target = null # the ladder re-requests every frame space is held
 		return
-	if state != State.PILOT:
+	if state == State.WALK or state == State.SWIM:
 		_update_interact_hover()
 	match state:
 		State.WALK:
@@ -225,14 +229,20 @@ func _physics_process(delta: float) -> void:
 			_check_exit_swim()
 		State.PILOT:
 			_process_pilot(delta)
+		State.OPERATE:
+			_process_operate(delta)
 
 	_keep_eyes_clear_of_waterline(delta)
 
 func _process_turn_keys(delta: float) -> void:
 	var turn := Input.get_action_strength(&'turn_left') - Input.get_action_strength(&'turn_right')
+	var pitch := Input.get_action_strength(&'look_up') - Input.get_action_strength(&'look_down')
+	if state == State.OPERATE:
+		if turn != 0.0 or pitch != 0.0:
+			station.aim(turn * turn_speed * delta, pitch * look_speed * delta)
+		return
 	if turn != 0.0:
 		head.rotation.y += turn * turn_speed * delta
-	var pitch := Input.get_action_strength(&'look_up') - Input.get_action_strength(&'look_down')
 	if pitch != 0.0:
 		camera.rotation.x = clampf(camera.rotation.x + pitch * look_speed * delta, -PI / 2.0, PI / 2.0)
 
@@ -455,3 +465,53 @@ func exit_pilot() -> void:
 	if is_instance_valid(_deck): # step off the helm already moving with her
 		_deck_xform = _deck.global_transform
 		_deck_coyote = DECK_COYOTE
+
+## Takes hold of a mounted station: the body stays where it stands on the deck and the
+## view moves to the station's camera, where looking around turns the station instead.
+func enter_station(target: Node) -> void:
+	if state != State.WALK:
+		return
+	if hovered_interactable and hovered_interactable.has_method(&'set_highlighted'):
+		hovered_interactable.set_highlighted(false)
+	hovered_interactable = null
+	state = State.OPERATE
+	station = target
+	station.set_operated(true, camera)
+
+func exit_station() -> void:
+	if is_instance_valid(station):
+		station.set_operated(false, camera)
+	else:
+		camera.make_current()
+	station = null
+	state = State.WALK
+
+## Leaves the helm or a station cleanly, eg. when a new day puts us back in bed.
+func release_controls() -> void:
+	if state == State.PILOT:
+		exit_pilot()
+	elif state == State.OPERATE:
+		exit_station()
+	state = State.WALK
+
+func _station_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+		station.aim(-event.relative.x * mouse_sensitivity, -event.relative.y * mouse_sensitivity)
+	# Let go with jump or the interact key -- not the mouse button, which also means interact.
+	elif event.is_action_pressed(&'jump') or (event is InputEventKey and event.is_action_pressed(&'interact')):
+		exit_station()
+		get_viewport().set_input_as_handled()
+
+## Standing at a station: still carried by the deck and pulled by gravity, but the legs
+## stay put.
+func _process_operate(delta: float) -> void:
+	if not is_instance_valid(station):
+		exit_station()
+		return
+	_carry_with_deck(delta)
+	velocity.x = 0.0
+	velocity.z = 0.0
+	if not is_on_floor():
+		velocity.y -= GRAVITY * delta
+	move_and_slide()
+	_update_deck()

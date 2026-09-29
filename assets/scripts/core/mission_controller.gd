@@ -44,9 +44,9 @@ func _on_day_started(_day: int) -> void:
 	var cfg := _config()
 
 	# Reset actors to their morning positions.
+	player.release_controls() # off the helm or the searchlight, back to our own eyes
 	player.global_position = player_spawn.global_position
 	player.velocity = Vector3.ZERO
-	player.state = 0 # State.WALK
 	boat.global_transform = _boat_start
 	boat.linear_velocity = Vector3.ZERO
 	boat.angular_velocity = Vector3.ZERO
