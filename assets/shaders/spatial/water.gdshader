@@ -103,6 +103,9 @@ uniform float window_edge_blur : hint_range(0.0, 6.0) = 3.0;
  * back face is the underside we are looking up at, or a crest folding over in front of us. */
 uniform float camera_submersion = 0.0;
 uniform vec3 underwater_color : source_color = vec3(0.04, 0.13, 0.14);
+/** How much light reaches the water from above right now, 0..1, fed by water.gd (dims the
+ * underwater colour at night, see Water: underwater_follows_light). Not a weather setting. */
+uniform float underwater_light = 1.0;
 /** Per-meter extinction (r, g, b) used by the underwater screen effect. Red dies first. */
 uniform vec3 underwater_absorption = vec3(0.22, 0.06, 0.05);
 group_uniforms;
@@ -521,7 +524,7 @@ vec4 shade_underside(vec3 view, vec3 n, vec2 screen_uv, float foam) {
 	}
 
 	// Outside the window the surface is a mirror of the water column below it.
-	vec3 color = transmitted * transmittance * window_brightness + underwater_color * (1.0 - transmittance);
+	vec3 color = transmitted * transmittance * window_brightness + underwater_color * underwater_light * (1.0 - transmittance);
 
 	// Foam blocks the window: dark silhouettes against the sky, pale against the depths.
 	// (foam can exceed 1 since foam_alpha sums over cascades; clamp so mix() can't overshoot.)

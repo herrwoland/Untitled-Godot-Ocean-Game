@@ -102,6 +102,14 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 ## Brightness of UnderwaterGlow nodes with the camera under the water (0 = off). Seen from above
 ## the water it's the water material's glow_above_water instead.
 @export_range(0.0, 8.0, 0.01) var underwater_glow_strength := 1.0
+## Under the water, the blue all around you (the water material's underwater_color) is light
+## that came down from above. With this on it dims with that light, so a dark preset (night) is
+## dark under the water too, and dusk fades there with the sky. Measured as the brightest of
+## the sun (weaker as it sinks to the horizon), the sky energy and the ambient energy.
+@export var underwater_follows_light := true
+## How bright the sun/sky/ambient must be for the underwater colour to show in full. 1 = the
+## day presets (their sky and ambient energy are 1).
+@export_range(0.05, 4.0, 0.01) var underwater_daylight := 1.0
 ## Brightness of the beams lamps throw through the water with the camera under it, like the
 ## sun's light shafts but from scene lights (0 = off). A lamp joins by being in the
 ## `underwater_beam` group (the searchlight adds itself): spot and omni lights, up to 8, the
@@ -477,7 +485,9 @@ func _update_underwater_effect() -> void:
 	var absorb = _water_mat_param(&'underwater_absorption')
 	if fog is Vector3: fog = Color(fog.x, fog.y, fog.z)
 	if absorb is Color: absorb = Vector3(absorb.r, absorb.g, absorb.b)
-	if fog is Color: fx.fog_color = fog
+	var light := _underwater_light_level()
+	WATER_MAT.set_shader_parameter(&'underwater_light', light)
+	if fog is Color: fx.fog_color = fog * light
 	if absorb is Vector3: fx.absorption = absorb
 	fx.depth_darkening = depth_darkening
 	fx.distortion = underwater_distortion
@@ -735,6 +745,27 @@ func set_effects_quality(level : int) -> void:
 	WATER_MAT.set_shader_parameter(&'shaft_quality', maxi(int(_quality_base.shaft_quality * scale), 6))
 	WATER_MAT.set_shader_parameter(&'contact_foam_samples', maxi(int(_quality_base.foam_samples * scale), 4))
 
+## How much light comes down into the water right now, 0..1 (see underwater_follows_light).
+## Uses the surface values, not the ones dimmed while the camera is under.
+func _underwater_light_level() -> float:
+	if not underwater_follows_light: return 1.0
+	var sun_part := 0.0
+	if is_instance_valid(_sun) and _sun.visible:
+		# A DirectionalLight3D shines along -Z, so +Z points at the sun: its height is z.y.
+		sun_part = _sun_base_energy() * smoothstep(-0.05, 0.2, _sun.global_basis.z.y)
+	var sky := 1.0
+	_find_environment()
+	if _env:
+		var ambient := _env_ambient_base if _env_ambient_base >= 0.0 else _env.ambient_light_energy
+		var background := _env_sky_energy_base if _env_sky_energy_base >= 0.0 else _env.background_energy_multiplier
+		sky = maxf(ambient, background)
+	return clampf(maxf(sun_part, sky) / maxf(underwater_daylight, 0.01), 0.0, 1.0)
+
+func _find_environment() -> void:
+	if _env: return
+	var envs := (owner if owner else get_parent()).find_children('*', 'WorldEnvironment', true, false)
+	if not envs.is_empty(): _env = envs[0].environment
+
 func _sun_base_energy() -> float:
 	return _sun_energy_base if _sun_energy_base >= 0.0 else _sun.light_energy
 
@@ -757,9 +788,7 @@ func set_surface_lighting(energy : Vector3) -> bool:
 ## The originals are remembered and put back when the camera surfaces (and in the editor).
 func _update_depth_lighting() -> void:
 	if Engine.is_editor_hint() or not is_instance_valid(_sun): return
-	if not _env:
-		var envs := (owner if owner else get_parent()).find_children('*', 'WorldEnvironment', true, false)
-		if not envs.is_empty(): _env = envs[0].environment
+	_find_environment()
 	if _sun_energy_base < 0.0:
 		_sun_energy_base = _sun.light_energy
 		if _env:

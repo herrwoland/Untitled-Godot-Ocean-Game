@@ -25,7 +25,7 @@ const FOG_PROPS : Array[StringName] = [&'density', &'albedo', &'emission', &'hei
 const RAIN_PROPS : Array[StringName] = [&'intensity', &'wind_direction', &'wind_strength', &'gustiness', &'streak_opacity']
 ## Water material parameters that aren't weather: driven by code every frame, or by the
 ## graphics quality setting.
-const WATER_MATERIAL_SKIP : Array[StringName] = [&'camera_submersion', &'rain_intensity', &'map_scales',
+const WATER_MATERIAL_SKIP : Array[StringName] = [&'camera_submersion', &'underwater_light', &'rain_intensity', &'map_scales',
 		&'wake_map_rect', &'water_shape_a', &'water_shape_b', &'wave_blocker_a', &'wave_blocker_b']
 ## Only continuous values are blended and stored from materials (no textures, switches or counts).
 const MATERIAL_TYPES : Array[int] = [TYPE_FLOAT, TYPE_COLOR, TYPE_VECTOR2, TYPE_VECTOR3, TYPE_VECTOR4]
