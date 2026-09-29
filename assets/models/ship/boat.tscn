@@ -226,31 +226,31 @@ transform = Transform3D(0.9999999, -3.59e-43, 1.0658141e-14, 3.3881318e-21, 1, -
 [node name="boat" parent="." unique_id=331109473 instance=ExtResource("8_2ib73")]
 transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, 1.508625, -3.5490909, 0)
 
-[node name="StaticBody3D" parent="boat/body" parent_id_path=PackedInt32Array(331109473, 253115874) index="0" unique_id=193710646]
+[node name="StaticBody3D" parent="boat/body" parent_id_path=PackedInt32Array(331109473, 758393477) index="0" unique_id=299113931]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/cabin" parent_id_path=PackedInt32Array(331109473, 713598591) index="0" unique_id=1175332754]
+[node name="StaticBody3D" parent="boat/cabin" parent_id_path=PackedInt32Array(331109473, 1157293987) index="0" unique_id=1245383280]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 168021465) index="0" unique_id=430420097]
+[node name="StaticBody3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 471000825) index="0" unique_id=1312734624]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/floor_top" parent_id_path=PackedInt32Array(331109473, 2096903368) index="0" unique_id=198051634]
+[node name="StaticBody3D" parent="boat/floor_top" parent_id_path=PackedInt32Array(331109473, 12153058) index="0" unique_id=1570883531]
 collision_layer = 2
 
-[node name="lamp_shielded_001" parent="boat" index="22" unique_id=1190987041]
+[node name="lamp_shielded_001" parent="boat" index="22" unique_id=1030643524]
 surface_material_override/0 = SubResource("StandardMaterial3D_vlsv3")
 
-[node name="lamp_shielded_002" parent="boat" index="23" unique_id=1814690838]
+[node name="lamp_shielded_002" parent="boat" index="23" unique_id=179529145]
 surface_material_override/0 = SubResource("StandardMaterial3D_kll55")
 
-[node name="StaticBody3D" parent="boat/stairs_control/stair" parent_id_path=PackedInt32Array(331109473, 739423884) index="0" unique_id=1276690340]
+[node name="StaticBody3D" parent="boat/stairs_control/stair" parent_id_path=PackedInt32Array(331109473, 904559163) index="0" unique_id=300151164]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/top_door" parent_id_path=PackedInt32Array(331109473, 799350437) index="0" unique_id=1986436273]
+[node name="StaticBody3D" parent="boat/top_door" parent_id_path=PackedInt32Array(331109473, 2127691289) index="0" unique_id=665982676]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/top_door_001" parent_id_path=PackedInt32Array(331109473, 2141176606) index="0" unique_id=1433318127]
+[node name="StaticBody3D" parent="boat/top_door_001" parent_id_path=PackedInt32Array(331109473, 587466035) index="0" unique_id=475208887]
 collision_layer = 2
 
 [node name="boat_wave_blocker" parent="boat" unique_id=748553163 instance=ExtResource("3_f2dya")]
@@ -290,7 +290,7 @@ light_specular = 0.0
 spot_range = 33.261963
 spot_angle = 15.855578
 
-[node name="LightInteractable" type="Area3D" parent="front_light_hinge" unique_id=1910290363 node_paths=PackedStringArray("hinge", "view_camera", "highlight_mesh")]
+[node name="LightInteractable" type="Area3D" parent="front_light_hinge" unique_id=1910290363 node_paths=PackedStringArray("hinge", "view_camera", "highlight_mesh", "switch_on_sound", "switch_off_sound", "turn_sound")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.2626815e-08, 0.22510886, -0.7464142)
 collision_layer = 4
 collision_mask = 0
@@ -298,10 +298,29 @@ script = ExtResource("9_searchlight")
 hinge = NodePath("..")
 view_camera = NodePath("../CameraLightView")
 highlight_mesh = NodePath("../front_light")
+switch_on_sound = NodePath("../SwitchOnSound")
+switch_off_sound = NodePath("../SwitchOffSound")
+turn_sound = NodePath("../TurnSound")
+yaw_limit = 90.0
+pitch_up_limit = 50.0
+pitch_down_limit = 40.0
+turn_weight = 0.30000000000000004
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="front_light_hinge/LightInteractable" unique_id=1240266114]
 transform = Transform3D(-4.371139e-08, -1, 3.494011e-20, -4.371139e-08, 1.9106857e-15, -1, 1, -4.371139e-08, -4.371139e-08, 0.0024719238, 0, 0)
 shape = SubResource("CylinderShape3D_5s6u7")
+
+[node name="SwitchOnSound" type="AudioStreamPlayer3D" parent="front_light_hinge" unique_id=1310422801]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22510886, -0.4)
+bus = &"SFX"
+
+[node name="SwitchOffSound" type="AudioStreamPlayer3D" parent="front_light_hinge" unique_id=1310422802]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22510886, -0.4)
+bus = &"SFX"
+
+[node name="TurnSound" type="AudioStreamPlayer3D" parent="front_light_hinge" unique_id=1310422803]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22510886, -0.4)
+bus = &"SFX"
 
 [node name="CameraLightView" type="Camera3D" parent="front_light_hinge" unique_id=1650251009]
 transform = Transform3D(-0.6666667, 3.499578e-09, -5.807094e-08, -3.499579e-09, 0.66184187, 0.08006104, 5.8070942e-08, 0.08006104, -0.66184187, -1.9752804e-08, 1.0701499, -0.4522171)

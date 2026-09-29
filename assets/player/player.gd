@@ -497,6 +497,9 @@ func release_controls() -> void:
 func _station_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 		station.aim(-event.relative.x * mouse_sensitivity, -event.relative.y * mouse_sensitivity)
+	elif event is InputEventMouseButton and event.is_action_pressed(&'interact'):
+		if station.has_method(&'toggle'):
+			station.toggle() # the click that took hold is spent already; the next one flips the switch
 	# Let go with jump or the interact key -- not the mouse button, which also means interact.
 	elif event.is_action_pressed(&'jump') or (event is InputEventKey and event.is_action_pressed(&'interact')):
 		exit_station()
