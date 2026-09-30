@@ -10,7 +10,7 @@
 [ext_resource type="AudioStream" uid="uid://cvvn0vke5comw" path="res://assets/ocean_loop.wav" id="6_jpklm"]
 [ext_resource type="Script" uid="uid://bdjbwk3saoju4" path="res://assets/water/water.gd" id="7_s0x5e"]
 [ext_resource type="AudioStream" uid="uid://ck6vmandgjhy0" path="res://assets/wind_loop.wav" id="8_6r5si"]
-[ext_resource type="Resource" path="res://assets/weather/presets/rainy.tres" id="8_abqjc"]
+[ext_resource type="Resource" uid="uid://cq8cegk7irtm4" path="res://assets/weather/presets/rainy.tres" id="8_abqjc"]
 [ext_resource type="Shader" uid="uid://bjmoda33o8qkd" path="res://assets/shaders/spatial/sea_spray.gdshader" id="8_eu8jb"]
 [ext_resource type="Material" uid="uid://5xqyddws6rt5" path="res://assets/water/mat_spray.tres" id="9_skbf4"]
 [ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="10_spqpo"]
@@ -106,8 +106,7 @@ fog_height_density = 16.0
 fog_depth_curve = 0.25
 fog_depth_begin = 200.0
 fog_depth_end = 350.0
-volumetric_fog_enabled = true
-volumetric_fog_density = 0.012
+volumetric_fog_density = 0.003
 volumetric_fog_length = 500.0
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_uypp3"]
@@ -414,7 +413,7 @@ height = 15.95
 script = ExtResource("1_skarq")
 
 [node name="PlayerSpawn" type="Marker3D" parent="." unique_id=1902926855]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -35.766594, 2.9718437, 8.251836)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 665.92084, 2.9718437, 8.251836)
 
 [node name="Environment" type="WorldEnvironment" parent="." unique_id=1400611425]
 environment = SubResource("Environment_icybu")
@@ -439,7 +438,7 @@ shadow_blur = 4.592
 sky_mode = 1
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -44.28994, 17.49117, -16.103525)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23.33908, 441.38373, 326.3647)
 script = ExtResource("60_rain")
 intensity = 0.85
 wind_strength = 9.0
@@ -468,10 +467,10 @@ script = ExtResource("35_creatures")
 creature_scene = ExtResource("50_hrvbo")
 player = NodePath("../Player")
 water = NodePath("../Water")
-creature_count = 1
+creature_count = 4
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -44, 0, -16)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 327)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -540,7 +539,7 @@ volume_db = -8.0
 autoplay = true
 
 [node name="Boat" parent="." unique_id=108108734 node_paths=PackedStringArray("water") instance=ExtResource("45_boat")]
-transform = Transform3D(-0.9945876, 0.027497351, -0.10020208, 0.02735889, 0.9996217, 0.0027563104, 0.10023998, 1.13546314e-07, -0.9949639, -57.013474, 0.991477, 9.36186)
+transform = Transform3D(-0.9945876, 0.027497351, -0.10020208, 0.02735889, 0.9996217, 0.0027563104, 0.10023998, 1.13546314e-07, -0.9949639, 644.67395, 0.991477, 9.36186)
 water = NodePath("../Water")
 
 [node name="Box Octet Experiment" type="RigidBody3D" parent="." unique_id=1036328041 node_paths=PackedStringArray("buoyant_cells", "mesh")]
@@ -566,7 +565,7 @@ cell_density_kg_per_m3 = 300.0
 calc_f_gravity = true
 
 [node name="Island" parent="." unique_id=1072612934 instance=ExtResource("17_island")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 120, -8.565828, 120)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 790.53076, -8.565859, 15.829681)
 
 [node name="StartScreen" parent="." unique_id=1207969224 instance=ExtResource("18_start")]
 

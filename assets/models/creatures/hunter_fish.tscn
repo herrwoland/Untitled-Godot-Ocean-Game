@@ -9,6 +9,10 @@ size = Vector3(20, 150, 20)
 [sub_resource type="SphereShape3D" id="SphereShape3D_kb4ww"]
 radius = 9.037
 
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_5s6u7"]
+radius = 17.555176
+height = 145.28424
+
 [node name="HunterFish" type="Node3D" unique_id=2037867007 node_paths=PackedStringArray("jaw", "mouth", "mouth_area")]
 script = ExtResource("1_hunter")
 creep_rate = 5.0
@@ -50,28 +54,35 @@ omni_attenuation = 0.355
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.3514633, -40.930237)
 shape = SubResource("SphereShape3D_kb4ww")
 
-[node name="PresenceLoop" type="AudioStreamPlayer3D" parent="."]
-bus = &"SFX"
+[node name="PresenceLoop" type="AudioStreamPlayer3D" parent="." unique_id=1831412204]
 max_distance = 150.0
-
-[node name="SneakLoop" type="AudioStreamPlayer3D" parent="."]
 bus = &"SFX"
+
+[node name="SneakLoop" type="AudioStreamPlayer3D" parent="." unique_id=1402369338]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.35, -40.93)
 max_distance = 80.0
-
-[node name="DetectSound" type="AudioStreamPlayer3D" parent="."]
 bus = &"SFX"
+
+[node name="DetectSound" type="AudioStreamPlayer3D" parent="." unique_id=1203330357]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.35, -40.93)
 max_distance = 250.0
-
-[node name="ChargeSound" type="AudioStreamPlayer3D" parent="."]
 bus = &"SFX"
+
+[node name="ChargeSound" type="AudioStreamPlayer3D" parent="." unique_id=645423366]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.35, -40.93)
 max_distance = 250.0
-
-[node name="BiteSound" type="AudioStreamPlayer3D" parent="."]
 bus = &"SFX"
+
+[node name="BiteSound" type="AudioStreamPlayer3D" parent="." unique_id=548788637]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.35, -40.93)
 max_distance = 250.0
+bus = &"SFX"
+
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=2037917407]
+collision_mask = 3
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=1674133410]
+transform = Transform3D(0.495, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 1.5024444e-06, 34.371918)
+shape = SubResource("CapsuleShape3D_5s6u7")
 
 [editable path="fish_01"]

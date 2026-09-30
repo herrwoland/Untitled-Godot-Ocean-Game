@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="SeaState" format=3]
+[gd_resource type="Resource" script_class="SeaState" format=3 uid="uid://cq8cegk7irtm4"]
 
-[ext_resource type="Script" path="res://assets/weather/sea_state.gd" id="1_er4b0"]
+[ext_resource type="Script" uid="uid://hjyad5ro2bdy" path="res://assets/weather/sea_state.gd" id="1_er4b0"]
 
 [resource]
 script = ExtResource("1_er4b0")
@@ -130,7 +130,7 @@ environment = {
 &"ambient_light_energy": 1.0,
 &"ambient_light_sky_contribution": 1.0,
 &"background_energy_multiplier": 1.0,
-&"fog_density": 0.01,
+&"fog_density": 0.003,
 &"fog_depth_begin": 200.0,
 &"fog_depth_curve": 0.25,
 &"fog_depth_end": 350.0,
@@ -148,7 +148,7 @@ environment = {
 &"volumetric_fog_albedo": Color(1, 1, 1, 1),
 &"volumetric_fog_ambient_inject": 0.0,
 &"volumetric_fog_anisotropy": 0.2,
-&"volumetric_fog_density": 0.012,
+&"volumetric_fog_density": 0.003,
 &"volumetric_fog_emission": Color(0, 0, 0, 1),
 &"volumetric_fog_emission_energy": 1.0,
 &"volumetric_fog_enabled": true,
