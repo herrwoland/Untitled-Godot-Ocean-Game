@@ -1,0 +1,46 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://assets/scripts/buoyant_body.gd" id="1_body"]
+[ext_resource type="Script" path="res://assets/scripts/buoyant_cell.gd" id="2_cell"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_float"]
+radius = 0.25
+height = 1.8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_float"]
+albedo_color = Color(1, 0.45, 0.05, 1)
+roughness = 0.6
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_float"]
+radius = 0.25
+height = 1.8
+
+[sub_resource type="BoxMesh" id="BoxMesh_cell"]
+size = Vector3(0.4, 1.8, 0.3)
+
+[node name="BuoyancyPointTest" type="RigidBody3D" node_paths=PackedStringArray("buoyant_cells", "mesh")]
+collision_layer = 8
+collision_mask = 3
+gravity_scale = 0.0
+axis_lock_angular_x = true
+axis_lock_angular_y = true
+axis_lock_angular_z = true
+script = ExtResource("1_body")
+buoyant_cells = [NodePath("Cell")]
+mesh = NodePath("Cell")
+stick_to_waves = true
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("CapsuleMesh_float")
+surface_material_override/0 = SubResource("StandardMaterial3D_float")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+shape = SubResource("CapsuleShape3D_float")
+
+[node name="Cell" type="MeshInstance3D" parent="." node_paths=PackedStringArray("parent")]
+visible = false
+mesh = SubResource("BoxMesh_cell")
+script = ExtResource("2_cell")
+parent = NodePath("..")
+cell_density_kg_per_m3 = 700.0
+calc_f_gravity = true
