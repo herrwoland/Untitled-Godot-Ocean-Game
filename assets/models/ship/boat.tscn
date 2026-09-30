@@ -10,7 +10,7 @@
 [ext_resource type="Script" uid="uid://clj7h2sfw06rd" path="res://assets/scripts/world/dry_volume.gd" id="4_51f5f"]
 [ext_resource type="Script" uid="uid://b3s502b801kf" path="res://assets/scripts/helm_interactable.gd" id="5_helm"]
 [ext_resource type="Texture2D" uid="uid://cnn5ybcxkmryj" path="res://scenes/boat/smoke.png" id="5_ka04m"]
-[ext_resource type="Script" path="res://assets/scripts/interactables/ladder.gd" id="6_ladder"]
+[ext_resource type="Script" uid="uid://bk8nsucoxvpeh" path="res://assets/scripts/interactables/ladder.gd" id="6_ladder"]
 [ext_resource type="PackedScene" uid="uid://ws3qh2fav0ah" path="res://assets/models/boat/front_light.glb" id="7_vlsv3"]
 [ext_resource type="PackedScene" uid="uid://bs7x4dgp16lr5" path="res://assets/models/boat/boat_0.1.glb" id="8_2ib73"]
 [ext_resource type="PackedScene" uid="uid://d327mym4cwyr7" path="res://assets/models/boat/ladder.glb" id="9_4dvsp"]
@@ -66,6 +66,9 @@ vertex_color_use_as_albedo = true
 albedo_texture = ExtResource("5_ka04m")
 billboard_mode = 3
 billboard_keep_scale = true
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_4mseo"]
 material = SubResource("StandardMaterial3D_5miih")
@@ -163,8 +166,8 @@ scale_curve = SubResource("CurveTexture_ijem4")
 color_ramp = SubResource("GradientTexture1D_44820")
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qmuha"]
+render_priority = 1
 transparency = 1
-shading_mode = 0
 vertex_color_use_as_albedo = true
 albedo_color = Color(0.95, 0.97, 0.97, 0.9)
 albedo_texture = ExtResource("11_w61sw")
@@ -209,8 +212,8 @@ scale_curve = SubResource("CurveTexture_k86m4")
 color_ramp = SubResource("GradientTexture1D_yc0wb")
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_nqvh8"]
+render_priority = 1
 transparency = 1
-shading_mode = 0
 vertex_color_use_as_albedo = true
 albedo_color = Color(0.95, 0.97, 0.97, 0.9)
 albedo_texture = ExtResource("11_w61sw")
@@ -306,7 +309,7 @@ transform = Transform3D(-2.4615648e-08, 2.8454552e-08, -0.8607447, 0.6509639, 0.
 transform = Transform3D(1, -6.3108872e-30, 0, 5.9604645e-08, 1, 0, 5.3290697e-15, -3.5527137e-15, 1, 2.706726, -5.120079, 0.005600974)
 
 [node name="control_steering" parent="boat_navigation/steering_hinge/steering" index="0" unique_id=464494156]
-transform = Transform3D(1.9670125e-07, -8.940696e-08, -1.3309999, -8.9406925e-08, 1.4999998, -7.933377e-08, 1.4999998, 8.940694e-08, 1.7453954e-07, -2.4068677, 2.6502182, -0.0008267164)
+transform = Transform3D(9.814727e-08, -7.748604e-08, -1.154, -7.7486014e-08, 1.3, -6.878378e-08, 1.3, 7.7486014e-08, 8.712458e-08, -2.407, 2.965, -0.001)
 
 [node name="boat" parent="." unique_id=331109473 instance=ExtResource("8_2ib73")]
 transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, 1.508625, -3.5490909, 0)
