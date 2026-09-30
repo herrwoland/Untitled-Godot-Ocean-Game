@@ -1,6 +1,6 @@
 extends CanvasLayer
 ## Settings menu, in three tabs: Gameplay (mouse sensitivity, FOV, ship engine power),
-## Video (fullscreen, v-sync, frame rate limit, render scale, wave resolution, ocean mesh
+## Video (brightness, fullscreen, v-sync, frame rate limit, render scale, wave resolution, ocean mesh
 ## quality, PS1 filter, water effects, rain on lens) and Audio (master volume).
 ## Audio is split across Master, SFX and Music buses. Values persist to user://settings.cfg.
 
@@ -22,6 +22,8 @@ var player: Node
 var ship: Node
 var retro_post: CanvasLayer
 
+@onready var brightness_slider: HSlider = %BrightnessSlider
+@onready var brightness_preview: Control = %BrightnessPreview
 @onready var fullscreen_check: CheckButton = %FullscreenCheck
 @onready var vsync_check: CheckButton = %VsyncCheck
 @onready var fps_limit_option: OptionButton = %FpsLimitOption
@@ -53,6 +55,7 @@ func _ready() -> void:
 	for limit in FPS_LIMITS:
 		fps_limit_option.add_item("Unlimited" if limit == 0 else str(limit))
 
+	brightness_slider.value_changed.connect(_on_brightness_changed)
 	fullscreen_check.toggled.connect(_on_fullscreen_toggled)
 	vsync_check.toggled.connect(_on_vsync_toggled)
 	fps_limit_option.item_selected.connect(_on_fps_limit_selected)
@@ -78,12 +81,15 @@ func setup(water_node: Node, player_node: Node, ship_node: Node, retro_post_node
 	retro_post = retro_post_node
 	_load_settings()
 	_apply_render_scale() # Also on a first run with no settings file.
+	_apply_brightness()
 
 func open() -> void:
 	_sync_controls_to_current_values()
 	visible = true
 
 func _sync_controls_to_current_values() -> void:
+	brightness_slider.set_value_no_signal(_brightness)
+	brightness_preview.exponent = brightness_exponent(_brightness)
 	fullscreen_check.set_pressed_no_signal(DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN)
 	vsync_check.set_pressed_no_signal(DisplayServer.window_get_vsync_mode() != DisplayServer.VSYNC_DISABLED)
 	fps_limit_option.select(maxi(FPS_LIMITS.find(Engine.max_fps), 0))
@@ -100,6 +106,43 @@ func _sync_controls_to_current_values() -> void:
 	sensitivity_slider.set_value_no_signal(player.mouse_sensitivity * 1000.0)
 	fov_slider.set_value_no_signal(player.camera.fov)
 	engine_power_slider.set_value_no_signal(ship.engine_power)
+
+var _brightness := 0.5
+
+## Brightness, the way horror games do it: a gamma curve on the finished picture, so the dark
+## lifts (or deepens) while lamps and fire stay put. 0.5 leaves the picture as authored.
+## Done with the environment's colour correction, inside the tonemap pass it already runs:
+## it costs nothing, works with the PS1 filter on or off, and leaves the menus alone.
+static func brightness_exponent(value: float) -> float:
+	return pow(2.0, (0.5 - value) * 2.0) # 0 -> 2 (darker), 0.5 -> 1, 1 -> 0.5 (brighter)
+
+func _apply_brightness() -> void:
+	var exponent := brightness_exponent(_brightness)
+	brightness_preview.exponent = exponent
+	var envs := get_tree().root.find_children("*", "WorldEnvironment", true, false)
+	if envs.is_empty() or envs[0].environment == null:
+		return
+	var env: Environment = envs[0].environment
+	var curve := Gradient.new()
+	var offsets := PackedFloat32Array()
+	var colors := PackedColorArray()
+	for i in 33:
+		var x := i / 32.0
+		var v := pow(x, exponent)
+		offsets.append(x)
+		colors.append(Color(v, v, v))
+	curve.offsets = offsets
+	curve.colors = colors
+	var lut := GradientTexture1D.new()
+	lut.gradient = curve
+	lut.width = 256
+	env.adjustment_enabled = true
+	env.adjustment_color_correction = lut
+
+func _on_brightness_changed(value: float) -> void:
+	_brightness = value
+	_apply_brightness()
+	_save_settings()
 
 func _on_fullscreen_toggled(on: bool) -> void:
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if on else DisplayServer.WINDOW_MODE_WINDOWED)
@@ -209,6 +252,7 @@ func _on_back_pressed() -> void:
 
 func _save_settings() -> void:
 	var config := ConfigFile.new()
+	config.set_value("graphics", "brightness", _brightness)
 	config.set_value("display", "fullscreen", fullscreen_check.button_pressed)
 	config.set_value("display", "vsync", vsync_check.button_pressed)
 	config.set_value("display", "fps_limit", Engine.max_fps)
@@ -238,6 +282,7 @@ func _load_settings() -> void:
 	var fps_limit: int = config.get_value("display", "fps_limit", 0)
 	Engine.max_fps = fps_limit if fps_limit in FPS_LIMITS else 0
 	_render_scale = config.get_value("graphics", "render_scale", 1.0)
+	_brightness = config.get_value("graphics", "brightness", 0.5)
 	var wave_res: int = config.get_value("graphics", "wave_resolution", 512)
 	# eg. an old saved 128, or a resolution we have since had to disable.
 	water.map_size = wave_res if wave_res in WAVE_RESOLUTIONS and not wave_res in WAVE_RESOLUTIONS_DISABLED else DEFAULT_WAVE_RESOLUTION

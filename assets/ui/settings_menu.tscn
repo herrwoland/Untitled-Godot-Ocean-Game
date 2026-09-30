@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://dt05m04hsc0p0"]
 
 [ext_resource type="Script" uid="uid://ypdxaubwyglf" path="res://assets/ui/settings_menu.gd" id="1_settings"]
+[ext_resource type="Script" path="res://assets/ui/brightness_preview.gd" id="2_bright"]
 
 [node name="SettingsMenu" type="CanvasLayer"]
 process_mode = 3
@@ -108,6 +109,20 @@ layout_mode = 2
 theme_override_constants/v_separation = 6
 columns = 2
 
+[node name="BrightnessLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Brightness"
+
+[node name="BrightnessSlider" type="HSlider" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+custom_minimum_size = Vector2(140, 0)
+max_value = 1.0
+step = 0.01
+value = 0.5
+
 [node name="FullscreenLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Video/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -202,6 +217,17 @@ text = "Rain on Lens"
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
+
+[node name="BrightnessHint" type="Label" parent="Panel/Margin/VBox/Tabs/Video"]
+layout_mode = 2
+text = "Brightness: the left moon should vanish, the middle one be barely visible."
+autowrap_mode = 3
+
+[node name="BrightnessPreview" type="Control" parent="Panel/Margin/VBox/Tabs/Video"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+script = ExtResource("2_bright")
 
 [node name="Audio" type="VBoxContainer" parent="Panel/Margin/VBox/Tabs"]
 visible = false
