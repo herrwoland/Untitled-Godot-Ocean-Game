@@ -266,6 +266,15 @@ func get_wave_height(global_position: Vector3, masked: bool = true) -> float:
 		waves *= blocker_mask(global_position)
 	return waves + shape.x
 
+## How far the surface above/below `global_position` has been pushed sideways by the waves
+## (x, z) right now: the water moves in small circles as waves pass, and things floating in
+## it go round with it. Same cascade, calm zones and water shapes as get_wave_height().
+func get_surface_drift(global_position: Vector3) -> Vector2:
+	var scales: Vector4 = map_scales[0]
+	var d := _sample_displacement(0, Vector2(global_position.x, global_position.z) * Vector2(scales.x, scales.y)) * scales.z
+	var shape := water_shapes_eval(Vector2(global_position.x, global_position.z))
+	return Vector2(d.x, d.z) * (1.0 - shape.y) * blocker_mask(global_position)
+
 ## Water shapes (from WaterDeformer nodes) at a world XZ position: (height offset, calm).
 ## Must mirror water_shapes_eval() in the water shader.
 func water_shapes_eval(p: Vector2) -> Vector2:

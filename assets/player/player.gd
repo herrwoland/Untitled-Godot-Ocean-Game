@@ -17,6 +17,27 @@ enum State { WALK, SWIM, PILOT, OPERATE, CLIMB }
 @export var swim_exit_depth: float = 0.45 # while grounded, water shallower than this switches back to walking (wading)
 @export var sink_speed: float = 1.0 # constant downward speed while swimming unless swim_up is held
 
+@export_group("Floating")
+## How high the eyes ride above the water while keeping afloat at the surface (m).
+@export_range(0.0, 1.0, 0.01) var float_eye_height: float = 0.25
+## How firmly the water holds you at that height: higher follows every wave tightly, lower
+## lets crests lift you late and troughs drop you away, heavier and more helpless.
+@export_range(1.0, 60.0, 0.5) var float_stiffness: float = 14.0
+## How quickly the bobbing settles after a big wave (higher = less overshoot).
+@export_range(0.0, 20.0, 0.1) var float_damping: float = 4.5
+## How much you rise and fall with the water itself before the spring (above) does the rest.
+## 1 rides the waves closely; lower lags behind them, so big crests wash over you.
+@export_range(0.0, 1.0, 0.01) var float_follow: float = 0.85
+## How much the waves carry you round with the water as they pass (0 = not at all).
+@export_range(0.0, 2.0, 0.05) var wave_drift: float = 1.0
+## How far the view rolls with the slope of the wave you are on (degrees, at its steepest).
+@export_range(0.0, 20.0, 0.5) var wave_tilt: float = 10.0
+## While afloat, the eyes keep only this far from the waterline (instead of
+## eye_waterline_clearance, which is for diving through it): floating is the eyes riding
+## just above the water, and a big clearance would lift them off it.
+@export_range(0.0, 1.0, 0.01) var float_eye_clearance: float = 0.1
+@export_group("")
+
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var interact_ray: RayCast3D = $Head/Camera3D/InteractRay
@@ -73,6 +94,10 @@ var _head_base_y: float = 1.6
 var _eye_offset: float = 0.0
 var _ears_underwater: bool = false
 var _submerged_at_msec: int = 0 # when the ears last went under, for the surfacing gasp
+var _last_drift := Vector2.INF # the water's sideways push last frame (see get_surface_drift)
+var _wave_roll := 0.0 # camera roll from the wave we are riding
+var _floating := false # keeping afloat at the surface this frame
+var _last_afloat_y := INF # the float height last frame, to know how fast the wave moves us
 
 const GASP_AFTER_SECONDS := 4.0 # dives shorter than this surface without a gasp
 
@@ -132,7 +157,8 @@ func _update_underwater_audio(delta: float) -> void:
 ## faster across the surface, so the crossing is quick without ever stalling.
 func _keep_eyes_clear_of_waterline(delta: float) -> void:
 	var target := 0.0
-	if water and eye_waterline_clearance > 0.0 and state != State.PILOT and not captured:
+	var clearance := minf(eye_waterline_clearance, float_eye_clearance) if _floating and state == State.SWIM else eye_waterline_clearance
+	if water and clearance > 0.0 and state != State.PILOT and not captured:
 		# Work from where the head would sit untouched, never from the nudged position, or the
 		# nudge chases its own tail.
 		var eye := camera.global_position
@@ -142,10 +168,10 @@ func _keep_eyes_clear_of_waterline(delta: float) -> void:
 		# -- a push that peaks and returns hands back the distance it gained, which stalls the
 		# view just as badly as parking it did. The wide falloff then gives that distance back
 		# over meters, where a few per cent of lost speed cannot be felt.
-		var width := eye_waterline_clearance / maxf(eye_waterline_rush - 1.0, 0.1)
-		var falloff := maxf(6.0 * eye_waterline_clearance, 3.0)
+		var width := clearance / maxf(eye_waterline_rush - 1.0, 0.1)
+		var falloff := maxf(6.0 * clearance, 3.0)
 		var fade := submersion / falloff
-		target = -eye_waterline_clearance * tanh(submersion / width) * exp(-fade * fade)
+		target = -clearance * tanh(submersion / width) * exp(-fade * fade)
 	_eye_offset = lerpf(_eye_offset, target, 1.0 - exp(-delta * eye_waterline_speed))
 	head.position.y = _head_base_y + _eye_offset
 
@@ -296,6 +322,8 @@ func _start_climb(target: Node, t: float) -> void:
 	velocity = Vector3.ZERO
 	collider.disabled = true # the hull and rungs are right in front of us
 	surface_ripples.emitting = false
+	_wave_roll = 0.0
+	camera.rotation.z = 0.0
 
 ## On the ladder: forward/space climbs, back goes down, back at the foot steps off, swim_down
 ## (C) lets go. The position is worked out along the ladder every frame, so a moving ship
@@ -454,24 +482,61 @@ func _process_swim(delta: float) -> void:
 	velocity.z = move_dir.z * swim_speed
 
 	# The player constantly sinks; swim_up (space) is required to rise or stay afloat,
-	# swim_down speeds up the sinking.
+	# swim_down speeds up the sinking. Up at the surface, keeping afloat is a float: the water
+	# holds the eyes just above it on a spring, so a crest lifts you and a trough drops you,
+	# a little late, overshooting -- a body in the sea rather than a bead on a wire.
+	var afloat_y := surface_y + float_eye_height - _head_base_y # feet, with the eyes afloat
+	var floating := false
 	if Input.is_action_pressed(&'swim_up'):
-		velocity.y = swim_speed
+		if global_position.y < afloat_y - 0.6:
+			velocity.y = swim_speed # still coming up
+		else:
+			floating = true
+			# Follow how fast the water itself is rising or falling, then spring the rest of
+			# the way: the wave carries us, a little late, without leaving us behind in it.
+			var wave_speed := 0.0
+			if _last_afloat_y != INF and delta > 0.0:
+				wave_speed = (afloat_y - _last_afloat_y) / delta * float_follow
+			velocity.y += ((afloat_y - global_position.y) * float_stiffness + (wave_speed - velocity.y) * float_damping) * delta
 	elif Input.is_action_pressed(&'swim_down'):
 		velocity.y = -swim_speed
 	else:
 		velocity.y = -sink_speed
+	_last_afloat_y = afloat_y
+
+	# Near the surface the passing waves carry us round with the water.
+	var drift: Vector2 = water.get_surface_drift(global_position) if water.has_method(&'get_surface_drift') else Vector2.ZERO
+	if _last_drift != Vector2.INF and global_position.y > afloat_y - 1.5:
+		var carry: Vector2 = (drift - _last_drift) * wave_drift
+		global_position += Vector3(carry.x, 0.0, carry.y)
+	_last_drift = drift
 
 	move_and_slide()
 
-	# You can't swim out of the water: clamp to the wave surface so holding
-	# swim_up rides the waves instead of launching into the sky.
-	if global_position.y > swim_top_y:
-		global_position.y = swim_top_y
+	# You can't swim out of the water: holding swim_up rides the waves instead of launching
+	# into the sky. A little headroom above the float height lets a crest throw you up.
+	var ceiling := maxf(swim_top_y, afloat_y + 0.35)
+	if global_position.y > ceiling:
+		global_position.y = ceiling
 		velocity.y = minf(velocity.y, 0.0)
+
+	_floating = floating
+	_tilt_with_wave(delta, floating)
 
 	# Keep the surface ripples sitting on the waves above us.
 	surface_ripples.global_position = Vector3(global_position.x, surface_y, global_position.z)
+
+## Rolls the view with the slope of the wave under us while afloat, back to level otherwise.
+func _tilt_with_wave(delta: float, floating: bool) -> void:
+	var target := 0.0
+	if floating and wave_tilt > 0.0:
+		var right := camera.global_basis.x
+		right.y = 0.0
+		right = right.normalized() * 0.6
+		var slope: float = (water.get_wave_height(global_position + right) - water.get_wave_height(global_position - right)) / 1.2
+		target = clampf(atan(slope), -1.0, 1.0) * deg_to_rad(wave_tilt) / (PI / 4.0)
+	_wave_roll = lerpf(_wave_roll, target, 1.0 - exp(-delta * 4.0))
+	camera.rotation.z = _wave_roll
 
 func _process_pilot(delta: float) -> void:
 	if not is_instance_valid(helm_marker):
@@ -499,6 +564,8 @@ func _check_enter_swim() -> void:
 	var surface_y: float = water.get_wave_height(global_position)
 	if surface_y - global_position.y > swim_enter_depth:
 		state = State.SWIM
+		_last_drift = Vector2.INF
+		_last_afloat_y = INF
 		_release_deck()
 		collider.disabled = false
 		_play_splash(surface_y)
@@ -512,6 +579,8 @@ func _check_exit_swim() -> void:
 	var surface_y: float = water.get_wave_height(global_position)
 	if is_on_floor() and surface_y - global_position.y < swim_exit_depth:
 		state = State.WALK
+		_wave_roll = 0.0
+		camera.rotation.z = 0.0
 		surface_ripples.emitting = false
 
 func _play_splash(surface_y: float) -> void:
