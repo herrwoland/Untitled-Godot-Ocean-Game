@@ -218,10 +218,13 @@ var normal_maps := Texture2DArrayRD.new()
 var _accumulator = 0.0;
 var _displacement_update_rate: float;
 var _img: Image = null;
-## The readback before _img, and when _img arrived: heights are blended from one to the other
-## over a readback interval, so they glide instead of stepping 10 times a second.
+## The readback before _img, and the water `time` each was asked for. Heights are carried
+## forward from the two to now (see _sample_displacement), so they neither step 10 times a
+## second nor trail the waves being drawn.
 var _img_prev: Image = null
-var _img_arrived_msec := 0
+var _img_time := 0.0
+var _img_prev_time := 0.0
+var _requested_time := 0.0
 var _img_height: int;
 var _img_width: int;
 var map_scales : PackedVector4Array;
@@ -363,6 +366,7 @@ func _process(delta : float) -> void:
 	_accumulator += delta;
 	if _accumulator >= _displacement_update_rate:
 		_accumulator -= _displacement_update_rate
+		_requested_time = time
 		wave_generator.retrieve_displacement_map_async(0, _on_displacement_map_data)
 
 func _on_displacement_map_data(data: PackedByteArray) -> void:
@@ -379,7 +383,8 @@ func _on_displacement_map_data(data: PackedByteArray) -> void:
 	else:
 		spare.set_data(size, size, false, Image.FORMAT_RGBAH, data)
 	_img = spare
-	_img_arrived_msec = Time.get_ticks_msec()
+	_img_prev_time = _img_time
+	_img_time = _requested_time
 	# map_size may have changed (eg. via settings menu); keep cached dims in sync.
 	_img_width = size
 	_img_height = size
@@ -922,15 +927,19 @@ func _update_wakes(delta : float) -> void:
 	_wake_map.update(delta, center, stamps, wake_lifetime, wake_spread)
 	WATER_MAT.set_shader_parameter(&'wake_map_rect', _wake_map.rect)
 
-## Displacement at `uv`, blended between the last two readbacks by how long ago the newest
-## one arrived: a smooth signal one readback interval behind the GPU, which floating things
-## easily tolerate.
+## Displacement at `uv` right now. The newest readback is already a readback interval plus a
+## few frames old, and the eyes are kept off the waterline with it (player.gd), so a lagging
+## surface puts them straight into the one being drawn. Instead it is carried forward along
+## the change between the last two readbacks: waves change smoothly over seconds, so the
+## straight-line guess lands within a couple of centimetres. Capped at 1.5 intervals ahead,
+## in water time, so a stalled readback or a paused game can't send it running off.
 func _sample_displacement(cascade: int, uv: Vector2) -> Vector3:
-	var now := _sample_image(_img, uv)
-	if _img_prev == null:
-		return now
-	var blend := clampf((Time.get_ticks_msec() - _img_arrived_msec) / 1000.0 / maxf(_displacement_update_rate, 0.001), 0.0, 1.0)
-	return _sample_image(_img_prev, uv).lerp(now, blend)
+	var latest := _sample_image(_img, uv)
+	var span := _img_time - _img_prev_time
+	if _img_prev == null or span <= 0.0:
+		return latest
+	var ahead := clampf((time - _img_time) / span, 0.0, 1.5)
+	return latest + (latest - _sample_image(_img_prev, uv)) * ahead
 
 func _sample_image(img: Image, uv: Vector2) -> Vector3:
 	# Wrap UVs
