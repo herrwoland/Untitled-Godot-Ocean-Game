@@ -218,6 +218,10 @@ var normal_maps := Texture2DArrayRD.new()
 var _accumulator = 0.0;
 var _displacement_update_rate: float;
 var _img: Image = null;
+## The readback before _img, and when _img arrived: heights are blended from one to the other
+## over a readback interval, so they glide instead of stepping 10 times a second.
+var _img_prev: Image = null
+var _img_arrived_msec := 0
 var _img_height: int;
 var _img_width: int;
 var map_scales : PackedVector4Array;
@@ -331,7 +335,8 @@ func _ready() -> void:
 	_img = wave_generator.retrieve_displacement_map(0, _img)
 	_img_height = _img.get_height()
 	_img_width = _img.get_width()
-	_displacement_update_rate = (1 / displacement_updates_per_second)
+	# Float division: 1 / 10 in integers is 0, which read the whole map back every frame.
+	_displacement_update_rate = 1.0 / maxf(float(displacement_updates_per_second), 1.0)
 	_setup_underwater_effect()
 
 func _process(delta : float) -> void:
@@ -364,11 +369,17 @@ func _on_displacement_map_data(data: PackedByteArray) -> void:
 	var size: int = wave_generator.map_size if is_instance_valid(wave_generator) else 0
 	if size == 0 or data.size() != size * size * 8: # stale readback (eg. resolution just changed)
 		return
-	if _img == null or _img.get_width() != size:
-		_img = Image.create_from_data(size, size, false, Image.FORMAT_RGBAH, data)
+	# Kept as the half floats the GPU wrote: get_pixel() decodes them directly, and converting
+	# 8 MB to full floats cost ~10 ms of CPU per readback. The last map stays as _img_prev to
+	# blend from; its Image is then reused for the next one.
+	var spare := _img_prev
+	_img_prev = _img if _img != null and _img.get_width() == size else null
+	if spare == null or spare.get_width() != size or spare.get_format() != Image.FORMAT_RGBAH:
+		spare = Image.create_from_data(size, size, false, Image.FORMAT_RGBAH, data)
 	else:
-		_img.set_data(size, size, false, Image.FORMAT_RGBAH, data)
-	_img.convert(Image.FORMAT_RGBAF) # Convert to workable format
+		spare.set_data(size, size, false, Image.FORMAT_RGBAH, data)
+	_img = spare
+	_img_arrived_msec = Time.get_ticks_msec()
 	# map_size may have changed (eg. via settings menu); keep cached dims in sync.
 	_img_width = size
 	_img_height = size
@@ -911,7 +922,17 @@ func _update_wakes(delta : float) -> void:
 	_wake_map.update(delta, center, stamps, wake_lifetime, wake_spread)
 	WATER_MAT.set_shader_parameter(&'wake_map_rect', _wake_map.rect)
 
+## Displacement at `uv`, blended between the last two readbacks by how long ago the newest
+## one arrived: a smooth signal one readback interval behind the GPU, which floating things
+## easily tolerate.
 func _sample_displacement(cascade: int, uv: Vector2) -> Vector3:
+	var now := _sample_image(_img, uv)
+	if _img_prev == null:
+		return now
+	var blend := clampf((Time.get_ticks_msec() - _img_arrived_msec) / 1000.0 / maxf(_displacement_update_rate, 0.001), 0.0, 1.0)
+	return _sample_image(_img_prev, uv).lerp(now, blend)
+
+func _sample_image(img: Image, uv: Vector2) -> Vector3:
 	# Wrap UVs
 	uv.x = wrapf(uv.x, 0.0, 1.0)
 	uv.y = wrapf(uv.y, 0.0, 1.0)
@@ -929,10 +950,10 @@ func _sample_displacement(cascade: int, uv: Vector2) -> Vector3:
 	var fy := y - y0
 	
 	# Get cached pixel data
-	var c00: Color = _img.get_pixel(x0, y0) # _cached_displacements[y0 * img_width + x0]
-	var c10: Color = _img.get_pixel(x1, y0) # _cached_displacements[y0 * img_width + x1]
-	var c01: Color = _img.get_pixel(x0, y1) #_cached_displacements[y1 * img_width + x0]
-	var c11: Color = _img.get_pixel(x1, y1) #_cached_displacements[y1 * img_width + x1]
+	var c00: Color = img.get_pixel(x0, y0) # _cached_displacements[y0 * img_width + x0]
+	var c10: Color = img.get_pixel(x1, y0) # _cached_displacements[y0 * img_width + x1]
+	var c01: Color = img.get_pixel(x0, y1) #_cached_displacements[y1 * img_width + x0]
+	var c11: Color = img.get_pixel(x1, y1) #_cached_displacements[y1 * img_width + x1]
 	
 	# Bilinear interpolation
 	var col_x0 := c00.lerp(c10, fx)

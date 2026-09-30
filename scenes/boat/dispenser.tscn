@@ -12,7 +12,7 @@
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_5s6u7"]
 height = 0.9717102
-radius = 0.1303711
+radius = 0.2626953
 
 [sub_resource type="Animation" id="Animation_uawhp"]
 length = 0.001
@@ -94,9 +94,9 @@ tracks/0/path = NodePath("handle_hinge:rotation:z")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"handle_modes": PackedInt32Array(2),
-"points": PackedFloat32Array(0, -0.016666671, -0.001454441, 0, 0),
-"times": PackedFloat32Array(0)
+"handle_modes": PackedInt32Array(2, 2, 0, 0, 0),
+"points": PackedFloat32Array(0, -0.016666671, -0.001454441, 0, 0, 0.415, -0.008333334, 0, 0, 0, 0.415, -0.008333334, 0, 0, 0, 0.585, -0.008333334, 0.06916666, 0, 0, 0, -0.016666671, -0.001454441, 0, 0),
+"times": PackedFloat32Array(0, 0.05, 0.1, 0.15, 0.35000002)
 }
 tracks/1/type = "bezier"
 tracks/1/imported = false
