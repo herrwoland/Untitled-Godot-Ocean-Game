@@ -19,6 +19,9 @@ enum State { WALK, SWIM, PILOT, OPERATE, CLIMB }
 ## Keeping afloat (holding swim_up at the surface) rides the water exactly, like a Water
 ## surface_point: the eyes this high above it (m), carried up, down and round with the waves.
 @export_range(0.0, 1.0, 0.01) var float_eye_height: float = 0.25
+## Afloat, the view rolls with the slope of the water under you, like a body lying on it:
+## degrees of roll on a 45 degree slope (0 = keep the view level).
+@export_range(0.0, 30.0, 0.5) var float_tilt: float = 12.0
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
@@ -77,6 +80,7 @@ var _eye_offset: float = 0.0
 var _ears_underwater: bool = false
 var _submerged_at_msec: int = 0 # when the ears last went under, for the surfacing gasp
 var _float_rest := Vector2.INF # afloat: the piece of water we ride (Water.surface_rest); INF = not afloat
+var _float_roll := 0.0 # the view's roll from the wave we are riding
 
 const GASP_AFTER_SECONDS := 4.0 # dives shorter than this surface without a gasp
 
@@ -303,6 +307,8 @@ func _start_climb(target: Node, t: float) -> void:
 	collider.disabled = true # the hull and rungs are right in front of us
 	surface_ripples.emitting = false
 	_float_rest = Vector2.INF
+	_float_roll = 0.0
+	camera.rotation.z = 0.0
 
 ## On the ladder: forward/space climbs, back goes down, back at the foot steps off, swim_down
 ## (C) lets go. The position is worked out along the ladder every frame, so a moving ship
@@ -463,9 +469,11 @@ func _process_swim(delta: float) -> void:
 		var afloat_feet := surface_y + float_eye_height - _head_base_y
 		if _float_rest != Vector2.INF or global_position.y >= afloat_feet - 0.05:
 			_float_on_surface(delta, move_dir)
+			_roll_with_wave(delta, true)
 			surface_ripples.global_position = Vector3(global_position.x, surface_y, global_position.z)
 			return
 	_float_rest = Vector2.INF
+	_roll_with_wave(delta, false)
 
 	velocity.x = move_dir.x * swim_speed
 	velocity.z = move_dir.z * swim_speed
@@ -504,6 +512,23 @@ func _float_on_surface(delta: float, move_dir: Vector3) -> void:
 	move_and_slide()
 	if global_position.distance_to(target) > 0.1:
 		_float_rest = water.surface_rest(global_position)
+
+## Rolls the view with the slope of the water across it while afloat, easing back to level
+## otherwise. Only roll: pitching would fight the mouse.
+func _roll_with_wave(delta: float, afloat: bool) -> void:
+	var target := 0.0
+	if afloat and float_tilt > 0.0:
+		var right := camera.global_basis.x
+		right.y = 0.0
+		right = right.normalized() * 0.6
+		var slope: float = (water.get_wave_height(global_position + right) - water.get_wave_height(global_position - right)) / 1.2
+		target = atan(slope) * float_tilt / 45.0
+	if target == 0.0 and _float_roll == 0.0:
+		return
+	_float_roll = lerpf(_float_roll, target, 1.0 - exp(-delta * 5.0))
+	if absf(_float_roll) < 0.0005 and target == 0.0:
+		_float_roll = 0.0
+	camera.rotation.z = _float_roll
 
 func _process_pilot(delta: float) -> void:
 	if not is_instance_valid(helm_marker):
@@ -546,6 +571,8 @@ func _check_exit_swim() -> void:
 		state = State.WALK
 		surface_ripples.emitting = false
 		_float_rest = Vector2.INF
+		_float_roll = 0.0
+		camera.rotation.z = 0.0
 
 func _play_splash(surface_y: float) -> void:
 	splash_particles.global_position = Vector3(global_position.x, surface_y, global_position.z)
