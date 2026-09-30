@@ -27,6 +27,9 @@ enum MissionRole { NONE, LETTER, PACKAGE }
 @export var neutral_buoyancy: bool = false
 @export var water: Node
 
+const LAYER_INTERACTABLE := 0b100 # layer 3
+const LAYER_ITEMS := 0b1000 # layer 4
+
 var carried := false
 var _picked_once := false
 var _floating := false # neutral-buoyancy item currently held by the water
@@ -88,8 +91,11 @@ func on_dropped(inherited_velocity: Vector3) -> void:
 	carried = false
 	_floating = false
 	freeze = false
-	collision_layer = 0b101 # world + interactable
-	collision_mask = 0b11 # collide with the world (shore) and ship decks (layer 2)
+	# Loose items live on their own layer. Not "world": a ship's hull is one big box around
+	# the whole vessel, and anything on the world layer lying on her deck is deep inside it --
+	# the physics would shove the entire ship to get it out.
+	collision_layer = LAYER_ITEMS | LAYER_INTERACTABLE
+	collision_mask = 0b11 # land on the world (shore) and on ship decks (layer 2)
 	linear_velocity = inherited_velocity
 	angular_velocity = Vector3.ZERO
 	sleeping = false

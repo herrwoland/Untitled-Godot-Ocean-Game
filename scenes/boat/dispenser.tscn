@@ -306,9 +306,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5267668, -0.6542137, 0)
 mesh = SubResource("PlaneMesh_5s6u7")
 surface_material_override/0 = SubResource("StandardMaterial3D_klyyb")
 
-[node name="StaticBody3D" type="RigidBody3D" parent="platform" unique_id=521183397]
-collision_layer = 0
-collision_mask = 2
+[node name="StaticBody3D" type="StaticBody3D" parent="platform" unique_id=521183397]
+collision_layer = 2
+collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="platform/StaticBody3D" unique_id=1061194697]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.02709961, -0.053431034, -0.018493652)

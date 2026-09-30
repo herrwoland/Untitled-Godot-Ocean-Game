@@ -18,7 +18,7 @@ radius = 0.21044922
 height = 0.87786865
 
 [node name="fuel" type="RigidBody3D" unique_id=1066468725 groups=["fuel"]]
-collision_layer = 5
+collision_layer = 12
 mass = 0.001
 freeze_mode = 1
 script = ExtResource("1_carry")
