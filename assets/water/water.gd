@@ -62,6 +62,11 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 		updates_per_second = value
 
 @export var displacement_updates_per_second := 10
+## How many wave cascades (largest first) are read back to the CPU for floating things, the
+## player's eyes and the underwater effect. Each costs a readback. The rest only exist on the GPU,
+## so things floating on the CPU heights miss them: 2 covers the swell and the chop on top of
+## it in every preset (the third is flat in all of them).
+@export_range(1, 4) var cpu_cascades := 2
 
 ## Full-screen underwater effect (see underwater_effect.gd). Fog colour and absorption are
 ## taken from the water material's "Underwater" uniforms so they match the surface.
@@ -217,16 +222,14 @@ var normal_maps := Texture2DArrayRD.new()
 
 var _accumulator = 0.0;
 var _displacement_update_rate: float;
-var _img: Image = null;
-## The readback before _img, and the water `time` each was asked for. Heights are carried
-## forward from the two to now (see _sample_displacement), so they neither step 10 times a
-## second nor trail the waves being drawn.
-var _img_prev: Image = null
-var _img_time := 0.0
-var _img_prev_time := 0.0
-var _requested_time := 0.0
-var _img_height: int;
-var _img_width: int;
+## Per cascade: the latest readback, the one before it, and the water `time` each was asked
+## for. Heights are carried forward from the two to now (see _sample_displacement), so they
+## neither step 10 times a second nor trail the waves being drawn.
+var _imgs: Array[Image] = []
+var _imgs_prev: Array[Image] = []
+var _img_times := PackedFloat64Array()
+var _img_prev_times := PackedFloat64Array()
+var _requested_times := PackedFloat64Array()
 var map_scales : PackedVector4Array;
 
 const MAX_WAVE_BLOCKERS := 8
@@ -256,22 +259,45 @@ var _blocker_b := PackedVector4Array()
 # ------ Public Interface ----- #
 ## `masked = false` ignores wave blockers (eg. buoyancy keeps rocking the ship
 ## even when a calm zone flattens the water visually around it).
+## Height of the water surface above/below `global_position` (the cascades read back to the
+## CPU, see cpu_cascades).
+## The waves move the water sideways as well as up and down, so the water that ends up above a
+## point started somewhere beside it. Reading the height at the point itself gives the height of
+## a neighbouring piece of wave -- a metre or two off in a storm, which floating things feel as
+## being lifted at the wrong moment. So find where that water came from first: a few steps of
+## "step back by the sideways shift found there". Mirrors wave_height() in underwater_post.glsl.
 func get_wave_height(global_position: Vector3, masked: bool = true) -> float:
-	var uv: Vector2 = Vector2(global_position.x, global_position.z)
-	var displacement: Vector3 = Vector3.ZERO
-
-	# TODO: Do once for each cascade for best accuracy
-	var i = 0;
-	var scales: Vector4 = map_scales[i]
-	var sample_uv: Vector2 = uv * Vector2(scales.x, scales.y)
-	displacement += _sample_displacement(i, sample_uv) * scales.z
+	var xz := Vector2(global_position.x, global_position.z)
 
 	# Domes/swells from WaterDeformer nodes lift the surface and calm the waves riding on it.
-	var shape := water_shapes_eval(Vector2(global_position.x, global_position.z))
-	var waves := displacement.y * (1.0 - shape.y)
-	if masked:
-		waves *= blocker_mask(global_position)
-	return waves + shape.x
+	var shape := water_shapes_eval(xz)
+	var wave_scale := (1.0 - shape.y) * (blocker_mask(global_position) if masked else 1.0)
+
+	var rest := xz
+	var displacement := Vector3.ZERO
+	for i in 3:
+		displacement = _cpu_displacement(rest) * wave_scale
+		rest = xz - Vector2(displacement.x, displacement.z)
+	return displacement.y + shape.x
+
+## Where a piece of the water surface is right now, given where it sits at rest (x, z with no
+## waves): the waves carry it round in a small loop as well as up and down. Following one piece
+## over time is floating exactly on the waves, sideways sway included. Same cascade, calm zones
+## and water shapes as get_wave_height().
+func surface_point(rest: Vector2, masked: bool = true) -> Vector3:
+	var shape := water_shapes_eval(rest)
+	var wave_scale := (1.0 - shape.y) * (blocker_mask(Vector3(rest.x, 0.0, rest.y)) if masked else 1.0)
+	var d := _cpu_displacement(rest) * wave_scale
+	return Vector3(rest.x + d.x, d.y + shape.x, rest.y + d.z) # same height convention as get_wave_height()
+
+## The rest position (see surface_point) of the water that is over `global_position` right now.
+func surface_rest(global_position: Vector3, masked: bool = true) -> Vector2:
+	var xz := Vector2(global_position.x, global_position.z)
+	var rest := xz
+	for i in 3:
+		var p := surface_point(rest, masked)
+		rest -= Vector2(p.x, p.z) - xz
+	return rest
 
 ## Water shapes (from WaterDeformer nodes) at a world XZ position: (height offset, calm).
 ## Must mirror water_shapes_eval() in the water shader.
@@ -326,9 +352,13 @@ func _ready() -> void:
 	RenderingServer.global_shader_parameter_set(&'water_color', water_color)
 	RenderingServer.global_shader_parameter_set(&'foam_color', foam_color)
 
-	_img = wave_generator.retrieve_displacement_map(0, _img)
-	_img_height = _img.get_height()
-	_img_width = _img.get_width()
+	var n := _cpu_cascade_count()
+	_imgs.resize(n)
+	_imgs_prev.resize(n)
+	_img_times.resize(n)
+	_img_prev_times.resize(n)
+	_requested_times.resize(n)
+	_imgs[0] = wave_generator.retrieve_displacement_map(0) # the rest arrive with the first readback
 	# Float division: 1 / 10 in integers is 0, which read the whole map back every frame.
 	_displacement_update_rate = 1.0 / maxf(float(displacement_updates_per_second), 1.0)
 	_setup_underwater_effect()
@@ -353,33 +383,48 @@ func _process(delta : float) -> void:
 	time += delta
 	
 	# Resample displacement (async: the data arrives a few frames later, which
-	# buoyancy easily tolerates, and avoids a full GPU pipeline stall).
+	# buoyancy easily tolerates, and avoids a full GPU pipeline stall). The cascades take turns
+	# through each interval rather than all going at once: each readback is a spike, and
+	# stacking them in one frame makes a hitch.
+	var n := _imgs.size()
+	var before: float = _accumulator
 	_accumulator += delta;
+	for c in n:
+		var slot := _displacement_update_rate * c / n
+		if before < slot and _accumulator >= slot or (c == 0 and _accumulator >= _displacement_update_rate):
+			_requested_times[c] = time
+			wave_generator.retrieve_displacement_map_async(c, _on_displacement_map_data.bind(c))
 	if _accumulator >= _displacement_update_rate:
 		_accumulator -= _displacement_update_rate
-		_requested_time = time
-		wave_generator.retrieve_displacement_map_async(0, _on_displacement_map_data)
 
-func _on_displacement_map_data(data: PackedByteArray) -> void:
+func _on_displacement_map_data(data: PackedByteArray, cascade: int) -> void:
 	var size: int = wave_generator.map_size if is_instance_valid(wave_generator) else 0
-	if size == 0 or data.size() != size * size * 8: # stale readback (eg. resolution just changed)
+	if size == 0 or data.size() != size * size * 8 or cascade >= _imgs.size(): # stale readback (eg. resolution just changed)
 		return
 	# Kept as the half floats the GPU wrote: get_pixel() decodes them directly, and converting
-	# 8 MB to full floats cost ~10 ms of CPU per readback. The last map stays as _img_prev to
-	# blend from; its Image is then reused for the next one.
-	var spare := _img_prev
-	_img_prev = _img if _img != null and _img.get_width() == size else null
+	# 8 MB to full floats cost ~10 ms of CPU per readback. The last map stays as the previous one
+	# to predict from; its Image is then reused for the next one.
+	var latest := _imgs[cascade]
+	var spare := _imgs_prev[cascade]
+	_imgs_prev[cascade] = latest if latest != null and latest.get_width() == size else null
 	if spare == null or spare.get_width() != size or spare.get_format() != Image.FORMAT_RGBAH:
 		spare = Image.create_from_data(size, size, false, Image.FORMAT_RGBAH, data)
 	else:
 		spare.set_data(size, size, false, Image.FORMAT_RGBAH, data)
-	_img = spare
-	_img_prev_time = _img_time
-	_img_time = _requested_time
-	# map_size may have changed (eg. via settings menu); keep cached dims in sync.
-	_img_width = size
-	_img_height = size
+	_imgs[cascade] = spare
+	_img_prev_times[cascade] = _img_times[cascade]
+	_img_times[cascade] = _requested_times[cascade]
 
+func _cpu_cascade_count() -> int:
+	return clampi(cpu_cascades, 1, maxi(map_scales.size(), 1))
+
+## The displacement of the CPU cascades together at a rest position (see surface_point).
+func _cpu_displacement(rest: Vector2) -> Vector3:
+	var d := Vector3.ZERO
+	for c in mini(_imgs.size(), map_scales.size()):
+		var scales: Vector4 = map_scales[c]
+		d += _sample_displacement(c, rest * Vector2(scales.x, scales.y)) * scales.z
+	return d
 func _setup_wave_generator() -> void:
 	if parameters.size() <= 0: return
 	for param in parameters:
@@ -925,12 +970,16 @@ func _update_wakes(delta : float) -> void:
 ## straight-line guess lands within a couple of centimetres. Capped at 1.5 intervals ahead,
 ## in water time, so a stalled readback or a paused game can't send it running off.
 func _sample_displacement(cascade: int, uv: Vector2) -> Vector3:
-	var latest := _sample_image(_img, uv)
-	var span := _img_time - _img_prev_time
-	if _img_prev == null or span <= 0.0:
+	var img := _imgs[cascade]
+	if img == null:
+		return Vector3.ZERO # not read back yet
+	var latest := _sample_image(img, uv)
+	var prev := _imgs_prev[cascade]
+	var span := _img_times[cascade] - _img_prev_times[cascade]
+	if prev == null or span <= 0.0:
 		return latest
-	var ahead := clampf((time - _img_time) / span, 0.0, 1.5)
-	return latest + (latest - _sample_image(_img_prev, uv)) * ahead
+	var ahead := clampf((time - _img_times[cascade]) / span, 0.0, 1.5)
+	return latest + (latest - _sample_image(prev, uv)) * ahead
 
 func _sample_image(img: Image, uv: Vector2) -> Vector3:
 	# Wrap UVs
@@ -938,13 +987,14 @@ func _sample_image(img: Image, uv: Vector2) -> Vector3:
 	uv.y = wrapf(uv.y, 0.0, 1.0)
 	
 	# Calculate coordinates
-	var x: float = uv.x * (_img_width - 1)
-	var y: float = uv.y * (_img_width - 1)
+	var w := img.get_width()
+	var x: float = uv.x * (w - 1)
+	var y: float = uv.y * (w - 1)
 	
 	var x0 := int(floor(x))
 	var y0 := int(floor(y))
-	var x1 = min(x0 + 1, _img_width - 1)
-	var y1 = min(y0 + 1, _img_width - 1)
+	var x1 = min(x0 + 1, w - 1)
+	var y1 = min(y0 + 1, w - 1)
 	
 	var fx := x - x0
 	var fy := y - y0
