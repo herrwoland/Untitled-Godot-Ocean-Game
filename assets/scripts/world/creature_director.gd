@@ -76,12 +76,9 @@ func _physics_process(delta: float) -> void:
 			if escaped and not creature.is_carrying():
 				creature.end_hunt()
 			continue
-		# Slow orbit around the player's patch of sea, far below the waves.
-		var target := _orbit_target(i, time)
-		var step := target - creature.global_position
-		creature.global_position += step * minf(delta * 0.8, 1.0)
-		if step.length() > 0.1:
-			creature.face_along(step, delta)
+		# Slow orbit around the player's patch of sea, far below the waves —
+		# swum forward like everything else they do, never slid.
+		creature.cruise_toward(_orbit_target(i, time), delta)
 
 func _orbit_target(i: int, time: float) -> Vector3:
 	var angle := time * orbit_speed + _orbit_phase[i]
