@@ -1,0 +1,167 @@
+[gd_scene format=3 uid="uid://llkihp2ykkjx"]
+
+[ext_resource type="Script" uid="uid://bd0nygroesuwm" path="res://scenes/boat/furnace_fire.gd" id="1_fire"]
+[ext_resource type="Texture2D" uid="uid://bdliwg7s74cje" path="res://scenes/boat/fire_flames_sheet.png" id="2_sheet"]
+
+[sub_resource type="Gradient" id="Gradient_coals"]
+offsets = PackedFloat32Array(0, 0.3, 0.7, 1)
+colors = PackedColorArray(0.9, 0.25, 0.04, 0, 1, 0.38, 0.08, 0.8, 0.85, 0.2, 0.03, 0.7, 0.5, 0.08, 0.01, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_coals"]
+gradient = SubResource("Gradient_coals")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_coals"]
+emission_shape = 3
+emission_box_extents = Vector3(0.18, 0.01, 0.15)
+angle_min = -180.0
+angle_max = 180.0
+gravity = Vector3(0, 0, 0)
+scale_min = 0.6
+scale_max = 1.4
+color_ramp = SubResource("GradientTexture1D_coals")
+anim_offset_max = 1.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_coals"]
+transparency = 1
+blend_mode = 1
+shading_mode = 0
+disable_fog = true
+vertex_color_use_as_albedo = true
+albedo_texture = ExtResource("2_sheet")
+texture_filter = 0
+billboard_mode = 3
+billboard_keep_scale = true
+particles_anim_h_frames = 3
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="QuadMesh" id="QuadMesh_coals"]
+material = SubResource("StandardMaterial3D_coals")
+size = Vector2(0.2, 0.1)
+
+[sub_resource type="Gradient" id="Gradient_flame"]
+offsets = PackedFloat32Array(0, 0.12, 0.45, 0.8, 1)
+colors = PackedColorArray(1, 0.8, 0.45, 0, 1, 0.62, 0.25, 0.6, 0.9, 0.35, 0.08, 0.55, 0.55, 0.12, 0.02, 0.3, 0.25, 0.04, 0.01, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_flame"]
+gradient = SubResource("Gradient_flame")
+
+[sub_resource type="Curve" id="Curve_flame_size"]
+_data = [Vector2(0, 0.35), 0.0, 3.0, 0, 0, Vector2(0.25, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.25), -1.2, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_flame_size"]
+curve = SubResource("Curve_flame_size")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_flames"]
+emission_shape = 3
+emission_box_extents = Vector3(0.14, 0.02, 0.12)
+angle_min = -12.0
+angle_max = 12.0
+direction = Vector3(0, 1, 0)
+spread = 10.0
+initial_velocity_min = 0.25
+initial_velocity_max = 0.5
+gravity = Vector3(0, 3.8, 0)
+damping_min = 0.8
+damping_max = 1.2
+scale_min = 0.099999994
+scale_max = 0.79999995
+scale_curve = SubResource("CurveTexture_flame_size")
+color_ramp = SubResource("GradientTexture1D_flame")
+anim_offset_max = 1.0
+turbulence_enabled = true
+turbulence_noise_strength = 1.5
+turbulence_noise_scale = 3.5
+turbulence_noise_speed = Vector3(0, 1.5, 0)
+turbulence_influence_min = 0.05
+turbulence_influence_max = 0.15
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_flames"]
+transparency = 1
+blend_mode = 1
+shading_mode = 0
+disable_ambient_light = true
+disable_fog = true
+disable_specular_occlusion = true
+vertex_color_use_as_albedo = true
+albedo_texture = ExtResource("2_sheet")
+texture_filter = 0
+billboard_mode = 3
+billboard_keep_scale = true
+particles_anim_h_frames = 3
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="QuadMesh" id="QuadMesh_flames"]
+material = SubResource("StandardMaterial3D_flames")
+size = Vector2(0.24, 0.34)
+center_offset = Vector3(0, 0.1, 0)
+
+[sub_resource type="Gradient" id="Gradient_sparks"]
+offsets = PackedFloat32Array(0, 0.1, 0.6, 1)
+colors = PackedColorArray(1, 0.7, 0.3, 0, 1, 0.55, 0.15, 1, 0.95, 0.3, 0.05, 0.8, 0.6, 0.1, 0.02, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_sparks"]
+gradient = SubResource("Gradient_sparks")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_sparks"]
+emission_shape = 3
+emission_box_extents = Vector3(0.12, 0.02, 0.1)
+direction = Vector3(0, 1, 0)
+spread = 25.0
+initial_velocity_min = 0.6
+initial_velocity_max = 1.3
+gravity = Vector3(0, 0.4, 0)
+damping_min = 0.4
+damping_max = 0.8
+scale_min = 0.6
+scale_max = 1.2
+color_ramp = SubResource("GradientTexture1D_sparks")
+turbulence_enabled = true
+turbulence_noise_strength = 2.0
+turbulence_noise_scale = 2.0
+turbulence_influence_max = 0.3
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_sparks"]
+transparency = 1
+blend_mode = 1
+shading_mode = 0
+disable_fog = true
+vertex_color_use_as_albedo = true
+billboard_mode = 3
+billboard_keep_scale = true
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="QuadMesh" id="QuadMesh_sparks"]
+material = SubResource("StandardMaterial3D_sparks")
+size = Vector2(0.01, 0.01)
+
+[node name="furnace_fire" type="Node3D" unique_id=355197691]
+script = ExtResource("1_fire")
+
+[node name="Coals" type="GPUParticles3D" parent="." unique_id=1214288758]
+amount = 10
+lifetime = 1.6
+randomness = 0.5
+local_coords = true
+process_material = SubResource("ParticleProcessMaterial_coals")
+draw_pass_1 = SubResource("QuadMesh_coals")
+
+[node name="Flames" type="GPUParticles3D" parent="." unique_id=2095132973]
+amount = 100
+lifetime = 0.49
+randomness = 0.4
+local_coords = true
+process_material = SubResource("ParticleProcessMaterial_flames")
+draw_pass_1 = SubResource("QuadMesh_flames")
+
+[node name="Sparks" type="GPUParticles3D" parent="." unique_id=1085966446]
+amount = 6
+lifetime = 1.4
+randomness = 0.8
+local_coords = true
+process_material = SubResource("ParticleProcessMaterial_sparks")
+draw_pass_1 = SubResource("QuadMesh_sparks")

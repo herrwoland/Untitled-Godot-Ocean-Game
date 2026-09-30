@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://cjj8nicps025"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_dly7x"]
+radius = 0.20996094
+height = 0.8791504
+radial_segments = 4
+rings = 1
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_5s6u7"]
+radius = 0.21044922
+height = 0.87786865
+
+[node name="fuel" type="Node3D" unique_id=1066468725]
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="." unique_id=175840446]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0)
+mesh = SubResource("CapsuleMesh_dly7x")
+
+[node name="RigidBody3D" type="RigidBody3D" parent="." unique_id=1736348410]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RigidBody3D" unique_id=1352280723]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, -1.4420174e-09, 0.032989502)
+shape = SubResource("CapsuleShape3D_5s6u7")

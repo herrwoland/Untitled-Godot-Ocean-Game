@@ -12,13 +12,13 @@
 [ext_resource type="Script" uid="uid://cs2x7rmusrtt6" path="res://assets/scripts/interactables/ship_ladder.gd" id="6_ladder"]
 [ext_resource type="PackedScene" uid="uid://ws3qh2fav0ah" path="res://assets/models/boat/front_light.glb" id="7_vlsv3"]
 [ext_resource type="PackedScene" uid="uid://bs7x4dgp16lr5" path="res://assets/models/boat/boat_0.1.glb" id="8_2ib73"]
-[ext_resource type="Texture2D" uid="uid://cp5swedirc3jk" path="res://scenes/boat/Fire Loop 3.png" id="8_sg2do"]
 [ext_resource type="PackedScene" uid="uid://d327mym4cwyr7" path="res://assets/models/boat/ladder.glb" id="9_4dvsp"]
 [ext_resource type="Script" uid="uid://c31olmyjgo1bk" path="res://assets/scripts/interactables/searchlight_interactable.gd" id="9_searchlight"]
 [ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="11_w61sw"]
 [ext_resource type="PackedScene" uid="uid://dj8t1o61d618s" path="res://scenes/boat/dispenser.tscn" id="17_duxm1"]
 [ext_resource type="Script" uid="uid://cxunwhxll1nib" path="res://assets/scripts/world/wake_emitter.gd" id="20_wake"]
 [ext_resource type="Script" uid="uid://k1t7w7sw8jih" path="res://assets/scripts/world/bow_spray.gd" id="21_spray"]
+[ext_resource type="PackedScene" uid="uid://llkihp2ykkjx" path="res://scenes/boat/furnace_fire.tscn" id="22_fire"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_82xsv"]
 size = Vector3(44, 8.062927, 13.075356)
@@ -53,39 +53,6 @@ emission_energy_multiplier = 0.95
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_2ib73"]
 radius = 4.768
 height = 28.039642
-
-[sub_resource type="Curve" id="Curve_ka04m"]
-_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(1, 1), 1.4, 0.0, 0, 0]
-point_count = 2
-
-[sub_resource type="CurveTexture" id="CurveTexture_rf6rj"]
-curve = SubResource("Curve_ka04m")
-
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_5s6u7"]
-lifetime_randomness = 1.0
-emission_shape_scale = Vector3(0.3, 0.3, 0.3)
-emission_shape = 1
-emission_sphere_radius = 1.0
-gravity = Vector3(0, 4.905, 0)
-damping_min = 2.4310002
-damping_max = 2.4310002
-scale_curve = SubResource("CurveTexture_rf6rj")
-turbulence_enabled = true
-turbulence_noise_scale = 2.088
-turbulence_noise_speed = Vector3(0, 1, 0)
-turbulence_influence_max = 0.20700002
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_sg2do"]
-blend_mode = 1
-albedo_texture = ExtResource("8_sg2do")
-emission_enabled = true
-emission_texture = ExtResource("8_sg2do")
-billboard_mode = 1
-
-[sub_resource type="PlaneMesh" id="PlaneMesh_vqk42"]
-material = SubResource("StandardMaterial3D_sg2do")
-size = Vector2(0.3, 0.3)
-orientation = 2
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_5s6u7"]
 height = 0.88420105
@@ -348,12 +315,8 @@ transform = Transform3D(1, 0, 4.2563406e-20, 0, -4.371139e-08, -1, 0, 1, -4.3711
 shape = SubResource("CapsuleShape3D_2ib73")
 debug_color = Color(0.97, 0, 0.4688336, 1)
 
-[node name="furnace_fire" type="GPUParticles3D" parent="boat" unique_id=1062023744]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.046869047, 2.667962, -3.2256393)
-amount = 100
-lifetime = 0.63
-process_material = SubResource("ParticleProcessMaterial_5s6u7")
-draw_pass_1 = SubResource("PlaneMesh_vqk42")
+[node name="furnace_fire" parent="boat" unique_id=1062023744 instance=ExtResource("22_fire")]
+transform = Transform3D(1.8725584, 0, 0, 0, 1.8725584, 0, 0, 0, 1.8725584, 0.039646808, 2.4179628, -3.6073751)
 
 [node name="front_light_hinge" type="Node3D" parent="." unique_id=2145380777]
 transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, -23.338467, 4.56229, 0)

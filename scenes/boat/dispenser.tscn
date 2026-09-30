@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://cepspq3fa7cqs" path="res://assets/models/boat/dispenser_door_3.glb" id="4_q3wrn"]
 [ext_resource type="PackedScene" uid="uid://b4ggquqtvybs5" path="res://assets/models/boat/dispenser_door_4.glb" id="5_2ja2y"]
 [ext_resource type="PackedScene" uid="uid://6e2u8ui7ihyo" path="res://assets/models/boat/dispenser_handle.glb" id="6_4654q"]
+[ext_resource type="Texture2D" uid="uid://diwk0yorylawr" path="res://assets/models/boat/dispenser_door_1_metal_plate_02_diff_1k.jpg" id="8_v7pm1"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_5s6u7"]
 height = 0.9717102
@@ -69,6 +70,17 @@ tracks/4/keys = {
 "points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
 "times": PackedFloat32Array(0)
 }
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("platform:position:y")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-0.6542137, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
 
 [sub_resource type="Animation" id="Animation_v7pm1"]
 resource_name = "close"
@@ -127,6 +139,17 @@ tracks/4/loop_wrap = true
 tracks/4/keys = {
 "handle_modes": PackedInt32Array(2, 2),
 "points": PackedFloat32Array(-0.57438713, 0, 0, 0.083333336, 0, 0, -0.083333336, 0, 0, 0),
+"times": PackedFloat32Array(0, 0.25)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("platform:position:y")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0, 2),
+"points": PackedFloat32Array(-0.0995667, -0.25, 0, 0.25, 0, -0.6471838, -0.041666668, 0.091269515, 0, 0),
 "times": PackedFloat32Array(0, 0.25)
 }
 
@@ -189,6 +212,17 @@ tracks/4/keys = {
 "points": PackedFloat32Array(0, -0.25, 0, 0.25, 0, -0.57438713, -0.016666671, 0.09573119, 0, 0),
 "times": PackedFloat32Array(0.90000004, 1.1)
 }
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("platform:position:y")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0, 0),
+"points": PackedFloat32Array(-0.6542137, -0.25, 0, 0.25, 0, -0.0995667, -0.050000004, -0.09244117, 0, 0),
+"times": PackedFloat32Array(0.7, 1.2)
+}
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_v7pm1"]
 _data = {
@@ -196,6 +230,17 @@ _data = {
 &"close": SubResource("Animation_v7pm1"),
 &"open": SubResource("Animation_v0lfl")
 }
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_5s6u7"]
+size = Vector2(0.86, 1.15)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_klyyb"]
+albedo_texture = ExtResource("8_v7pm1")
+uv1_scale = Vector3(0.047, 0.075, 0.047)
+texture_filter = 0
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5s6u7"]
+size = Vector3(0.9458008, 0.11633301, 1.1905518)
 
 [node name="dispenser" type="Node3D" unique_id=1913581995]
 script = ExtResource("1_v0lfl")
@@ -243,5 +288,19 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.545963, -0.41217315, 0)
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=389031377]
 libraries/ = SubResource("AnimationLibrary_v7pm1")
+
+[node name="platform" type="MeshInstance3D" parent="." unique_id=476405256]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5267668, -0.6542137, 0)
+mesh = SubResource("PlaneMesh_5s6u7")
+surface_material_override/0 = SubResource("StandardMaterial3D_klyyb")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="platform" unique_id=590819616]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="platform/StaticBody3D" unique_id=1061194697]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.02709961, -0.053431034, -0.018493652)
+shape = SubResource("BoxShape3D_5s6u7")
+
+[node name="fuel_spawn_point" type="Marker3D" parent="platform" unique_id=1274108655]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.16670221, 0)
 
 [editable path="handle_hinge/dispenser_handle"]
