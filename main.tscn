@@ -50,6 +50,7 @@
 [ext_resource type="PackedScene" uid="uid://c1a5366rpgr2k" path="res://assets/models/ship/boat.tscn" id="45_boat"]
 [ext_resource type="PackedScene" uid="uid://c4j4cc8pl3fqr" path="res://assets/models/creatures/hunter_fish.tscn" id="50_hrvbo"]
 [ext_resource type="Script" uid="uid://csyjpi4nlac4u" path="res://assets/scripts/world/underwater_glow.gd" id="53_abqjc"]
+[ext_resource type="PackedScene" path="res://scenes/test/buoyancy_point_test.tscn" id="54_6iyjs"]
 [ext_resource type="Script" uid="uid://c7xykbyb5m0er" path="res://assets/scripts/world/rain.gd" id="60_rain"]
 [ext_resource type="Script" uid="uid://5j2rqum415rn" path="res://assets/weather/weather.gd" id="70_weather"]
 [ext_resource type="Texture2D" path="res://assets/textures/Ground057_1K-PNG_Normal.res" id="99_gnorm"]
@@ -438,8 +439,7 @@ shadow_blur = 4.592
 sky_mode = 1
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31.13501, 3.744247, -2.2671852)
-visible = false
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -44.28994, 17.49117, -16.103525)
 script = ExtResource("60_rain")
 intensity = 0.85
 wind_strength = 9.0
@@ -471,7 +471,7 @@ water = NodePath("../Water")
 creature_count = 1
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31, 0, -2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -44, 0, -16)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -990,6 +990,16 @@ mesh = SubResource("CylinderMesh_5s6u7")
 
 [node name="water_test_cam" type="Camera3D" parent="." unique_id=874141532]
 transform = Transform3D(-0.9902683, 0.065872595, -0.122594856, 0, 0.8808907, 0.47331968, 0.13917147, 0.46871346, -0.87231815, -66.901695, 8.194256, 11.157707)
+
+[node name="BuoyancyPointTest" parent="." unique_id=1759410664 node_paths=PackedStringArray("water") instance=ExtResource("54_6iyjs")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.723843, 10.574904, 4.2255745)
+water = NodePath("../Water")
+debug = true
+drag_coef_lateral = 0.0
+drag_coef_vertical = 0.0
+drag_coef_yaw = 0.0
+drag_coef_pitch = 0.0
+drag_coef_roll = 0.0
 
 [editable path="House_01"]
 [editable path="StonyBeach/Light_House_0_1"]
