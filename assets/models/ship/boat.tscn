@@ -6,11 +6,13 @@
 [ext_resource type="Script" uid="uid://c7n8dp7f8tkeu" path="res://assets/scripts/world/wave_blocker.gd" id="3_2ib73"]
 [ext_resource type="Script" uid="uid://4j6vkvpadkr7" path="res://assets/player/camera.gd" id="3_camera"]
 [ext_resource type="PackedScene" uid="uid://ugpufvfhqy06" path="res://assets/models/boat/boat_wave_blocker.glb" id="3_f2dya"]
+[ext_resource type="PackedScene" uid="uid://c22b4ofl7qojp" path="res://assets/models/boat/steering.glb" id="3_vqk42"]
 [ext_resource type="Script" uid="uid://clj7h2sfw06rd" path="res://assets/scripts/world/dry_volume.gd" id="4_51f5f"]
 [ext_resource type="Script" uid="uid://b3s502b801kf" path="res://assets/scripts/helm_interactable.gd" id="5_helm"]
 [ext_resource type="Script" uid="uid://cs2x7rmusrtt6" path="res://assets/scripts/interactables/ship_ladder.gd" id="6_ladder"]
 [ext_resource type="PackedScene" uid="uid://ws3qh2fav0ah" path="res://assets/models/boat/front_light.glb" id="7_vlsv3"]
 [ext_resource type="PackedScene" uid="uid://bs7x4dgp16lr5" path="res://assets/models/boat/boat_0.1.glb" id="8_2ib73"]
+[ext_resource type="Texture2D" uid="uid://cp5swedirc3jk" path="res://scenes/boat/Fire Loop 3.png" id="8_sg2do"]
 [ext_resource type="PackedScene" uid="uid://d327mym4cwyr7" path="res://assets/models/boat/ladder.glb" id="9_4dvsp"]
 [ext_resource type="Script" uid="uid://c31olmyjgo1bk" path="res://assets/scripts/interactables/searchlight_interactable.gd" id="9_searchlight"]
 [ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="11_w61sw"]
@@ -37,13 +39,53 @@ roughness = 0.5
 emission_enabled = true
 emission = Color(1, 0.8267404, 0.13788116, 1)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_duxm1"]
+resource_name = "Material.001"
+cull_mode = 2
+albedo_color = Color(0.8935111, 0.906438, 0, 1)
+roughness = 0.5
+emission_enabled = true
+emission = Color(0.89, 0.8306667, 0, 1)
+emission_energy_multiplier = 0.95
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vqht1"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_2ib73"]
 radius = 4.768
 height = 28.039642
 
+[sub_resource type="Curve" id="Curve_ka04m"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(1, 1), 1.4, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_rf6rj"]
+curve = SubResource("Curve_ka04m")
+
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_5s6u7"]
+lifetime_randomness = 1.0
+emission_shape_scale = Vector3(0.3, 0.3, 0.3)
+emission_shape = 1
+emission_sphere_radius = 1.0
+gravity = Vector3(0, 4.905, 0)
+damping_min = 2.4310002
+damping_max = 2.4310002
+scale_curve = SubResource("CurveTexture_rf6rj")
+turbulence_enabled = true
+turbulence_noise_scale = 2.088
+turbulence_noise_speed = Vector3(0, 1, 0)
+turbulence_influence_max = 0.20700002
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_sg2do"]
+blend_mode = 1
+albedo_texture = ExtResource("8_sg2do")
+emission_enabled = true
+emission_texture = ExtResource("8_sg2do")
+billboard_mode = 1
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_vqk42"]
+material = SubResource("StandardMaterial3D_sg2do")
+size = Vector2(0.3, 0.3)
+orientation = 2
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_5s6u7"]
 height = 0.88420105
@@ -199,6 +241,13 @@ light_volumetric_fog_energy = 16.0
 light_specular = 0.0
 omni_range = 3.6505697
 
+[node name="cabin_light_3" type="OmniLight3D" parent="lights" unique_id=1408277876]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.1836624, 2.929485, 2.743222)
+light_color = Color(1, 0.8286217, 0.43948364, 1)
+light_volumetric_fog_energy = 0.0
+light_specular = 0.0
+omni_range = 5.734757
+
 [node name="head_light_1" type="SpotLight3D" parent="lights" unique_id=438758252]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -2.408451, 8.605911, -2.6960258)
 light_color = Color(1, 0.8666667, 0.59607846, 1)
@@ -235,6 +284,15 @@ transform = Transform3D(0.99999994, 0, 0, 1.6940659e-21, 1, -2.019484e-28, 0, -1
 [node name="counter_W" parent="boat_navigation" unique_id=1781973903 instance=ExtResource("2_vlsv3")]
 transform = Transform3D(0.9999999, -3.59e-43, 1.0658141e-14, 3.3881318e-21, 1, -4.038968e-28, -1.0658141e-14, -1.009742e-28, 0.9999999, 0, -0.25, 0)
 
+[node name="steering_hinge" type="Node3D" parent="boat_navigation" unique_id=1924708692]
+transform = Transform3D(-2.4615648e-08, 2.8454552e-08, -0.8607447, 0.6509639, 0.56314015, -3.374855e-15, 0.56314045, -0.65096426, -3.762435e-08, 0.1146099, -1.2082084, 1.6208043)
+
+[node name="steering" parent="boat_navigation/steering_hinge" unique_id=650738388 instance=ExtResource("3_vqk42")]
+transform = Transform3D(1, -6.3108872e-30, 0, 5.9604645e-08, 1, 0, 5.3290697e-15, -3.5527137e-15, 1, 2.706726, -5.120079, 0.005600974)
+
+[node name="control_steering" parent="boat_navigation/steering_hinge/steering" index="0" unique_id=464494156]
+transform = Transform3D(1.9670125e-07, -8.940696e-08, -1.3309999, -8.9406925e-08, 1.4999998, -7.933377e-08, 1.4999998, 8.940694e-08, 1.7453954e-07, -2.4068677, 2.6502182, -0.0008267164)
+
 [node name="boat" parent="." unique_id=331109473 instance=ExtResource("8_2ib73")]
 transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, 1.508625, -3.5490909, 0)
 
@@ -255,6 +313,9 @@ surface_material_override/0 = SubResource("StandardMaterial3D_vlsv3")
 
 [node name="lamp_shielded_002" parent="boat" index="23" unique_id=179529145]
 surface_material_override/0 = SubResource("StandardMaterial3D_kll55")
+
+[node name="lamp_shielded_003" parent="boat" index="24" unique_id=1625021901]
+surface_material_override/0 = SubResource("StandardMaterial3D_duxm1")
 
 [node name="StaticBody3D" parent="boat/stairs_control/stair" parent_id_path=PackedInt32Array(331109473, 904559163) index="0" unique_id=300151164]
 collision_layer = 2
@@ -288,7 +349,11 @@ shape = SubResource("CapsuleShape3D_2ib73")
 debug_color = Color(0.97, 0, 0.4688336, 1)
 
 [node name="furnace_fire" type="GPUParticles3D" parent="boat" unique_id=1062023744]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.046869047, 2.667962, -3.2256393)
+amount = 100
+lifetime = 0.63
 process_material = SubResource("ParticleProcessMaterial_5s6u7")
+draw_pass_1 = SubResource("PlaneMesh_vqk42")
 
 [node name="front_light_hinge" type="Node3D" parent="." unique_id=2145380777]
 transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, -23.338467, 4.56229, 0)
@@ -542,6 +607,7 @@ throw_direction = Vector3(0, 1, -0.7)
 [node name="dispenser" parent="dispenser" unique_id=1913581995 instance=ExtResource("17_duxm1")]
 transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, 0.5697663, 0.39937186, 1.6752379)
 
+[editable path="boat_navigation/steering_hinge/steering"]
 [editable path="boat"]
 [editable path="boat/boat_wave_blocker"]
 [editable path="LadderPort/StairsModel/ladder"]
