@@ -11,6 +11,8 @@ extends Node3D
 signal fuel_changed(fuel: float, max_fuel: float)
 signal refuelled(fuel: float)
 signal ran_out
+## Running low: the fire gasps and the engine stumbles. 0..1, worse as the fuel runs out.
+signal coughed(severity: float)
 
 @export_group("Fuel")
 ## A full furnace.
@@ -35,6 +37,18 @@ signal ran_out
 @export var flames_amount_range := Vector2(0.2, 1.0)
 ## Flame height at their smallest vs fullest (1 = as authored).
 @export var flames_size_range := Vector2(0.5, 1.0)
+## Flames left burning low when the fuel is gone, as a share of the Flames particle count, so
+## the furnace never goes fully dark.
+@export_range(0.0, 0.5, 0.01) var flames_when_empty: float = 0.08
+
+@export_group("Cough")
+## Below this share of a full furnace the engine starts to cough (0 = never).
+@export_range(0.0, 0.5, 0.01) var cough_below: float = 0.15
+## Seconds between coughs: when the fuel has only just dropped below cough_below (y) and when
+## it is nearly gone (x). Each gap is also randomised a little.
+@export var cough_interval := Vector2(0.9, 5.0)
+## How much the fire sags on a cough (flames and light).
+@export_range(0.0, 1.0, 0.05) var cough_gasp: float = 0.6
 
 @export_group("Light")
 ## The light the fire casts. Defaults to a node called furnace_light in the same scene.
@@ -55,6 +69,8 @@ signal ran_out
 
 var fuel := 0.0
 var _flare := 0.0 # 1 right after a cell goes in, settling to 0
+var _gasp := 0.0 # 1 right at a cough, recovering to 0
+var _cough_timer := 0.0
 var _ship: Node = null # whatever has an engine to drive (see mass_calculation.gd)
 var _noise := FastNoiseLite.new()
 var _base_energy := 0.0
@@ -104,12 +120,15 @@ func _process(delta: float) -> void:
 	if fuel > 0.0:
 		set_fuel(fuel - max_fuel / maxf(full_burn_time, 0.01) * delta)
 	_flare = move_toward(_flare, 0.0, delta / maxf(flare_time, 0.01))
+	_gasp = move_toward(_gasp, 0.0, delta / 0.45)
 	var heat := fuel_level()
+	_update_cough(delta, heat)
+	var sag := 1.0 - _gasp * cough_gasp
 	var burning := 1.0 if fuel > 0.0 else 0.0
 	var flare := _flare * _flare * flare_strength # eases out: a big whoomph, then a long settle
 
 	# The flames: fewer and lower as the fuel runs down, gone when it is out.
-	_flames.amount_ratio = clampf(lerpf(flames_amount_range.x, flames_amount_range.y, heat) * burning, 0.0, 1.0)
+	_flames.amount_ratio = clampf(maxf(lerpf(flames_amount_range.x, flames_amount_range.y, heat) * burning, flames_when_empty) * sag, 0.0, 1.0)
 	_flames.scale = Vector3.ONE * (lerpf(flames_size_range.x, flames_size_range.y, heat) + flare * 0.5)
 	_coals.amount_ratio = lerpf(0.35, 1.0, heat)
 	_sparks.amount_ratio = clampf(lerpf(0.1, 0.5, heat) + flare * 0.5, 0.0, 1.0) * burning
@@ -117,7 +136,23 @@ func _process(delta: float) -> void:
 	if _ship:
 		_ship.set(&'engine_fuel_power', smoothstep(0.0, maxf(engine_fade_below, 0.001), heat))
 
-	_update_light(delta, lerpf(light_when_empty, 1.0, heat) + flare * 0.6)
+	_update_light(delta, (lerpf(light_when_empty, 1.0, heat) + flare * 0.6) * sag)
+
+## Low on fuel, the fire gasps now and then -- more often the lower it gets -- and tells the
+## ship, whose engine stumbles with it. It never takes power away: that is fuel's job alone.
+func _update_cough(delta: float, heat: float) -> void:
+	if fuel <= 0.0 or heat >= cough_below or cough_below <= 0.0:
+		_cough_timer = 0.0
+		return
+	_cough_timer -= delta
+	if _cough_timer > 0.0:
+		return
+	var severity := clampf(1.0 - heat / cough_below, 0.0, 1.0)
+	_gasp = 1.0
+	coughed.emit(severity)
+	if _ship and _ship.has_method(&'cough'):
+		_ship.cough(severity)
+	_cough_timer = lerpf(cough_interval.y, cough_interval.x, severity) * randf_range(0.6, 1.4)
 
 ## Fast wobble on top of a slower swell; the swell sometimes dips hard, like a flame collapsing.
 func _update_light(delta: float, strength: float) -> void:

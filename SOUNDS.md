@@ -15,6 +15,9 @@ and drag the file into its **Stream**.
 - [ ] **EngineLoop**: engine running. *Loop, 3D.* It only plays while you're at the
   helm with the throttle open, and gets louder and higher-pitched with throttle.
   Record one steady middle speed.
+- [ ] **CoughSound**: the engine misfiring when the furnace is low on fuel: a choke, a
+  bang in the exhaust. *One-shot, 3D.* Plays on each cough, more often as the fuel runs out
+  (the engine loop dips at the same moment).
 - [ ] **HullWaterLoop**: water slapping and sloshing against the hull. *Loop, 3D.*
   Plays all the time.
 - [ ] **CreakLoop**: the wooden boat creaking as it rolls. *Loop, 3D.* Plays all the
