@@ -49,9 +49,14 @@ and drag the file into its **Stream**.
 ## Creatures
 
 - [ ] **hunter_fish.tscn → PresenceLoop**: low throb of something below you, for as
-  long as it hunts. *Loop, 3D.* Should be felt more than heard.
-- [ ] **hunter_fish.tscn → AttackSound**: the lunge, when it commits to attacking.
+  long as it hunts. *Loop, 3D.* Should be felt more than heard. Optional —
+  leave empty if SneakLoop covers it.
+- [ ] **hunter_fish.tscn → SneakLoop**: the subtle sound of it stalking you, only
+  while it sneaks; stops the moment it is seen. *Loop, 3D, heard within 80 m.*
+- [ ] **hunter_fish.tscn → DetectSound**: the instant it knows you've seen it.
   *One-shot, 3D.*
+- [ ] **hunter_fish.tscn → ChargeSound**: the rush, at the start of each charge
+  (plays again on every pass). Cut off by the bite. *One-shot, 3D.*
 - [ ] **hunter_fish.tscn → BiteSound**: the jaws closing on you. *One-shot, 3D.*
 - [ ] **eel.tscn → EelLoop**: the eel's presence (slithering, a wet hum). *Loop, 3D.*
 

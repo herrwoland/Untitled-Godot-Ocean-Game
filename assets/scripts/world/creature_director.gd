@@ -13,6 +13,10 @@ const HUNTER_SCENE := preload("res://assets/models/creatures/hunter_fish.tscn")
 @export var water: Node
 @export var creature_count := 6
 @export var stalker_count := 1 # hunters at once — one lone stalker reads scarier
+## Scales every hunter's swim speeds (approach, run-up, charge, carry) and
+## acceleration — not the slow stalking creep. Turn radii stay put, so turns
+## get quicker, not tighter.
+@export var speed_multiplier := 3.0
 @export var hunt_depth := 3.0 # player depth (m below surface) that triggers hunting
 @export var escape_depth := 0.8 # shallower than this (or out of the water) calls it off
 ## Idle orbit shape. Radii spread wide so the bodies never crowd each other.
@@ -72,6 +76,7 @@ func _physics_process(delta: float) -> void:
 	var time := Time.get_ticks_msec() / 1000.0
 	for i in _creatures.size():
 		var creature := _creatures[i]
+		creature.speed_multiplier = speed_multiplier # live, so it can be tuned while playing
 		if creature.is_busy():
 			if escaped and not creature.is_carrying():
 				creature.end_hunt()

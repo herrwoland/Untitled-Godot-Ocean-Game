@@ -6,6 +6,8 @@ extends Node3D
 ## moment — (or backed into the teeth).
 ## Like a shark it can never stop, back up or slide sideways: it only swims
 ## forward and steers, head first, the long body trailing through the turn.
+## It swims level, easing up or down to its depth, and only tilts its head
+## toward the prey when it charges; the jaw gapes from the moment it commits.
 ## So an attack is a series of passes — peel away into the dark, turn back
 ## at a distance, and once lined up on where the prey is GOING, burst into a
 ## committed straight charge — and for the last strike_lock_distance meters
@@ -25,6 +27,7 @@ enum Pass { PEEL, TURN_IN, CHARGE } # the three beats of one attack run
 @export var attack_speed := 14.0 # m/s charge — 4-5x the sneak
 @export var carry_speed := 8.0 # m/s dragging the catch down
 @export var acceleration := 5.0 # m/s² speed change: the charge visibly builds, a miss coasts off
+@export var depth_change_speed := 2.0 # m/s it rises or sinks while swimming level (every beat but the charge)
 @export var turn_radius := 100.0 # m — tightest circle it can swim, at any speed. A body this size carves wide
 @export var charge_turn_radius := 500.0 # m — committed: only the gentlest corrections mid-charge
 @export var max_pitch := 50.0 # degrees it will climb or dive; fish do not swim straight up
@@ -46,8 +49,8 @@ enum Pass { PEEL, TURN_IN, CHARGE } # the three beats of one attack run
 @export_group("Attack")
 @export var kill_distance := 12.0 # fallback bite range, used only if no mouth_area is set
 @export var jaw_open_angle := 95.0 # degrees the jaw swings to when open (rest pose = closed)
-@export var jaw_open_time := 0.35 # seconds for the jaw to swing open on the lunge
-@export var jaw_open_distance := 22.0 # the jaw only gapes this close to the prey — the snatch itself
+@export var jaw_open_time := 1.0 # seconds for the jaw to swing fully open — it gapes as the charge begins
+@export var jaw_close_time := 1.0 # seconds to clamp shut, on the bite or after a miss
 @export var run_up_distance := 250.0 # after a miss (or when not lined up) it swims this far off before turning back — keep ≥ 2.5× turn_radius
 @export var run_up_depth := 15.0 # and sinks this far below the prey, so the charge rises out of the dark
 @export var charge_align_angle := 5.0 # degrees — must be lined up this well before it commits to a charge
@@ -62,12 +65,18 @@ enum Pass { PEEL, TURN_IN, CHARGE } # the three beats of one attack run
 @export var mouth: Node3D # marker at the mouth; kills and carrying anchor here
 @export var mouth_area: Area3D # the actual mouth volume; overlap with the player = caught
 
-@onready var _presence_loop: AudioStreamPlayer3D = get_node_or_null(^'PresenceLoop')
-@onready var _attack_sound: AudioStreamPlayer3D = get_node_or_null(^'AttackSound')
+@onready var _presence_loop: AudioStreamPlayer3D = get_node_or_null(^'PresenceLoop') # the whole hunt
+@onready var _sneak_loop: AudioStreamPlayer3D = get_node_or_null(^'SneakLoop') # only while stalking
+@onready var _detect_sound: AudioStreamPlayer3D = get_node_or_null(^'DetectSound') # the moment it knows it's seen
+@onready var _charge_sound: AudioStreamPlayer3D = get_node_or_null(^'ChargeSound') # each committed charge
 @onready var _bite_sound: AudioStreamPlayer3D = get_node_or_null(^'BiteSound')
 
 var state := State.LURK
 var player: Node3D = null
+## Scales every hunting speed but the slow stalking creep, plus the
+## acceleration; set by the CreatureDirector. Turn radii stay the same, so
+## turns get quicker, not tighter.
+var speed_multiplier := 1.0
 
 var _jaw_closed_x := 0.0
 var _jaw_tween: Tween
@@ -129,10 +138,11 @@ func begin_hunt(target: Node3D) -> void:
 	player = target
 	_player_last = player.global_position
 	_player_vel = Vector3.ZERO
-	_speed = cruise_speed
+	_speed = cruise_speed * speed_multiplier
 	_start_stalk()
 	state = State.SNEAK
 	_play(_presence_loop) # the low throb of something below, for as long as it hunts
+	_play(_sneak_loop)
 
 ## Prey escaped (surfaced, climbed out, reached safe water). Ignored while
 ## carrying: the drag into the deep always ends in the day reset.
@@ -141,16 +151,16 @@ func end_hunt() -> void:
 		return
 	set_jaw_open(false)
 	state = State.LURK
-	if _presence_loop:
-		_presence_loop.stop()
+	_stop(_presence_loop)
+	_stop(_sneak_loop)
 
 ## Hard reset for the morning restage: drop everything, close the jaw.
 func abort_hunt() -> void:
 	set_jaw_open(false)
 	state = State.LURK
 	player = null
-	if _presence_loop:
-		_presence_loop.stop()
+	_stop(_presence_loop)
+	_stop(_sneak_loop)
 
 func is_busy() -> bool:
 	return state != State.LURK
@@ -162,7 +172,7 @@ func is_carrying() -> bool:
 ## faster the farther behind it falls.
 func cruise_toward(point: Vector3, delta: float) -> void:
 	var to_point := point - mouth_position()
-	_steer_toward(to_point, turn_radius, delta)
+	_steer_level(to_point, point.y, turn_radius, delta)
 	_swim(clampf(to_point.length() * 0.3, sneak_speed, 30.0), delta)
 
 ## ---- behaviour ---------------------------------------------------------------
@@ -194,8 +204,18 @@ func _process_sneak(delta: float) -> void:
 	# Chasing a point it can never stop on makes it overshoot and come round
 	# again: at sneak speed that is a slow, wide circle in the dark beneath.
 	var to_point := stalk_point - mouth_position()
-	_steer_toward(to_point, turn_radius, delta)
-	_swim(cruise_speed if to_point.length() > 80.0 else sneak_speed, delta)
+	var steer_dir := to_point
+	var hold_y := stalk_point.y
+	if _mouth_to_player() < min_stalk_distance:
+		# It cannot stop, so a prey slower than its creep gets overtaken and
+		# the wide circle sweeps the snout in close. Veer off and sink to
+		# pass underneath, rather than blunder into a bite it never chose.
+		steer_dir = mouth_position() - player.global_position
+		hold_y = minf(hold_y, player.global_position.y - min_stalk_distance)
+	_steer_level(steer_dir, hold_y, turn_radius, delta)
+	# The multiplier speeds up the long approach but never the final creep:
+	# any faster and its wide turns would carry it out in front of the prey.
+	_swim(cruise_speed * speed_multiplier if to_point.length() > 80.0 else sneak_speed, delta)
 	if to_point.length() < turn_radius: # circling the hold: dare a little closer
 		_stalk_distance = maxf(_stalk_distance - creep_rate * delta, min_stalk_distance)
 
@@ -207,9 +227,11 @@ func _process_sneak(delta: float) -> void:
 ## cannot swing its head round on the spot — it peels off for a run-up.
 func _begin_attack() -> void:
 	state = State.ATTACK
+	_stop(_sneak_loop)
+	_play(_detect_sound)
 	_attack_left = attack_give_up_time
 	_passes_missed = 0
-	_jaw_opened = false # the gape waits for the last jaw_open_distance meters
+	_jaw_opened = false
 	if _aim_error() < charge_align_angle:
 		_begin_charge()
 	else:
@@ -218,7 +240,10 @@ func _begin_attack() -> void:
 func _begin_charge() -> void:
 	_pass = Pass.CHARGE
 	_strike_locked = false
-	_play(_attack_sound) # the rush itself
+	_play(_charge_sound) # the rush itself
+	if not _jaw_opened:
+		_jaw_opened = true
+		set_jaw_open(true) # it comes with the mouth already opening
 
 func _process_attack(delta: float) -> void:
 	var to_player := player.global_position - mouth_position()
@@ -230,17 +255,17 @@ func _process_attack(delta: float) -> void:
 			away.y = 0.0
 			if away.length() < 0.1:
 				away = _heading()
-			var dir := away.normalized()
-			dir.y = clampf((player.global_position.y - run_up_depth - mouth_position().y) / 30.0, -1.0, 1.0)
-			_steer_toward(dir, turn_radius, delta)
-			_swim(cruise_speed, delta)
+			_steer_level(away, player.global_position.y - run_up_depth, turn_radius, delta)
+			_swim(cruise_speed * speed_multiplier, delta)
 			if to_player.length() >= run_up_distance and not _inside_turn_circle(_aim_point(), 1.1):
 				_pass = Pass.TURN_IN
 		Pass.TURN_IN:
 			# The wide turn back, onto the line of where the prey is heading.
-			_steer_toward(_aim_point() - mouth_position(), turn_radius, delta)
-			_swim(cruise_speed, delta)
-			if _aim_error() < charge_align_angle:
+			# Still level and deep: only the compass heading has to line up,
+			# the charge itself tilts up at the prey.
+			_steer_level(_aim_point() - mouth_position(), player.global_position.y - run_up_depth, turn_radius, delta)
+			_swim(cruise_speed * speed_multiplier, delta)
+			if _aim_error(true) < charge_align_angle:
 				_begin_charge()
 			elif _inside_turn_circle(_aim_point(), 0.85): # margin: no flip-flopping on the edge
 				_pass = Pass.PEEL # too close to ever line up: swim on and make more room
@@ -252,10 +277,7 @@ func _process_attack(delta: float) -> void:
 				_strike_locked = true
 			if not _strike_locked:
 				_steer_toward(_aim_point() - mouth_position(), charge_turn_radius, delta)
-			_swim(attack_speed, delta)
-			if not _jaw_opened and to_player.length() < jaw_open_distance:
-				_jaw_opened = true
-				set_jaw_open(true) # the last-moment gape right before the snatch
+			_swim(attack_speed * speed_multiplier, delta)
 			# Swept past: the prey is well behind the snout and not in the mouth.
 			if to_player.dot(_heading()) < -10.0 and not _player_caught():
 				_miss()
@@ -291,11 +313,13 @@ func _give_up() -> void:
 	_jaw_opened = false
 	_start_stalk()
 	state = State.SNEAK
+	_play(_sneak_loop)
 
 ## The bite does not kill outright: the jaws clamp shut and the catch rides in
 ## the mouth, dragged down and away while the light fades above.
 func _begin_carry() -> void:
 	state = State.CARRY
+	_stop(_charge_sound)
 	_carry_left = carry_time
 	_pull_left = snatch_pull_time
 	_died_emitted = false
@@ -312,7 +336,7 @@ func _process_carry(delta: float) -> void:
 		horiz = Vector3.RIGHT # never drag the catch back toward the cove
 	var dive := (horiz * 0.5 + Vector3.DOWN).normalized()
 	_steer_toward(dive, turn_radius, delta)
-	_swim(carry_speed, delta)
+	_swim(carry_speed * speed_multiplier, delta)
 	# Reel the catch into the (moving) mouth over exactly snatch_pull_time
 	# seconds, then keep it glued there for the rest of the dive.
 	if _pull_left > delta:
@@ -332,7 +356,7 @@ func _process_carry(delta: float) -> void:
 ## Forward is the only way this body moves. Speed eases toward the target
 ## instead of snapping, so charges build and misses coast.
 func _swim(target_speed: float, delta: float) -> void:
-	_speed = move_toward(_speed, target_speed, acceleration * delta)
+	_speed = move_toward(_speed, target_speed, acceleration * speed_multiplier * delta)
 	global_position += _heading() * _speed * delta
 
 ## Smoothed player velocity from frame-to-frame movement, so the charge can
@@ -350,15 +374,23 @@ func _track_player(delta: float) -> void:
 ## uses the average of the current and full charge speed, since a charge
 ## launched from a slow circle is still building up.
 func _aim_point() -> Vector3:
-	var closing := maxf((_speed + attack_speed) * 0.5, 1.0)
+	var closing := maxf((_speed + attack_speed * speed_multiplier) * 0.5, 1.0)
 	var lead := minf(_mouth_to_player() / closing, max_lead_time)
 	return player.global_position + _player_vel * lead
 
 ## Degrees between where it is heading and where a charge must go — measured
 ## against the pitch-limited direction, so a prey straight overhead cannot
-## leave it circling forever waiting to line up.
-func _aim_error() -> float:
-	return rad_to_deg(_heading().angle_to(_limit_pitch(_aim_point() - mouth_position())))
+## leave it circling forever waiting to line up. compass_only ignores the
+## climb/dive, for lining up while still swimming level.
+func _aim_error(compass_only := false) -> float:
+	var to := _aim_point() - mouth_position()
+	var fwd := _heading()
+	if compass_only:
+		to.y = 0.0
+		fwd.y = 0.0
+		if to.length() < 0.01 or fwd.length() < 0.01:
+			return 180.0
+	return rad_to_deg(fwd.angle_to(_limit_pitch(to)))
 
 ## True when the point sits inside the circle it would swim turning toward
 ## it — no amount of turning will ever point the snout at it from here.
@@ -388,7 +420,7 @@ func set_jaw_open(open: bool) -> void:
 		_jaw_tween.kill()
 	_jaw_tween = create_tween()
 	_jaw_tween.tween_property(jaw, "rotation:x",
-		deg_to_rad(jaw_open_angle) if open else _jaw_closed_x, jaw_open_time if open else 0.25) \
+		deg_to_rad(jaw_open_angle) if open else _jaw_closed_x, jaw_open_time if open else jaw_close_time) \
 		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 ## 0 = clenched at the rest pose, 1 = fully open at jaw_open_angle.
@@ -414,6 +446,10 @@ func _mouth_to_player() -> float:
 func _play(sound: AudioStreamPlayer3D) -> void:
 	if sound and sound.stream:
 		sound.play()
+
+func _stop(sound: AudioStreamPlayer3D) -> void:
+	if sound:
+		sound.stop()
 
 func _player_camera() -> Camera3D:
 	return player.camera if &'camera' in player else null
@@ -450,6 +486,14 @@ func _is_seen() -> bool:
 func _heading() -> Vector3:
 	var fwd := -global_basis.z if _head_minus_z else global_basis.z
 	return fwd.normalized()
+
+## Swim level: steer only the compass heading toward dir (the head flattens
+## out if it was tilted) and ease the depth toward target_y at
+## depth_change_speed — no nodding at the prey's every rise and fall.
+func _steer_level(dir: Vector3, target_y: float, radius_m: float, delta: float) -> void:
+	_steer_toward(Vector3(dir.x, 0.0, dir.z), radius_m, delta)
+	var step := depth_change_speed * speed_multiplier * delta
+	global_position.y += clampf(target_y - mouth_position().y, -step, step)
 
 ## Clamp a direction's climb/dive to max_pitch, keeping its compass heading.
 func _limit_pitch(dir: Vector3) -> Vector3:
