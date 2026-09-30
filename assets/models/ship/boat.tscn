@@ -10,7 +10,7 @@
 [ext_resource type="Script" uid="uid://clj7h2sfw06rd" path="res://assets/scripts/world/dry_volume.gd" id="4_51f5f"]
 [ext_resource type="Script" uid="uid://b3s502b801kf" path="res://assets/scripts/helm_interactable.gd" id="5_helm"]
 [ext_resource type="Texture2D" uid="uid://cnn5ybcxkmryj" path="res://scenes/boat/smoke.png" id="5_ka04m"]
-[ext_resource type="Script" uid="uid://cs2x7rmusrtt6" path="res://assets/scripts/interactables/ship_ladder.gd" id="6_ladder"]
+[ext_resource type="Script" path="res://assets/scripts/interactables/ladder.gd" id="6_ladder"]
 [ext_resource type="PackedScene" uid="uid://ws3qh2fav0ah" path="res://assets/models/boat/front_light.glb" id="7_vlsv3"]
 [ext_resource type="PackedScene" uid="uid://bs7x4dgp16lr5" path="res://assets/models/boat/boat_0.1.glb" id="8_2ib73"]
 [ext_resource type="PackedScene" uid="uid://d327mym4cwyr7" path="res://assets/models/boat/ladder.glb" id="9_4dvsp"]
@@ -522,16 +522,24 @@ helm_marker = NodePath("../HelmPosition")
 transform = Transform3D(-4.371139e-08, -1, -7.1054274e-15, 1, -4.371139e-08, -3.105881e-22, 0, 0, 1, -0.002090454, 0.25847006, -0.013819218)
 shape = SubResource("CylinderShape3D_2ib73")
 
-[node name="LadderPort" type="Area3D" parent="." unique_id=1198969120 node_paths=PackedStringArray("deck_point")]
+[node name="LadderPort" type="Area3D" parent="." unique_id=1198969120 node_paths=PackedStringArray("bottom", "top", "top_exit")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.7573156, -2, 6.4753733)
-collision_layer = 4
+collision_layer = 0
 collision_mask = 2
 script = ExtResource("6_ladder")
-deck_point = NodePath("../LadderPortDeck")
+bottom = NodePath("Bottom")
+top = NodePath("Top")
+top_exit = NodePath("../LadderPortDeck")
 
 [node name="LadderPortShape" type="CollisionShape3D" parent="LadderPort" unique_id=1272002090]
 transform = Transform3D(1, 0, 0, 0, 0.9659258, 0.25881904, 0, -0.25881904, 0.9659258, -0.0009765625, -2.513629, 1.6562576)
 shape = SubResource("BoxShape3D_s6qt6")
+
+[node name="Bottom" type="Marker3D" parent="LadderPort" unique_id=1733400101]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -8.51, 3.63)
+
+[node name="Top" type="Marker3D" parent="LadderPort" unique_id=1733400102]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.35, 0.99)
 
 [node name="StairsModel" type="Node3D" parent="LadderPort" unique_id=1310250006]
 
@@ -541,16 +549,24 @@ transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 0, -4.359698, -0.8362036)
 [node name="LadderPortDeck" type="Marker3D" parent="." unique_id=311907477]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8624725, -0.49571723, 5.869631)
 
-[node name="LadderStarboard" type="Area3D" parent="." unique_id=2085888897 node_paths=PackedStringArray("deck_point")]
+[node name="LadderStarboard" type="Area3D" parent="." unique_id=2085888897 node_paths=PackedStringArray("bottom", "top", "top_exit")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.7342877, -2, -7.0632763)
-collision_layer = 4
+collision_layer = 0
 collision_mask = 2
 script = ExtResource("6_ladder")
-deck_point = NodePath("../LadderStarboardDeck")
+bottom = NodePath("Bottom")
+top = NodePath("Top")
+top_exit = NodePath("../LadderStarboardDeck")
 
 [node name="LadderStarboardShape" type="CollisionShape3D" parent="LadderStarboard" unique_id=99035561]
 transform = Transform3D(1, 0, 0, 0, 0.9659258, -0.25881904, 0, 0.25881904, 0.9659258, 0, -2.7236805, -1.2758942)
 shape = SubResource("BoxShape3D_s6qt6")
+
+[node name="Bottom" type="Marker3D" parent="LadderStarboard" unique_id=1733400103]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -8.72, -3.25)
+
+[node name="Top" type="Marker3D" parent="LadderStarboard" unique_id=1733400104]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.14, -0.61)
 
 [node name="StairsModel" type="Node3D" parent="LadderStarboard" unique_id=421168406]
 

@@ -1,9 +1,9 @@
 extends CharacterBody3D
-## First person player controller with four states: walking, swimming, piloting
-## a ship's helm and operating a mounted station (eg. the searchlight). Swim state is driven by comparing the player's feet
+## First person player controller with five states: walking, swimming, piloting
+## a ship's helm, operating a mounted station (eg. the searchlight) and climbing a Ladder. Swim state is driven by comparing the player's feet
 ## height against the wave height sampled from `water`.
 
-enum State { WALK, SWIM, PILOT, OPERATE }
+enum State { WALK, SWIM, PILOT, OPERATE, CLIMB }
 
 @export var water: Node
 @export var walk_speed: float = 5.0
@@ -16,7 +16,6 @@ enum State { WALK, SWIM, PILOT, OPERATE }
 @export var swim_enter_depth: float = 0.6 # how deep water must be over the feet before we start swimming
 @export var swim_exit_depth: float = 0.45 # while grounded, water shallower than this switches back to walking (wading)
 @export var sink_speed: float = 1.0 # constant downward speed while swimming unless swim_up is held
-@export var climb_speed: float = 3.0 # speed of hauling up a ship ladder while holding jump/space
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
@@ -55,7 +54,14 @@ var _deck_velocity := Vector3.ZERO # measured from the deck's movement, so it is
 								   # matter what moves her: engine, waves or a creature
 const DECK_COYOTE := 0.35 # keep carrying this long after the deck drops away, so a heaving
 						  # sea doesn't shake us loose every time contact is lost
-var _climb_target = null # Vector3 deck position, set each frame by a ShipLadder while space is held
+var ladder: Node = null # the Ladder we are on (see ladder.gd)
+var _ladders_in_reach: Array[Node] = []
+var _climb_t := 0.0 # where on the ladder, 0 = bottom, 1 = top
+var _climb_exit := -1.0 # 0..1 while stepping over the top, -1 otherwise
+var _ladder_regrab_block := false # just got off: let go of the keys before a ladder takes us again
+var _grab_offset := Vector3.ZERO # where we were when we grabbed, relative to the ladder (its space)
+var _grab_blend := 0.0 # 1 at the grab, easing to 0 as we are pulled onto the ladder
+const LADDER_GRAB_TIME := 0.25
 
 const GRAVITY: float = 9.8
 
@@ -214,12 +220,9 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 	_process_turn_keys(delta)
-	if _climb_target != null and state != State.PILOT:
-		_process_climb(delta)
-		_climb_target = null # the ladder re-requests every frame space is held
-		return
 	if state == State.WALK or state == State.SWIM:
 		_update_interact_hover()
+		_try_grab_ladder()
 	match state:
 		State.WALK:
 			_process_walk(delta)
@@ -231,6 +234,8 @@ func _physics_process(delta: float) -> void:
 			_process_pilot(delta)
 		State.OPERATE:
 			_process_operate(delta)
+		State.CLIMB:
+			_process_ladder(delta)
 
 	_keep_eyes_clear_of_waterline(delta)
 
@@ -246,24 +251,103 @@ func _process_turn_keys(delta: float) -> void:
 	if pitch != 0.0:
 		camera.rotation.x = clampf(camera.rotation.x + pitch * look_speed * delta, -PI / 2.0, PI / 2.0)
 
-## Called each frame by a ShipLadder while the player is on it and holding jump.
-func request_climb(deck_position: Vector3) -> void:
-	_climb_target = deck_position
-
-## Haul up the ladder: rise until level with the deck point, then step inward
-## onto it. Carrying is preserved, so the package can be brought aboard.
-func _process_climb(_delta: float) -> void:
-	var target: Vector3 = _climb_target
-	if global_position.y < target.y - 0.3:
-		velocity = Vector3(0, climb_speed, 0) # still below the rail: climb straight up
+## Called by a Ladder when we come into (or leave) its reach.
+func ladder_in_reach(target: Node, in_reach: bool) -> void:
+	if in_reach:
+		if not target in _ladders_in_reach: _ladders_in_reach.append(target)
 	else:
-		var inward := (target - global_position)
-		inward.y = 0.0
-		velocity = inward.normalized() * climb_speed # over the rail: step onto the deck
-	move_and_slide()
-	if global_position.distance_to(target) < 0.6:
-		global_position = target
-		state = State.WALK
+		_ladders_in_reach.erase(target)
+
+## Takes hold of a ladder in reach: jump/space (swimming up to one, or at its foot), walking
+## into it while facing it, or walking over the edge at its top.
+func _try_grab_ladder() -> void:
+	var climbing_keys := Input.is_action_pressed(&'jump') or Input.is_action_pressed(&'move_forward')
+	if _ladder_regrab_block:
+		_ladder_regrab_block = climbing_keys
+		return
+	if _ladders_in_reach.is_empty() or captured:
+		return
+	var look := -head.global_basis.z
+	look.y = 0.0
+	look = look.normalized()
+	for l in _ladders_in_reach:
+		if not is_instance_valid(l): continue
+		var t: float = l.closest_t(global_position)
+		var toward: float = look.dot(l.facing())
+		var grab := Input.is_action_pressed(&'jump') and t < 0.9 # from below or from the water
+		grab = grab or (Input.is_action_pressed(&'move_forward') and toward > 0.5 and t < 0.9)
+		grab = grab or (Input.is_action_pressed(&'move_forward') and toward < -0.5 and t >= 0.9) # over the top
+		if grab:
+			_start_climb(l, minf(t, 0.97)) # from above: just under the top, so back goes down
+			return
+
+func _start_climb(target: Node, t: float) -> void:
+	if hovered_interactable and hovered_interactable.has_method(&'set_highlighted'):
+		hovered_interactable.set_highlighted(false)
+	hovered_interactable = null
+	state = State.CLIMB
+	ladder = target
+	_climb_t = t
+	_climb_exit = -1.0
+	# Pulled onto the ladder over a moment rather than snapped there.
+	_grab_offset = target.global_basis.inverse() * (global_position - target.point(t))
+	_grab_blend = 1.0
+	_deck = null # the ladder carries us now
+	velocity = Vector3.ZERO
+	collider.disabled = true # the hull and rungs are right in front of us
+	surface_ripples.emitting = false
+
+## On the ladder: forward/space climbs, back goes down, back at the foot steps off, swim_down
+## (C) lets go. The position is worked out along the ladder every frame, so a moving ship
+## carries us exactly. At the top we step over onto its landing.
+func _process_ladder(delta: float) -> void:
+	if not is_instance_valid(ladder):
+		_leave_ladder(false)
+		return
+	velocity = Vector3.ZERO
+	if _climb_exit >= 0.0:
+		_climb_exit = minf(_climb_exit + delta / maxf(ladder.exit_time, 0.01), 1.0)
+		var k := smoothstep(0.0, 1.0, _climb_exit)
+		var from: Vector3 = ladder.point(1.0)
+		var to: Vector3 = ladder.top_exit.global_position
+		var p := from.lerp(to, k)
+		p.y += sin(k * PI) * 0.25 # up and over the edge
+		global_position = p
+		if _climb_exit >= 1.0:
+			_leave_ladder(true)
+		return
+	if Input.is_action_just_pressed(&'swim_down'):
+		_leave_ladder(false)
+		return
+	var up := maxf(Input.get_action_strength(&'move_forward'), 1.0 if Input.is_action_pressed(&'jump') else 0.0)
+	var input := clampf(up - Input.get_action_strength(&'move_back'), -1.0, 1.0)
+	_climb_t += input * ladder.climb_speed / maxf(ladder.length(), 0.1) * delta
+	if _climb_t >= 1.0:
+		_climb_t = 1.0
+		if input > 0.0:
+			_climb_exit = 0.0 # over the top
+	elif _climb_t <= 0.0:
+		_climb_t = 0.0
+		if input < 0.0:
+			_leave_ladder(false)
+			return
+	_grab_blend = move_toward(_grab_blend, 0.0, delta / LADDER_GRAB_TIME)
+	global_position = ladder.point(_climb_t) + ladder.global_basis * _grab_offset * smoothstep(0.0, 1.0, _grab_blend)
+
+func _leave_ladder(at_top: bool) -> void:
+	state = State.WALK
+	ladder = null
+	_climb_exit = -1.0
+	collider.disabled = false
+	velocity = Vector3.ZERO
+	_ladder_regrab_block = true
+	if at_top:
+		# Stepped onto a deck: stand on it from this very frame, or a moving ship leaves us behind.
+		var ship := _ship_under_feet()
+		if ship:
+			_deck = ship
+			_deck_xform = ship.global_transform
+			_deck_coyote = DECK_COYOTE
 
 func _process_walk(delta: float) -> void:
 	_carry_with_deck(delta)
@@ -502,6 +586,8 @@ func release_controls() -> void:
 		exit_pilot()
 	elif state == State.OPERATE:
 		exit_station()
+	elif state == State.CLIMB:
+		_leave_ladder(false)
 	state = State.WALK
 
 func _station_input(event: InputEvent) -> void:
