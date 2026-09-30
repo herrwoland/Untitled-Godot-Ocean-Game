@@ -31,7 +31,7 @@ func _physics_process(delta: float) -> void:
 	if piloted:
 		if not _engine_loop.playing:
 			_engine_loop.play()
-		var effort := absf(helm_throttle)
+		var effort := absf(helm_throttle) * engine_fuel_power
 		_engine_loop.volume_db = lerpf(-16.0, -4.0, effort)
 		_engine_loop.pitch_scale = lerpf(0.9, 1.25, effort)
 	elif _engine_loop.playing:

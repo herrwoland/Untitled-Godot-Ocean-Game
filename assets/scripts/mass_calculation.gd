@@ -24,6 +24,9 @@ const DRAG_SCALE: float = 1;
 var piloted: bool = false
 var helm_throttle: float = 0.0
 var helm_rudder: float = 0.0
+## 0..1: how much of the engine's power there is to give, set by the furnace from its fuel.
+## Empty, the throttle does nothing; she can still be steered while she drifts.
+var engine_fuel_power: float = 1.0
 
 func _ready() -> void:
 	var prospective_mass = 0 # Error if 0
@@ -65,7 +68,7 @@ func set_helm_input(throttle: float, rudder: float) -> void:
 
 func apply_helm() -> void:
 	for cell in engine_cells:
-		cell.throttle = helm_throttle
+		cell.throttle = helm_throttle * engine_fuel_power
 	apply_torque(basis.y * helm_rudder * rudder_torque_strength * rudder_bite())
 
 ## How much grip the rudder has right now, -1..1. A rudder only steers while water flows past

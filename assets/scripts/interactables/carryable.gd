@@ -33,6 +33,7 @@ var _floating := false # neutral-buoyancy item currently held by the water
 var _highlight_material: StandardMaterial3D
 
 func _ready() -> void:
+	add_to_group(&'carryable') # the player's feet look through us for the deck beneath
 	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	# Give the mesh its own material copy so highlighting never leaks to others.
 	var mesh_instance: MeshInstance3D = get_node_or_null(^'Mesh')
@@ -88,7 +89,7 @@ func on_dropped(inherited_velocity: Vector3) -> void:
 	_floating = false
 	freeze = false
 	collision_layer = 0b101 # world + interactable
-	collision_mask = 0b1 # collide with the world (shore, deck)
+	collision_mask = 0b11 # collide with the world (shore) and ship decks (layer 2)
 	linear_velocity = inherited_velocity
 	angular_velocity = Vector3.ZERO
 	sleeping = false

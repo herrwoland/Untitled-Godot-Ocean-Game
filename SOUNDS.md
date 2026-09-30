@@ -27,6 +27,13 @@ and drag the file into its **Stream**.
   faster you turn, and fades out when you stop or hit a limit. A dry metal bearing
   grind works well.
 
+## Fuel dispenser (`scenes/boat/dispenser.tscn`)
+
+- [ ] **OpenSound**: handle pulled, shutters rolling open, the platform rising with a
+  fuel cell. *One-shot, 3D.* Plays at the start of "open" (1.2 s).
+- [ ] **CloseSound**: handle pulled back, shutters closing. *One-shot, 3D.* Plays at the
+  start of "close" (0.5 s).
+
 ## The player (`assets/player/player.tscn`)
 
 - [ ] **SplashPlayer**: body hitting the water (jumping or falling in). *One-shot.*

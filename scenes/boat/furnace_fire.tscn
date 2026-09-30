@@ -139,6 +139,9 @@ particles_anim_loop = false
 material = SubResource("StandardMaterial3D_sparks")
 size = Vector2(0.01, 0.01)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_intake"]
+size = Vector3(0.6, 0.55, 0.6)
+
 [node name="furnace_fire" type="Node3D" unique_id=355197691]
 script = ExtResource("1_fire")
 
@@ -159,9 +162,18 @@ process_material = SubResource("ParticleProcessMaterial_flames")
 draw_pass_1 = SubResource("QuadMesh_flames")
 
 [node name="Sparks" type="GPUParticles3D" parent="." unique_id=1085966446]
-amount = 6
+amount = 12
 lifetime = 1.4
 randomness = 0.8
 local_coords = true
 process_material = SubResource("ParticleProcessMaterial_sparks")
 draw_pass_1 = SubResource("QuadMesh_sparks")
+
+[node name="Intake" type="Area3D" parent="." unique_id=1440712001]
+collision_layer = 0
+collision_mask = 1
+monitorable = false
+
+[node name="Shape" type="CollisionShape3D" parent="Intake" unique_id=1440712002]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+shape = SubResource("BoxShape3D_intake")

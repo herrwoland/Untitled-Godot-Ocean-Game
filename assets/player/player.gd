@@ -331,17 +331,27 @@ func _release_deck() -> void:
 
 ## The hull under our feet, found by looking past the deck's static collision pieces to the
 ## body they hang from -- a ship, or anything else built to move under us. A ray rather than
-## the slide collisions: standing perfectly still reports none.
+## the slide collisions: standing perfectly still reports none. Loose items lying on the deck
+## (carryables: a fuel cell, a letter) are looked through -- they are rigid bodies too, and
+## riding one would drag us along with it as it rolls.
 func _ship_under_feet() -> PhysicsBody3D:
 	var from := global_position + Vector3.UP * 0.3
-	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 0.8,
-			collision_mask, [get_rid()])
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	var node = hit.get('collider') if hit else null
-	while node is Node:
-		if node is RigidBody3D or node is AnimatableBody3D:
-			return node
-		node = node.get_parent() # the deck's own StaticBody3D pieces are not what carries us
+	var exclude: Array[RID] = [get_rid()]
+	for attempt in 4:
+		var query := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 0.8,
+				collision_mask, exclude)
+		var hit := get_world_3d().direct_space_state.intersect_ray(query)
+		if not hit:
+			return null
+		var node = hit.get('collider')
+		if node is Node and node.is_in_group(&'carryable'):
+			exclude.append(hit.get('rid'))
+			continue
+		while node is Node:
+			if node is RigidBody3D or node is AnimatableBody3D:
+				return node
+			node = node.get_parent() # the deck's own StaticBody3D pieces are not what carries us
+		return null
 	return null
 
 func _process_swim(delta: float) -> void:

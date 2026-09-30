@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://c22b4ofl7qojp" path="res://assets/models/boat/steering.glb" id="3_vqk42"]
 [ext_resource type="Script" uid="uid://clj7h2sfw06rd" path="res://assets/scripts/world/dry_volume.gd" id="4_51f5f"]
 [ext_resource type="Script" uid="uid://b3s502b801kf" path="res://assets/scripts/helm_interactable.gd" id="5_helm"]
+[ext_resource type="Texture2D" uid="uid://cnn5ybcxkmryj" path="res://scenes/boat/smoke.png" id="5_ka04m"]
 [ext_resource type="Script" uid="uid://cs2x7rmusrtt6" path="res://assets/scripts/interactables/ship_ladder.gd" id="6_ladder"]
 [ext_resource type="PackedScene" uid="uid://ws3qh2fav0ah" path="res://assets/models/boat/front_light.glb" id="7_vlsv3"]
 [ext_resource type="PackedScene" uid="uid://bs7x4dgp16lr5" path="res://assets/models/boat/boat_0.1.glb" id="8_2ib73"]
@@ -22,6 +23,56 @@
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_82xsv"]
 size = Vector3(44, 8.062927, 13.075356)
+
+[sub_resource type="Curve" id="Curve_rf6rj"]
+_data = [Vector2(0, 0.50357145), 0.0, 0.03748476, 0, 1, Vector2(0.57166123, 0.52500004), 0.0, 0.0, 0, 0, Vector2(1, 0), -1.2256655, 0.0, 1, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_2q3ma"]
+curve = SubResource("Curve_rf6rj")
+
+[sub_resource type="Curve" id="Curve_t2dst"]
+_limits = [0.0, 22.142868, 0.0, 1.0]
+_data = [Vector2(0, 22.142868), 0.0, -22.142868, 0, 1, Vector2(1, 0), -22.142868, 0.0, 1, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_naibd"]
+curve = SubResource("Curve_t2dst")
+
+[sub_resource type="Curve" id="Curve_tu8nm"]
+_data = [Vector2(0, 0.27222222), 0.0, 0.0, 0, 0, Vector2(0.30618894, 1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_a7875"]
+curve = SubResource("Curve_tu8nm")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_60ctv"]
+emission_shape_scale = Vector3(0.5, 0.5, 0.5)
+emission_shape = 3
+emission_box_extents = Vector3(1, 1, 1)
+gravity = Vector3(2, 8, 0)
+linear_accel_min = -2.2351742e-06
+linear_accel_max = 0.49999776
+linear_accel_curve = SubResource("CurveTexture_naibd")
+scale_max = 5.0
+scale_curve = SubResource("CurveTexture_a7875")
+alpha_curve = SubResource("CurveTexture_2q3ma")
+turbulence_enabled = true
+turbulence_noise_scale = 4.857
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5miih"]
+transparency = 1
+blend_mode = 1
+albedo_texture = ExtResource("5_ka04m")
+emission_enabled = true
+emission_energy_multiplier = 0.2
+emission_texture = ExtResource("5_ka04m")
+billboard_mode = 1
+billboard_keep_scale = true
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_4mseo"]
+material = SubResource("StandardMaterial3D_5miih")
+orientation = 2
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vlsv3"]
 resource_name = "Material.001"
@@ -271,6 +322,13 @@ collision_layer = 2
 
 [node name="StaticBody3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 471000825) index="0" unique_id=1312734624]
 collision_layer = 2
+
+[node name="smoke" type="GPUParticles3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 471000825) index="1" unique_id=2001236800]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.18878, 0)
+amount = 20
+lifetime = 2.5999999999999996
+process_material = SubResource("ParticleProcessMaterial_60ctv")
+draw_pass_1 = SubResource("PlaneMesh_4mseo")
 
 [node name="StaticBody3D" parent="boat/floor_top" parent_id_path=PackedInt32Array(331109473, 12153058) index="0" unique_id=1570883531]
 collision_layer = 2
@@ -568,7 +626,7 @@ throw_direction = Vector3(0, 1, -0.7)
 [node name="dispenser" type="Node3D" parent="." unique_id=1194587931]
 
 [node name="dispenser" parent="dispenser" unique_id=1913581995 instance=ExtResource("17_duxm1")]
-transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, 0.5697663, 0.39937186, 1.6752379)
+transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, 0.4131676, 0.08029997, 1.6674869)
 
 [editable path="boat_navigation/steering_hinge/steering"]
 [editable path="boat"]
