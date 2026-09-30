@@ -16,6 +16,9 @@ enum State { WALK, SWIM, PILOT, OPERATE, CLIMB }
 @export var swim_enter_depth: float = 0.6 # how deep water must be over the feet before we start swimming
 @export var swim_exit_depth: float = 0.45 # while grounded, water shallower than this switches back to walking (wading)
 @export var sink_speed: float = 1.0 # constant downward speed while swimming unless swim_up is held
+## Keeping afloat (holding swim_up at the surface) rides the water exactly, like a Water
+## surface_point: the eyes this high above it (m), carried up, down and round with the waves.
+@export_range(0.0, 1.0, 0.01) var float_eye_height: float = 0.25
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
@@ -73,6 +76,7 @@ var _head_base_y: float = 1.6
 var _eye_offset: float = 0.0
 var _ears_underwater: bool = false
 var _submerged_at_msec: int = 0 # when the ears last went under, for the surfacing gasp
+var _float_rest := Vector2.INF # afloat: the piece of water we ride (Water.surface_rest); INF = not afloat
 
 const GASP_AFTER_SECONDS := 4.0 # dives shorter than this surface without a gasp
 
@@ -132,7 +136,9 @@ func _update_underwater_audio(delta: float) -> void:
 ## faster across the surface, so the crossing is quick without ever stalling.
 func _keep_eyes_clear_of_waterline(delta: float) -> void:
 	var target := 0.0
-	if water and eye_waterline_clearance > 0.0 and state != State.PILOT and not captured:
+	# Afloat, the eyes are set above the water exactly; pushing them off it would only lift them.
+	var afloat := state == State.SWIM and _float_rest != Vector2.INF
+	if water and eye_waterline_clearance > 0.0 and state != State.PILOT and not captured and not afloat:
 		# Work from where the head would sit untouched, never from the nudged position, or the
 		# nudge chases its own tail.
 		var eye := camera.global_position
@@ -296,6 +302,7 @@ func _start_climb(target: Node, t: float) -> void:
 	velocity = Vector3.ZERO
 	collider.disabled = true # the hull and rungs are right in front of us
 	surface_ripples.emitting = false
+	_float_rest = Vector2.INF
 
 ## On the ladder: forward/space climbs, back goes down, back at the foot steps off, swim_down
 ## (C) lets go. The position is worked out along the ladder every frame, so a moving ship
@@ -450,6 +457,16 @@ func _process_swim(delta: float) -> void:
 	if move_dir.length() > 0.0:
 		move_dir = move_dir.normalized()
 
+	# Holding swim_up at the surface: afloat, riding the waves exactly (see _float_on_surface).
+	# From below, swim_up swims us up until the eyes reach the water, then catches us there.
+	if Input.is_action_pressed(&'swim_up') and water.has_method(&'surface_point'):
+		var afloat_feet := surface_y + float_eye_height - _head_base_y
+		if _float_rest != Vector2.INF or global_position.y >= afloat_feet - 0.05:
+			_float_on_surface(delta, move_dir)
+			surface_ripples.global_position = Vector3(global_position.x, surface_y, global_position.z)
+			return
+	_float_rest = Vector2.INF
+
 	velocity.x = move_dir.x * swim_speed
 	velocity.z = move_dir.z * swim_speed
 
@@ -472,6 +489,21 @@ func _process_swim(delta: float) -> void:
 
 	# Keep the surface ripples sitting on the waves above us.
 	surface_ripples.global_position = Vector3(global_position.x, surface_y, global_position.z)
+
+## Afloat: ride one piece of the water surface -- up, down and round with the waves, the way
+## the test float in scenes/test does -- with the eyes float_eye_height above it. Swimming moves
+## which piece we ride. We still go through move_and_slide, so a hull stops us; if something
+## holds us back, we take hold of the water where we are instead of being dragged into it.
+func _float_on_surface(delta: float, move_dir: Vector3) -> void:
+	if _float_rest == Vector2.INF:
+		_float_rest = water.surface_rest(global_position)
+	_float_rest += Vector2(move_dir.x, move_dir.z) * swim_speed * delta
+	var p: Vector3 = water.surface_point(_float_rest)
+	var target := Vector3(p.x, p.y + float_eye_height - _head_base_y, p.z)
+	velocity = (target - global_position) / maxf(delta, 1e-4)
+	move_and_slide()
+	if global_position.distance_to(target) > 0.1:
+		_float_rest = water.surface_rest(global_position)
 
 func _process_pilot(delta: float) -> void:
 	if not is_instance_valid(helm_marker):
@@ -513,6 +545,7 @@ func _check_exit_swim() -> void:
 	if is_on_floor() and surface_y - global_position.y < swim_exit_depth:
 		state = State.WALK
 		surface_ripples.emitting = false
+		_float_rest = Vector2.INF
 
 func _play_splash(surface_y: float) -> void:
 	splash_particles.global_position = Vector3(global_position.x, surface_y, global_position.z)
