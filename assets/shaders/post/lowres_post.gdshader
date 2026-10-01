@@ -16,7 +16,7 @@ uniform sampler2D palette;
 uniform bool dithering = false;
 uniform int dithering_size : hint_range(1, 16) = 2;
 uniform int resolution_scale : hint_range(1, 64) = 2;
-uniform int quantization_level : hint_range(2, 20) = 16;
+uniform int quantization_level : hint_range(2, 32) = 16;
 
 // --- Chromatic aberration ---
 uniform float aberration_intensity : hint_range(0.0, 50.0, 0.1) = 1.0;

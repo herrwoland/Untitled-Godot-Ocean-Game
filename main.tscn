@@ -10,7 +10,7 @@
 [ext_resource type="AudioStream" uid="uid://cvvn0vke5comw" path="res://assets/ocean_loop.wav" id="6_jpklm"]
 [ext_resource type="Script" uid="uid://bdjbwk3saoju4" path="res://assets/water/water.gd" id="7_s0x5e"]
 [ext_resource type="AudioStream" uid="uid://ck6vmandgjhy0" path="res://assets/wind_loop.wav" id="8_6r5si"]
-[ext_resource type="Resource" uid="uid://byc7e2wygm4lw" path="res://assets/weather/presets/dark_night.tres" id="8_abqjc"]
+[ext_resource type="Resource" uid="uid://f1w1oglkstmh" path="res://assets/weather/presets/very_calm.tres" id="8_abqjc"]
 [ext_resource type="Shader" uid="uid://bjmoda33o8qkd" path="res://assets/shaders/spatial/sea_spray.gdshader" id="8_eu8jb"]
 [ext_resource type="Material" uid="uid://5xqyddws6rt5" path="res://assets/water/mat_spray.tres" id="9_skbf4"]
 [ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="10_spqpo"]
@@ -22,7 +22,7 @@
 [ext_resource type="PackedScene" uid="uid://cf2rcpsk3hrt1" path="res://assets/ui/start_screen.tscn" id="18_start"]
 [ext_resource type="PackedScene" uid="uid://dsm5csm5s7y4k" path="res://assets/ui/pause_menu.tscn" id="19_pause"]
 [ext_resource type="PackedScene" uid="uid://dt05m04hsc0p0" path="res://assets/ui/settings_menu.tscn" id="21_settings"]
-[ext_resource type="Shader" path="res://assets/shaders/post/lowres_post.gdshader" id="24_ps1"]
+[ext_resource type="Shader" uid="uid://do2j6yewai3oo" path="res://assets/shaders/post/lowres_post.gdshader" id="24_ps1"]
 [ext_resource type="Script" uid="uid://cfdhchsvnkb3e" path="res://assets/ui/fps_meter.gd" id="25_fps"]
 [ext_resource type="PackedScene" uid="uid://dbejhouby1a6p" path="res://assets/models/shed/House_01.glb" id="25_wnkbs"]
 [ext_resource type="Script" uid="uid://d23qkx5iyk16y" path="res://assets/scripts/core/mission_controller.gd" id="26_mission"]
@@ -66,32 +66,32 @@ seamless = true
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0odxb"]
 shader = ExtResource("2_getpj")
 shader_parameter/noise_texture = SubResource("NoiseTexture2D_1u8w0")
-shader_parameter/cloud_scale = 1.0
-shader_parameter/coverage = 0.7850000372875
-shader_parameter/density = 14.6350006714125
-shader_parameter/warp_strength = 0.3
+shader_parameter/cloud_scale = 0.12
+shader_parameter/coverage = 0.55200002622
+shader_parameter/density = 3.586000146585
+shader_parameter/warp_strength = 0.138000006555
 shader_parameter/wind_direction = Vector2(1, 0.35)
 shader_parameter/wind_speed = 0.005
 shader_parameter/scud_speed_mult = 2.2
-shader_parameter/cloud_lit_color = Color(0.09, 0.1, 0.13, 1)
-shader_parameter/cloud_dark_color = Color(0.01, 0.012, 0.018, 1)
-shader_parameter/zenith_color = Color(0.008, 0.01, 0.02, 1)
-shader_parameter/horizon_color = Color(0.03, 0.035, 0.05, 1)
-shader_parameter/ground_color = Color(0.005, 0.007, 0.01, 1)
-shader_parameter/sun_glow = 0.25
+shader_parameter/cloud_lit_color = Color(0.70940447, 0.6799223, 0.7758811, 1)
+shader_parameter/cloud_dark_color = Color(0.035, 0.04, 0.055, 1)
+shader_parameter/zenith_color = Color(0.1549013, 0.25061765, 0.37344238, 1)
+shader_parameter/horizon_color = Color(0.32156864, 0.38431373, 0.4509804, 1)
+shader_parameter/ground_color = Color(0.039856378, 0.061111696, 0.20538965, 1)
+shader_parameter/sun_glow = 0.6
 shader_parameter/lightning_strength = 0.0
 shader_parameter/exposure = 1.0
 shader_parameter/sun_size = 1.4
 shader_parameter/sun_disc_energy = 14.0
 shader_parameter/sun_corona = 0.8
-shader_parameter/moon_amount = 1.0
+shader_parameter/moon_amount = 0.0
 shader_parameter/moon_size = 6.57200030891012
 shader_parameter/moon_color = Color(0.86, 0.88, 0.92, 1)
 shader_parameter/moon_brightness = 12.0
 shader_parameter/moon_phase = -0.7429999877925
 shader_parameter/moon_halo = 0.9090000431775
 shader_parameter/sunset_color = Color(0.9, 0.45, 0.2, 1)
-shader_parameter/sunset_strength = 0.0
+shader_parameter/sunset_strength = 1.0
 shader_parameter/sunset_spread = 2.5
 
 [sub_resource type="Sky" id="Sky_vroi3"]
@@ -99,26 +99,24 @@ sky_material = SubResource("ShaderMaterial_0odxb")
 
 [sub_resource type="Environment" id="Environment_icybu"]
 background_mode = 2
-background_energy_multiplier = 0.12
 sky = SubResource("Sky_vroi3")
-ambient_light_energy = 0.15
 tonemap_mode = 4
 glow_enabled = true
 glow_normalized = true
-glow_intensity = 0.25
+glow_intensity = 0.16
 glow_strength = 1.1
 glow_bloom = 0.15
-fog_light_color = Color(0.02, 0.025, 0.05, 1)
-fog_light_energy = 0.0
+fog_density = 0.0063
 fog_sky_affect = 0.0
-fog_height = -4.0
-fog_height_density = 16.0
+fog_height = 19.38
+fog_height_density = 0.01
 fog_depth_curve = 0.25
 fog_depth_begin = 200.0
 fog_depth_end = 350.0
 volumetric_fog_enabled = true
-volumetric_fog_density = 0.004
+volumetric_fog_density = 0.0005
 volumetric_fog_length = 500.0
+volumetric_fog_sky_affect = 0.0
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_uypp3"]
 resource_local_to_scene = false
@@ -293,7 +291,7 @@ shader_parameter/use_palette = false
 shader_parameter/dithering = true
 shader_parameter/dithering_size = 2
 shader_parameter/resolution_scale = 1
-shader_parameter/quantization_level = 18
+shader_parameter/quantization_level = 24
 shader_parameter/aberration_intensity = 1.0
 shader_parameter/aberration_threshold = 1.0
 
@@ -444,14 +442,12 @@ eye_waterline_clearance = 0.9
 eye_waterline_speed = 16.0
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=2103121333]
-transform = Transform3D(0.6218717, -0.13361141, 0.77163684, -0.527239, 0.6571359, 0.538694, -0.5790457, -0.74183583, 0.33820915, 0, 10, 0)
-light_color = Color(0.3261791, 0.36903688, 0.37293318, 1)
-light_energy = 0.5
-light_volumetric_fog_energy = 0.17
+transform = Transform3D(0.9456003, -0.051692113, 0.3211967, -0.008405724, 0.9830844, 0.18296008, -0.32522097, -0.17570706, 0.9291707, 0, 10, 0)
+light_energy = 1.3
 light_specular = 0.0
 shadow_enabled = true
 shadow_bias = 0.0
-shadow_opacity = 0.9
+shadow_opacity = 0.8
 shadow_blur = 4.592
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
@@ -495,7 +491,7 @@ cast_shadow = 0
 extra_cull_margin = 1000.0
 mesh = ExtResource("4_vivmo")
 script = ExtResource("7_s0x5e")
-water_color = Color(0.08200001, 0.13706668, 0.2, 1)
+water_color = Color(0.03137255, 0.10980392, 0.2, 1)
 foam_color = Color(0.8520676, 0.8132686, 0.7798851, 1)
 parameters = Array[ExtResource("2_pw5n6")]([SubResource("Resource_adqv5"), SubResource("Resource_luhq0"), SubResource("Resource_83u3u")])
 map_size = 512
