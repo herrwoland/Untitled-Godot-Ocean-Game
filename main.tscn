@@ -10,7 +10,7 @@
 [ext_resource type="AudioStream" uid="uid://cvvn0vke5comw" path="res://assets/ocean_loop.wav" id="6_jpklm"]
 [ext_resource type="Script" uid="uid://bdjbwk3saoju4" path="res://assets/water/water.gd" id="7_s0x5e"]
 [ext_resource type="AudioStream" uid="uid://ck6vmandgjhy0" path="res://assets/wind_loop.wav" id="8_6r5si"]
-[ext_resource type="Resource" uid="uid://f1w1oglkstmh" path="res://assets/weather/presets/very_calm.tres" id="8_abqjc"]
+[ext_resource type="Resource" uid="uid://cq8cegk7irtm4" path="res://assets/weather/presets/rainy.tres" id="8_abqjc"]
 [ext_resource type="Shader" uid="uid://bjmoda33o8qkd" path="res://assets/shaders/spatial/sea_spray.gdshader" id="8_eu8jb"]
 [ext_resource type="Material" uid="uid://5xqyddws6rt5" path="res://assets/water/mat_spray.tres" id="9_skbf4"]
 [ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="10_spqpo"]
@@ -32,7 +32,6 @@
 [ext_resource type="PackedScene" uid="uid://dyw615s83yi68" path="res://assets/ui/note_view.tscn" id="31_note"]
 [ext_resource type="Script" uid="uid://xirrbn1q428o" path="res://assets/scripts/world/lighthouse_light.gd" id="33_lhlight"]
 [ext_resource type="Script" uid="uid://d3o51uaudkc7e" path="res://assets/scripts/world/creature_director.gd" id="35_creatures"]
-[ext_resource type="Script" uid="uid://d2lwj1bl5x665" path="res://assets/scripts/world/swappable_prop.gd" id="36_swap"]
 [ext_resource type="Script" uid="uid://1yls1dmbq84k" path="res://assets/scripts/world/sanity_director.gd" id="37_sanity"]
 [ext_resource type="Script" uid="uid://c7n8dp7f8tkeu" path="res://assets/scripts/world/wave_blocker.gd" id="38_blocker"]
 [ext_resource type="PackedScene" uid="uid://bhu1820hsu76y" path="res://assets/models/lighthouse/Light_House_light_0.1.glb" id="38_qnost"]
@@ -45,7 +44,7 @@
 [ext_resource type="Script" uid="uid://dui3ctiunqxcn" path="res://assets/scripts/world/strangeness_sting.gd" id="42_sting"]
 [ext_resource type="PackedScene" path="res://assets/models/letter.tscn" id="43_letter"]
 [ext_resource type="PackedScene" uid="uid://dtaokrqog4ywo" path="res://assets/models/lighthouse/Light_House_0.1.glb" id="44_gngh3"]
-[ext_resource type="PackedScene" path="res://assets/models/package.tscn" id="44_package"]
+[ext_resource type="PackedScene" uid="uid://k7f1jdao3vrq" path="res://assets/models/package.tscn" id="44_package"]
 [ext_resource type="PackedScene" uid="uid://c1a5366rpgr2k" path="res://assets/models/ship/boat.tscn" id="45_boat"]
 [ext_resource type="PackedScene" uid="uid://c4j4cc8pl3fqr" path="res://assets/models/creatures/hunter_fish.tscn" id="50_hrvbo"]
 [ext_resource type="Script" uid="uid://csyjpi4nlac4u" path="res://assets/scripts/world/underwater_glow.gd" id="53_abqjc"]
@@ -67,19 +66,19 @@ seamless = true
 shader = ExtResource("2_getpj")
 shader_parameter/noise_texture = SubResource("NoiseTexture2D_1u8w0")
 shader_parameter/cloud_scale = 0.12
-shader_parameter/coverage = 0.55200002622
-shader_parameter/density = 3.586000146585
-shader_parameter/warp_strength = 0.138000006555
+shader_parameter/coverage = 0.95
+shader_parameter/density = 11.0
+shader_parameter/warp_strength = 0.3
 shader_parameter/wind_direction = Vector2(1, 0.35)
-shader_parameter/wind_speed = 0.005
+shader_parameter/wind_speed = 0.025
 shader_parameter/scud_speed_mult = 2.2
-shader_parameter/cloud_lit_color = Color(0.70940447, 0.6799223, 0.7758811, 1)
+shader_parameter/cloud_lit_color = Color(0.35, 0.33, 0.36, 1)
 shader_parameter/cloud_dark_color = Color(0.035, 0.04, 0.055, 1)
-shader_parameter/zenith_color = Color(0.1549013, 0.25061765, 0.37344238, 1)
-shader_parameter/horizon_color = Color(0.32156864, 0.38431373, 0.4509804, 1)
-shader_parameter/ground_color = Color(0.039856378, 0.061111696, 0.20538965, 1)
-shader_parameter/sun_glow = 0.6
-shader_parameter/lightning_strength = 0.0
+shader_parameter/zenith_color = Color(0.05, 0.06, 0.08, 1)
+shader_parameter/horizon_color = Color(0.22, 0.23, 0.25, 1)
+shader_parameter/ground_color = Color(0.02, 0.03, 0.04, 1)
+shader_parameter/sun_glow = 0.35
+shader_parameter/lightning_strength = 0.15
 shader_parameter/exposure = 1.0
 shader_parameter/sun_size = 1.4
 shader_parameter/sun_disc_energy = 14.0
@@ -106,17 +105,18 @@ glow_normalized = true
 glow_intensity = 0.16
 glow_strength = 1.1
 glow_bloom = 0.15
-fog_density = 0.0063
+fog_light_color = Color(0.107337, 0.114064, 0.276683, 1)
+fog_light_energy = 0.0
+fog_density = 0.003
 fog_sky_affect = 0.0
-fog_height = 19.38
-fog_height_density = 0.01
+fog_height = -4.0
+fog_height_density = 16.0
 fog_depth_curve = 0.25
 fog_depth_begin = 200.0
 fog_depth_end = 350.0
 volumetric_fog_enabled = true
-volumetric_fog_density = 0.0005
+volumetric_fog_density = 0.003
 volumetric_fog_length = 500.0
-volumetric_fog_sky_affect = 0.0
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_uypp3"]
 resource_local_to_scene = false
@@ -213,18 +213,18 @@ texture_list = Array[Terrain3DTextureAsset]([SubResource("Terrain3DTextureAsset_
 [sub_resource type="Resource" id="Resource_adqv5"]
 script = ExtResource("2_pw5n6")
 tile_length = Vector2(88, 88)
-displacement_scale = 0.5
-wind_speed = 4.0
+displacement_scale = 0.65
+wind_speed = 13.0
 wind_direction = 20.0
 fetch_length = 150.0
 spread = 0.2
-foam_amount = 1.5
+foam_amount = 9.0
 
 [sub_resource type="Resource" id="Resource_luhq0"]
 script = ExtResource("2_pw5n6")
 tile_length = Vector2(57, 57)
 displacement_scale = 0.45
-wind_speed = 2.5
+wind_speed = 7.0
 wind_direction = 15.0
 fetch_length = 150.0
 spread = 0.4
@@ -235,12 +235,11 @@ script = ExtResource("2_pw5n6")
 tile_length = Vector2(16, 16)
 displacement_scale = 0.0
 normal_scale = 0.25
-wind_speed = 8.0
 wind_direction = 20.0
 fetch_length = 550.0
 spread = 0.4
 whitecap = 0.25
-foam_amount = 0.5
+foam_amount = 3.0
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_k6xhe"]
 
@@ -304,44 +303,17 @@ size = Vector3(60, 4, 60)
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_shore"]
 albedo_color = Color(0.72, 0.65, 0.5, 1)
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_wall_back"]
-size = Vector3(0.3, 3, 7)
-
-[sub_resource type="BoxMesh" id="BoxMesh_wall_back"]
-size = Vector3(0.3, 3, 7)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_shackwall"]
-albedo_color = Color(0.42, 0.35, 0.28, 1)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_wall_front"]
-size = Vector3(0.3, 3, 2.5)
-
-[sub_resource type="BoxMesh" id="BoxMesh_wall_front"]
-size = Vector3(0.3, 3, 2.5)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_wall_side"]
-size = Vector3(7, 3, 0.3)
-
-[sub_resource type="BoxMesh" id="BoxMesh_wall_side"]
-size = Vector3(7, 3, 0.3)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_roof"]
-size = Vector3(7.6, 0.3, 7.6)
-
-[sub_resource type="BoxMesh" id="BoxMesh_roof"]
-size = Vector3(7.6, 0.3, 7.6)
-
 [sub_resource type="BoxShape3D" id="BoxShape3D_bed"]
-size = Vector3(2, 0.6, 1)
+size = Vector3(2.8735352, 0.6, 1.4977112)
 
 [sub_resource type="BoxMesh" id="BoxMesh_bed"]
-size = Vector3(2, 0.6, 1)
+size = Vector3(2.8584595, 0.23444825, 1.4418945)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bed"]
 albedo_color = Color(0.5, 0.15, 0.15, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_homezone"]
-size = Vector3(18, 8, 18)
+size = Vector3(18, 5.739319, 18)
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_buoy"]
 radius = 3.5
@@ -427,7 +399,8 @@ height = 15.95
 script = ExtResource("1_skarq")
 
 [node name="PlayerSpawn" type="Marker3D" parent="." unique_id=1902926855]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 665.92084, 2.9718437, 8.251836)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -133.74353, 5.467661, 10.839488)
+gizmo_extents = 0.54
 
 [node name="Environment" type="WorldEnvironment" parent="." unique_id=1400611425]
 environment = SubResource("Environment_icybu")
@@ -442,8 +415,8 @@ eye_waterline_clearance = 0.9
 eye_waterline_speed = 16.0
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=2103121333]
-transform = Transform3D(0.9456003, -0.051692113, 0.3211967, -0.008405724, 0.9830844, 0.18296008, -0.32522097, -0.17570706, 0.9291707, 0, 10, 0)
-light_energy = 1.3
+transform = Transform3D(0.9456003, -0.0516921, 0.3211966, -0.008405715, 0.9830844, 0.18296008, -0.32522082, -0.17570706, 0.9291708, 0, 10, 0)
+light_energy = 0.6
 light_specular = 0.0
 shadow_enabled = true
 shadow_bias = 0.0
@@ -451,10 +424,11 @@ shadow_opacity = 0.8
 shadow_blur = 4.592
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -133.35126, 208.02365, -684.3679)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80.892395, 78.925674, -175.17677)
 script = ExtResource("60_rain")
-intensity = 0.0
-wind_strength = 2.0
+intensity = 0.85
+wind_strength = 9.0
+gustiness = 0.5
 lens_drops_enabled = false
 
 [node name="Weather" type="Node" parent="." unique_id=1337985377 node_paths=PackedStringArray("water", "sun", "world_environment", "world_fog", "rain")]
@@ -483,7 +457,7 @@ creature_count = 4
 speed_multiplier = 2.5
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -133, 0, -684)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 0, -175)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -542,12 +516,12 @@ material = SubResource("FogMaterial_riff4")
 
 [node name="OceanAudioPlayer" type="AudioStreamPlayer" parent="." unique_id=275062109]
 stream = ExtResource("6_jpklm")
-volume_db = 13.5
+volume_db = 15.0
 autoplay = true
 
 [node name="WindAudioPlayer" type="AudioStreamPlayer" parent="." unique_id=381288878]
 stream = ExtResource("8_6r5si")
-volume_db = -28.833334
+volume_db = -30.0
 autoplay = true
 
 [node name="MusicPlayer" type="AudioStreamPlayer" parent="." unique_id=799557590]
@@ -555,7 +529,7 @@ volume_db = -8.0
 autoplay = true
 
 [node name="Boat" parent="." unique_id=108108734 node_paths=PackedStringArray("water") instance=ExtResource("45_boat")]
-transform = Transform3D(-0.9945876, 0.027497351, -0.10020208, 0.02735889, 0.9996217, 0.0027563104, 0.10023998, 1.13546314e-07, -0.9949639, 644.67395, 0.991477, 9.36186)
+transform = Transform3D(-0.99955845, 0.027389033, -0.011583984, 0.027358893, 0.9996218, 0.0027563104, 0.0116551, 0.0024383024, -0.99992985, -72.12826, 1.5854063, 11.32654)
 water = NodePath("../Water")
 
 [node name="Box Octet Experiment" type="RigidBody3D" parent="." unique_id=1036328041 node_paths=PackedStringArray("buoyant_cells", "mesh")]
@@ -623,97 +597,36 @@ shape = SubResource("BoxShape3D_shore")
 mesh = SubResource("BoxMesh_shore")
 surface_material_override/0 = SubResource("StandardMaterial3D_shore")
 
-[node name="House_01" parent="." unique_id=1399797306 instance=ExtResource("25_wnkbs")]
+[node name="shore" type="Node3D" parent="." unique_id=150492625]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -133.12311, 4.601178, 10)
 
-[node name="Shack" type="StaticBody3D" parent="." unique_id=2092962252]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -132, 3, 10)
-visible = false
+[node name="port" type="CSGBox3D" parent="shore" unique_id=1170318935]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.855527, -2.896542, 39.015198)
+use_collision = true
+size = Vector3(4.439575, 0.4658203, 46.89746)
 
-[node name="BackWallShape" type="CollisionShape3D" parent="Shack" unique_id=662059054]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 1.5, 0)
-shape = SubResource("BoxShape3D_wall_back")
+[node name="House_01" parent="shore" unique_id=1104077044 instance=ExtResource("25_wnkbs")]
 
-[node name="BackWallMesh" type="MeshInstance3D" parent="Shack" unique_id=1392770384]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 1.5, 0)
-mesh = SubResource("BoxMesh_wall_back")
-surface_material_override/0 = SubResource("StandardMaterial3D_shackwall")
-
-[node name="FrontWallLeftShape" type="CollisionShape3D" parent="Shack" unique_id=2139710931]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 1.5, -2.25)
-shape = SubResource("BoxShape3D_wall_front")
-
-[node name="FrontWallLeftMesh" type="MeshInstance3D" parent="Shack" unique_id=895522693]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 1.5, -2.25)
-mesh = SubResource("BoxMesh_wall_front")
-surface_material_override/0 = SubResource("StandardMaterial3D_shackwall")
-
-[node name="FrontWallRightShape" type="CollisionShape3D" parent="Shack" unique_id=2020015974]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 1.5, 2.25)
-shape = SubResource("BoxShape3D_wall_front")
-
-[node name="FrontWallRightMesh" type="MeshInstance3D" parent="Shack" unique_id=694099059]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 1.5, 2.25)
-mesh = SubResource("BoxMesh_wall_front")
-surface_material_override/0 = SubResource("StandardMaterial3D_shackwall")
-
-[node name="SideWallNorthShape" type="CollisionShape3D" parent="Shack" unique_id=273116165]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -3.5)
-shape = SubResource("BoxShape3D_wall_side")
-
-[node name="SideWallNorthMesh" type="MeshInstance3D" parent="Shack" unique_id=2050593278]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -3.5)
-mesh = SubResource("BoxMesh_wall_side")
-surface_material_override/0 = SubResource("StandardMaterial3D_shackwall")
-
-[node name="SideWallSouthShape" type="CollisionShape3D" parent="Shack" unique_id=1637151906]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 3.5)
-shape = SubResource("BoxShape3D_wall_side")
-
-[node name="SideWallSouthMesh" type="MeshInstance3D" parent="Shack" unique_id=965414165]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 3.5)
-mesh = SubResource("BoxMesh_wall_side")
-surface_material_override/0 = SubResource("StandardMaterial3D_shackwall")
-
-[node name="RoofShape" type="CollisionShape3D" parent="Shack" unique_id=1781647614]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.15, 0)
-shape = SubResource("BoxShape3D_roof")
-
-[node name="ShackRoofProp" type="Node3D" parent="." unique_id=1464151730]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -132, 3, 10)
-visible = false
-script = ExtResource("36_swap")
-prop_id = &"shack_roof"
-
-[node name="Variant0" type="Node3D" parent="ShackRoofProp" unique_id=1126609628]
-
-[node name="RoofMesh" type="MeshInstance3D" parent="ShackRoofProp/Variant0" unique_id=394882266]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.15, 0)
-mesh = SubResource("BoxMesh_roof")
-surface_material_override/0 = SubResource("StandardMaterial3D_shackwall")
-
-[node name="Variant1" type="Node3D" parent="ShackRoofProp" unique_id=987963194]
-
-[node name="RoofDrifting" type="MeshInstance3D" parent="ShackRoofProp/Variant1" unique_id=1193367633]
-transform = Transform3D(0.978, -0.208, 0, 0.208, 0.978, 0, 0, 0, 1, 0.4, 4.7, 0.3)
-mesh = SubResource("BoxMesh_roof")
-surface_material_override/0 = SubResource("StandardMaterial3D_shackwall")
+[node name="Plane_001" parent="shore/House_01" index="22" unique_id=1412996186]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.017652035, 0)
 
 [node name="Bed" type="Area3D" parent="." unique_id=706006569]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -134, 3.3, 12)
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -135.76767, 5.0240335, 10.663119)
 collision_layer = 4
 collision_mask = 0
 script = ExtResource("28_bed")
 
 [node name="BedShape" type="CollisionShape3D" parent="Bed" unique_id=1454382646]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.08276367, 0, 0.12831116)
 shape = SubResource("BoxShape3D_bed")
 
 [node name="BedMesh" type="MeshInstance3D" parent="Bed" unique_id=1533878478]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.074798584, 0.18277597, 0.107177734)
 mesh = SubResource("BoxMesh_bed")
 surface_material_override/0 = SubResource("StandardMaterial3D_bed")
 
 [node name="LetterPoint" parent="." unique_id=1405991154 instance=ExtResource("43_letter")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -129.4, 3.3, 10)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -123.83928, 4.6482186, 11.01949)
 
 [node name="HomeZone" type="Area3D" parent="." unique_id=1786139595]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -132, 6, 10)
@@ -722,7 +635,9 @@ collision_mask = 2
 script = ExtResource("30_home")
 
 [node name="HomeZoneShape" type="CollisionShape3D" parent="HomeZone" unique_id=438346524]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1303406, 0)
 shape = SubResource("BoxShape3D_homezone")
+debug_color = Color(0.97875637, 0, 0.39741448, 0.41960785)
 
 [node name="PickupPoint" type="Area3D" parent="." unique_id=1163093033]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, 0, 60)
@@ -1007,7 +922,8 @@ mesh = SubResource("CylinderMesh_5s6u7")
 transform = Transform3D(-0.9902683, 0.065872595, -0.122594856, 0, 0.8808907, 0.47331968, 0.13917147, 0.46871346, -0.87231815, -66.901695, 8.194256, 11.157707)
 
 [node name="BuoyancyPointTest" parent="." unique_id=1759410664 node_paths=PackedStringArray("water") instance=ExtResource("54_6iyjs")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.723843, 10.574904, 4.2255745)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.723843, -10.054815, 4.2255745)
+visible = false
 water = NodePath("../Water")
 debug = true
 drag_coef_lateral = 0.0
@@ -1016,6 +932,6 @@ drag_coef_yaw = 0.0
 drag_coef_pitch = 0.0
 drag_coef_roll = 0.0
 
-[editable path="House_01"]
+[editable path="shore/House_01"]
 [editable path="StonyBeach/Light_House_0_1"]
 [editable path="StonyBeach/Light_House_0_1/Light_House_light_0_1"]

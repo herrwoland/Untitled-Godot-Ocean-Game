@@ -307,7 +307,7 @@ mesh = SubResource("PlaneMesh_5s6u7")
 surface_material_override/0 = SubResource("StandardMaterial3D_klyyb")
 
 [node name="StaticBody3D" type="StaticBody3D" parent="platform" unique_id=521183397]
-collision_layer = 2
+collision_layer = 12
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="platform/StaticBody3D" unique_id=1061194697]

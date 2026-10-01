@@ -181,10 +181,10 @@ debug_shape_custom_color = Color(0.8835159, 0.06592726, 0, 1)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.55)
 
 [node name="CarrySocket" type="Marker3D" parent="Head/Camera3D" unique_id=429615435]
-transform = Transform3D(1, 0, 0, 0, 0.16443092, -0.9863925, 0, 0.9863925, 0.16443092, 0.13788526, -0.12041986, -0.620222)
+transform = Transform3D(1, 0, 0, 0, 0.16443092, -0.9863925, 0, 0.9863925, 0.16443092, 0.13788526, -0.3034432, -0.84307534)
 
-[node name="SwimCarrySocket" type="Marker3D" parent="Head/Camera3D"]
-transform = Transform3D(1, 0, 0, 0, 0.16443092, -0.9863925, 0, 0.9863925, 0.16443092, 0.24, -0.44, -0.66)
+[node name="SwimCarrySocket" type="Marker3D" parent="Head/Camera3D" unique_id=1640790814]
+transform = Transform3D(1, 0, 0, 0, 0.16443092, -0.9863925, 0, 0.9863925, 0.16443092, 0.24, -0.8284738, -0.66)
 
 [node name="BreathBubbles" type="GPUParticles3D" parent="Head/Camera3D" unique_id=1570342301]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.18, -0.3)
