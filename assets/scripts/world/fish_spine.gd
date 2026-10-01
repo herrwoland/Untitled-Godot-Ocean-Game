@@ -16,6 +16,7 @@ var sway_angle := 8.0 # degrees at the tail tip
 var sway_frequency := 0.3 # tail beats per second when barely moving...
 var sway_frequency_per_speed := 0.01 # ...plus this much per m/s
 var max_joint_bend := 25.0 # degrees one joint may fold against the previous
+var max_joint_pitch := 2.0 # degrees one joint may tip up or down; the bend is mostly sideways
 
 var _lengths: PackedFloat32Array # bone k origin -> bone k+1 origin
 var _trail: PackedVector3Array = [] # world positions of the head bone, newest first
@@ -60,19 +61,21 @@ func update(delta: float, speed: float) -> void:
 		var along := float(k) / float(bones - 1)
 		var sway := deg_to_rad(sway_angle) * pow(along, 1.5) * sin(_phase - along * 2.5)
 		dir = dir.rotated(up, sway)
+
+		# The joint, in the parent bone's frame (+Y along the body, +Z up,
+		# +X to the side), as just two angles: a free sideways bend about
+		# +Z and an up/down tip about +X held to max_joint_pitch. No roll.
+		var d := (parent_basis.inverse() * (inv * dir)).normalized()
+		var bend_side := atan2(-d.x, d.y)
+		var limit_pitch := deg_to_rad(max_joint_pitch)
+		var tip := clampf(asin(clampf(d.z, -1.0, 1.0)), -limit_pitch, limit_pitch)
+		var joint := Basis(Vector3(0, 0, 1), bend_side) * Basis(Vector3(1, 0, 0), tip)
+		skeleton.set_bone_pose_rotation(k, joint.get_rotation_quaternion())
+		parent_basis = parent_basis * joint
+		dir = (xf.basis * parent_basis.y).normalized() # where the bone really points now
 		if k < bones - 1:
 			pos += dir * _lengths[k]
 		prev_dir = dir
-
-		# Bone basis in skeleton space: +Y along the body, +Z up.
-		var y := (inv * dir).normalized()
-		var z_up := Vector3.UP - y * y.dot(Vector3.UP)
-		if z_up.length() < 0.01:
-			z_up = parent_basis.z
-		var z := z_up.normalized()
-		var bone_basis := Basis(y.cross(z), y, z)
-		skeleton.set_bone_pose_rotation(k, (parent_basis.inverse() * bone_basis).get_rotation_quaternion())
-		parent_basis = bone_basis
 
 ## Remember where the head has been, one point per TRAIL_SPACING meters,
 ## only as far back as the body reaches.

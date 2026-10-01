@@ -9,6 +9,10 @@ size = Vector3(20, 150, 20)
 [sub_resource type="SphereShape3D" id="SphereShape3D_kb4ww"]
 radius = 9.037
 
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_sight"]
+radius = 22.0
+height = 185.0
+
 [node name="HunterFish" type="Node3D" unique_id=2037867007 node_paths=PackedStringArray("jaw", "mouth", "mouth_area")]
 script = ExtResource("1_hunter")
 creep_rate = 5.0
@@ -78,5 +82,15 @@ bus = &"SFX"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.35, -40.93)
 max_distance = 250.0
 bus = &"SFX"
+
+[node name="SightVolume" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SightVolume"]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 17, 8)
+shape = SubResource("CapsuleShape3D_sight")
 
 [editable path="fish_01"]

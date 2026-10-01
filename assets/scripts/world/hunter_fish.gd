@@ -42,7 +42,11 @@ enum Pass { PEEL, TURN_IN, CHARGE } # the three beats of one attack run
 
 @export_group("Being seen")
 @export var seen_distance := 60.0 # farther than this the murk hides it: no trigger
-@export var view_cone_angle := 30.0 # degrees off the center of view that still counts as looking at it
+## The shape the player must catch sight of (the SightVolume child by default).
+## Size it freely in the editor — bigger than the fish means a glimpse from the
+## corner of the eye already counts. Anywhere on screen counts for this one.
+@export var sight_volume: CollisionShape3D
+@export var view_cone_angle := 30.0 # without a sight_volume: degrees off the center of view that still count
 @export var glimpse_time := 0.25 # seconds it must stay seen before it strikes (a flicker past the eye is forgiven)
 @export_flags_3d_physics var sight_blockers := 1 # layers that hide it: terrain, rocks, the hull
 
@@ -76,6 +80,7 @@ enum Pass { PEEL, TURN_IN, CHARGE } # the three beats of one attack run
 @export var tail_sway_frequency := 0.3 # beats per second when barely moving...
 @export var tail_sway_frequency_per_speed := 0.01 # ...plus this much per m/s of speed
 @export var max_joint_bend := 25.0 # degrees one joint may fold against the next
+@export var max_joint_pitch := 2.0 # degrees one joint may tip up or down (the bend is sideways)
 @export var bend_cull_distance := 450.0 # m from the camera beyond which the spine is left alone
 
 @export_group("Body")
@@ -116,6 +121,10 @@ var _died_emitted := false
 var _player_in_mouth := false # kept current by the mouth_area overlap signals
 var _spine: FishSpine # bends the skeleton along the swum path; null without a rig
 var _own_bodies: Array[RID] = [] # its own colliders, which must never hide it from view
+var _sight_points: PackedVector3Array = [] # sample points on sight_volume, in its local space
+var _sight_cursor := 0 # round-robin start, so capped ray checks cover every point over a few frames
+const SIGHT_SPACING := 20.0 # m between sight_volume sample points
+const MAX_SIGHT_RAYS := 8 # line-of-sight checks per frame at most
 
 func _ready() -> void:
 	if jaw == null:
@@ -139,6 +148,10 @@ func _ready() -> void:
 		_spine = FishSpine.new(skeletons[0])
 	for body: CollisionObject3D in find_children("*", "CollisionObject3D", true, false):
 		_own_bodies.append(body.get_rid())
+	if sight_volume == null:
+		sight_volume = get_node_or_null(^'SightVolume/CollisionShape3D')
+	if sight_volume and sight_volume.shape:
+		_sight_points = _sample_points(sight_volume.shape.get_debug_mesh().get_aabb())
 
 func _on_mouth_body_entered(body: Node3D) -> void:
 	if body.is_in_group(&'player'):
@@ -393,6 +406,7 @@ func _update_spine(delta: float) -> void:
 	_spine.sway_frequency = tail_sway_frequency
 	_spine.sway_frequency_per_speed = tail_sway_frequency_per_speed
 	_spine.max_joint_bend = max_joint_bend
+	_spine.max_joint_pitch = max_joint_pitch
 	_spine.update(delta, _speed)
 
 ## The charge's rumble: held every frame while the snout is within
@@ -505,11 +519,12 @@ func _stop(sound: AudioStreamPlayer3D) -> void:
 func _player_camera() -> Camera3D:
 	return player.camera if &'camera' in player else null
 
-## Seen = some part of it (snout, mid-body, body center) is near enough that
-## the murk does not cover it, sits within view_cone_angle of where the player
-## is looking, and has a clear line of sight — no terrain or hull in between.
-## The fish needs no collider: an empty ray means nothing hides it. Rays are
-## only cast for points that already passed the cheap tests.
+## Seen = some sample point is near enough that the murk does not cover it,
+## on screen, and in clear line of sight — no terrain or hull in between (its
+## own colliders never count). With a sight_volume the points are spread over
+## that shape and anywhere on screen will do; without one they are the snout,
+## mid-body and body center, and must sit within view_cone_angle of the
+## center of view. Rays are only cast for points that pass the cheap tests.
 func _is_seen() -> bool:
 	var cam := _player_camera()
 	if cam == null:
@@ -518,14 +533,28 @@ func _is_seen() -> bool:
 	var look := -cam.global_basis.z
 	var min_dot := cos(deg_to_rad(view_cone_angle))
 	var space := get_world_3d().direct_space_state
-	var mouth_pos := mouth_position()
-	for point: Vector3 in [mouth_pos, mouth_pos.lerp(global_position, 0.5), global_position]:
+	var points: PackedVector3Array
+	if _sight_points.is_empty():
+		var mouth_pos := mouth_position()
+		points = [mouth_pos, mouth_pos.lerp(global_position, 0.5), global_position]
+	else:
+		min_dot = -1.0 # the volume's size is the dial: anywhere on screen counts
+		var xf := sight_volume.global_transform
+		var n := _sight_points.size()
+		_sight_cursor = (_sight_cursor + 1) % n
+		for i in n:
+			points.append(xf * _sight_points[(_sight_cursor + i) % n])
+	var rays := 0
+	for point in points:
 		var to_point := point - eye
 		var dist := to_point.length()
 		if dist > seen_distance or dist < 0.01 or look.dot(to_point / dist) < min_dot:
 			continue
 		if not cam.is_position_in_frustum(point):
 			continue
+		rays += 1
+		if rays > MAX_SIGHT_RAYS:
+			return false
 		var ray := PhysicsRayQueryParameters3D.create(eye, point, sight_blockers)
 		var exclude := _own_bodies.duplicate()
 		if player is CollisionObject3D:
@@ -534,6 +563,24 @@ func _is_seen() -> bool:
 		if space.intersect_ray(ray).is_empty():
 			return true
 	return false
+
+## A grid of points about every SIGHT_SPACING meters through the shape's
+## bounds, keeping those inside the inscribed ellipsoid so a round shape is
+## not sampled out in empty air. Any of them on screen can give it away.
+static func _sample_points(box: AABB) -> PackedVector3Array:
+	var c := box.get_center()
+	var h := box.size * 0.5
+	var counts := Vector3i.ONE
+	for axis in 3:
+		counts[axis] = clampi(ceili(box.size[axis] / SIGHT_SPACING) + 1, 2, 12)
+	var points: PackedVector3Array = [c]
+	for i in counts.x:
+		for j in counts.y:
+			for k in counts.z:
+				var n := Vector3(i / float(counts.x - 1), j / float(counts.y - 1), k / float(counts.z - 1)) * 2.0 - Vector3.ONE
+				if n.length_squared() <= 1.05:
+					points.append(c + n * h)
+	return points
 
 ## Current mouth-first travel direction.
 func _heading() -> Vector3:
