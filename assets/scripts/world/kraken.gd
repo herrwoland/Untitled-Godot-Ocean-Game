@@ -51,7 +51,7 @@ enum BoatPhase { REACH, SHAKE, FLIP, DRAG }
 @export var turn_rate := 0.45 # rad/s at most
 ## One jet stroke every this many seconds: the arms open slowly, then snap
 ## shut and push the body on.
-@export var stroke_period := 4.5
+@export var stroke_period := 7.0
 @export_range(0.0, 2.0, 0.05) var jet_boost := 0.8 # extra speed at the push, as a fraction
 ## Within this distance of the prey it turns its arms toward it (otherwise it
 ## swims mantle first with the arms trailing).
@@ -64,11 +64,28 @@ enum BoatPhase { REACH, SHAKE, FLIP, DRAG }
 @export_group("Arms")
 @export var arm_root_radius := 1.35 # m, matches the model, so wraps sit on the rock's skin
 @export var arm_tip_radius := 0.12
-@export var arm_stiffness := 1.6 # 1/s how keenly loose arms follow their shape
-@export var arm_drag := 2.2 # 1/s water resistance on the arms' momentum
+## How quickly the arms follow their shapes (rad/s, the joints' spring frequency):
+## about 1 = a change takes 3-4 s to settle. Each role scales it (below).
+@export var arm_response := 0.7
+@export var reach_response := 1.6 # x arm_response while reaching
+@export var hold_response := 1.0 # x while holding the prey
+@export var ship_response := 2.0 # x while gripping the ship
+## Bend limits per joint (degrees): small near the body, large at the tip —
+## the base stays long and straight, the distal part curls.
+@export var arm_swing_limit := 40.0 # how far the whole arm swings at the crown
+@export var arm_bend_root := 4.0 # per joint next to the body...
+@export var arm_bend_tip := 50.0 # ...rising to this at the tip
+## Fastest any arm joint turns (degrees/s). Joint motions add up toward the tip,
+## so this is the real "slow giant" dial.
+@export var arm_max_joint_speed := 18.0
+@export var arm_max_tip_speed := 14.0 # m/s the tip may travel relative to the body, at most
+## Water holding a loose arm back as the body turns (0..1): it trails.
+@export_range(0.0, 0.95, 0.05) var arm_drag := 0.5
 @export var reach_range := 48.0 # m crown to prey: close enough to send an arm
-@export var reach_speed := 7.0 # m/s the tip travels reaching out
-@export var grab_radius := 2.5 # m tip to prey that counts as caught
+@export var reach_time := 4.5 # s for the reaching bend to travel from the base out to the tip
+@export var reach_speed := 4.0 # m/s a tip closes on a moving hull
+@export var reach_seek := 1.2 # 1/s how keenly the tip homes in at the end of a reach
+@export var grab_radius := 3.5 # m tip to prey that counts as caught (the coil then pulls them in)
 @export var reinforce_delay := 3.0 # s after the first arm reaches, before the next one does (and again)
 @export var reinforcements := 2 # extra arms that join the first
 @export var reinforcements_with_ship := 0 # ...while it also has the ship in its arms (busy with her)
@@ -81,8 +98,8 @@ enum BoatPhase { REACH, SHAKE, FLIP, DRAG }
 @export var hold_offset := Vector3(0.0, 0.0, 22.0)
 ## Same, while it also has the ship in its arms (off to one side of her).
 @export var hold_offset_with_ship := Vector3(20.0, 0.0, 12.0)
-@export var hold_sway := 5.0 # m the arm swings the prey about
-@export var hold_sway_period := 3.5 # s
+@export var hold_sway := 4.0 # m the arm swings the prey about
+@export var hold_sway_period := 7.0 # s
 @export var dive_speed := 3.0 # m/s it sinks with the catch...
 @export var dive_depth := 25.0 # ...until the catch is this deep (m under the waves)...
 @export var dive_time := 10.0 # ...or for this long at most; then it hangs there while the air runs out
@@ -90,7 +107,8 @@ enum BoatPhase { REACH, SHAKE, FLIP, DRAG }
 @export var struggle_per_press := 0.05 # grip loosened by one press, with one arm holding (divided by sqrt of the arms holding)
 @export var grip_regain := 0.12 # grip won back per second, per arm holding: at 8 presses/s one arm takes ~3.5 s, two need 10+ presses/s, three cannot be beaten
 @export var throw_speed := 6.0 # m/s the prey is flung clear when it fights free
-@export var coil_radius := 0.9 # m the coil grips round the body (loosens as they struggle)
+@export var coil_radius := 1.4 # m the tip coils round the body (loosens as they struggle)
+@export var coil_length := 6.0 # m of the tip that coils round it
 
 @export_group("The ship")
 @export var ship_arms := 5 # arms that grip the hull
@@ -151,6 +169,8 @@ var _holding := false
 var _hold_start := 0.0
 var _catch_from := Vector3.ZERO
 var _hold_blend := 0.0
+var _carrier: KrakenArm # the arm whose coil the prey rides in
+var _hold_point := Vector3.ZERO # where the carrier swings the prey to
 var _struggle := 0.0 # 0 = gripped tight, 1 = free
 var _reach_start := -1.0 # when the first arm of this attempt reached, -1 = none
 var _reinforced := 0
@@ -219,6 +239,12 @@ func _build_arms() -> void:
 		var arm := KrakenArm.new(_skeleton, a, chain)
 		arm.root_radius = arm_root_radius
 		arm.tip_radius = arm_tip_radius
+		arm.swing_limit = deg_to_rad(arm_swing_limit)
+		arm.bend_root = deg_to_rad(arm_bend_root)
+		arm.bend_tip = deg_to_rad(arm_bend_tip)
+		arm.max_joint_speed = deg_to_rad(arm_max_joint_speed)
+		arm.max_tip_speed = arm_max_tip_speed
+		arm.configure()
 		_arms.append(arm)
 
 func _on_day_started(_day: int) -> void:
@@ -231,6 +257,7 @@ func _reset() -> void:
 	if _holding and is_instance_valid(_player):
 		_player.set_captured(false)
 	_holding = false
+	_carrier = null
 	_player_ignored = false
 	_reach_start = -1.0
 	_cooldown = 0.0
@@ -499,10 +526,16 @@ func _update_reaching(delta: float) -> void:
 			if not can_reach and not _holding:
 				arm.set_role(KrakenArm.Role.RECOIL)
 				continue
-			arm.tip_target = _clamp_reach(arm, arm.tip_target.move_toward(prey, reach_speed * delta))
+			# The reach is a bend travelling from the base to the tip, easing in
+			# and out; behind it the arm is aimed, ahead of it the tip stays rolled.
+			arm.tip_target = _clamp_reach(arm, prey)
+			arm.reach_front = smoothstep(0.0, reach_time, arm.timer)
+			arm.seek_tip = reach_seek * smoothstep(0.7, 1.0, arm.reach_front) # the light tip finishes the reach, easing in
 			if arm.tip().distance_to(prey) < grab_radius:
 				arm.set_role(KrakenArm.Role.HOLD)
+				_coil(arm)
 				if not _holding:
+					_carrier = arm
 					_catch()
 				else:
 					_play(_grab_sound)
@@ -565,8 +598,8 @@ func _update_hold(delta: float) -> void:
 	for arm in _arms:
 		if arm.role == KrakenArm.Role.HOLD:
 			holders += 1
-	if holders == 0:
-		_holding = false
+	if holders == 0 or _carrier == null or _carrier.role != KrakenArm.Role.HOLD:
+		_break_free() # never leave the player captured with nothing holding them
 		return
 	var unconscious: bool = _player.get(&'unconscious')
 	if not unconscious and (Input.is_action_just_pressed(&'jump') or Input.is_action_just_pressed(&'swim_up')):
@@ -580,15 +613,27 @@ func _update_hold(delta: float) -> void:
 	var offset := hold_offset_with_ship if state == State.BOAT else hold_offset
 	var w := TAU / maxf(hold_sway_period, 0.1)
 	var sway := global_basis.x * sin(_time * w) + global_basis.y * sin(_time * w * 0.73 + 1.0) * 0.6
-	var jerk := Vector3(sin(_time * 23.0), sin(_time * 19.0 + 2.0), sin(_time * 29.0 + 4.0)) * _struggle * 0.6
-	var hold := global_transform * offset + sway * hold_sway + jerk
-	hold.y = minf(hold.y, _surface_y(hold) - hold_min_depth)
-	_hold_blend = minf(_hold_blend + delta / 1.2, 1.0)
+	_hold_point = global_transform * offset + sway * hold_sway
+	_hold_point.y = minf(_hold_point.y, _surface_y(_hold_point) - hold_min_depth)
+	# The carrier arm swings the prey about; the prey rides in its coil. As
+	# they struggle the coil loosens, visibly.
+	for arm in _arms:
+		if arm.role == KrakenArm.Role.HOLD:
+			_coil(arm)
+	_hold_blend = minf(_hold_blend + delta / 1.5, 1.0)
 	var s := _hold_blend * _hold_blend * (3.0 - 2.0 * _hold_blend)
-	_player.global_position = _catch_from.lerp(hold, s)
+	var held := _carrier.coil_center() + Vector3.DOWN * 1.0 # the coil round the chest
+	held.y = minf(held.y, _surface_y(held) - hold_min_depth)
+	_player.global_position = _catch_from.lerp(held, s)
+
+## The tip coils round the held body: tighter when the grip is firm.
+func _coil(arm: KrakenArm) -> void:
+	arm.curl_from = arm.length - coil_length
+	arm.curl_rate = 1.0 / (coil_radius * (1.0 + _struggle * 0.6))
 
 func _break_free() -> void:
 	_holding = false
+	_carrier = null
 	for arm in _arms:
 		if arm.role == KrakenArm.Role.HOLD or arm.role == KrakenArm.Role.REACH:
 			arm.set_role(KrakenArm.Role.RECOIL)
@@ -758,15 +803,18 @@ func _update_arms(delta: float) -> void:
 		_pick_loose_arms()
 	_set_arm_goals(delta)
 	for arm in _arms:
-		var stiffness := arm_stiffness
+		var response := arm_response
+		arm.inertia = 0.0
 		match arm.role:
-			KrakenArm.Role.REACH: stiffness = arm_stiffness * 2.0
-			KrakenArm.Role.HOLD: stiffness = arm_stiffness * 4.0
-			KrakenArm.Role.BOAT: stiffness = arm_stiffness * 2.5
-			KrakenArm.Role.RECOIL: stiffness = arm_stiffness * 0.5
+			KrakenArm.Role.REACH: response *= reach_response
+			KrakenArm.Role.HOLD: response *= hold_response
+			KrakenArm.Role.BOAT: response *= ship_response
 			_:
-				if _perched_pose_wanted(): stiffness = arm_stiffness * 0.6 # a slow wrap
-		arm.simulate(delta, stiffness, arm_drag)
+				if not _perched_pose_wanted():
+					arm.inertia = arm_drag # loose in open water: it trails
+		arm.response = response
+		arm.pin_tip = arm.role == KrakenArm.Role.BOAT and arm.gripped
+		arm.simulate(delta)
 		if not far:
 			arm.apply_to_skeleton()
 
@@ -778,46 +826,56 @@ func _set_arm_goals(_delta: float) -> void:
 	var crown := global_position
 	var axis := global_basis.z.normalized() # out of the crown, toward the arms
 	var open := _stroke_open()
+	var surface_y := _surface_y(crown)
 	for arm in _arms:
 		var out := arm.root() - crown
 		out = (out - axis * out.dot(axis)).normalized()
-		var phase := _time * 0.9 + arm.index * 0.8
+		var phase := _time * 0.45 + arm.index * 0.8
 		match arm.role:
 			KrakenArm.Role.REACH:
 				arm.goals_reach(arm.tip_target, out)
 			KrakenArm.Role.HOLD:
-				var loosen := coil_radius + _struggle * 0.8
-				arm.goals_coil(_player.global_position + Vector3.UP * 0.9, Vector3.UP, loosen, 10.0, _time * 0.6 + arm.index)
+				# the carrier swings the prey to the hold point; the others hug the prey
+				var aim := _hold_point if arm == _carrier else _prey_point()
+				arm.goals_reach(_clamp_reach(arm, aim), out)
 			KrakenArm.Role.BOAT:
 				var ship_out := (arm.tip_target - _ship.global_position)
 				var down := -_ship.global_basis.y.normalized()
 				ship_out = (ship_out - down * ship_out.dot(down)).normalized()
 				arm.goals_hull(arm.tip_target, ship_out, down, 9.0)
 			KrakenArm.Role.RECOIL:
-				arm.goals_spread(axis, out, 0.9, 6.0, _time * 3.0 + arm.index, 1.0)
+				arm.goals_spread(axis, out, 0.8, 4.0, _time * 1.2 + arm.index, 1.0)
 			_:
 				if _perched_pose_wanted() and not _loose.has(arm.index):
 					_wrap_goals(arm)
 				elif _perched_pose_wanted():
 					# the restless ones: lifted off the rock, curling slowly
-					arm.goals_spread(axis, out, 0.45, 4.0, _time * 0.35 + arm.index * 2.0, 0.8)
+					arm.goals_spread(axis, out, 0.45, 3.0, _time * 0.2 + arm.index * 2.0, 0.8)
 				elif state == State.WAKING:
 					arm.goals_spread(axis, out, 0.6, 3.0, phase, 0.6)
 				else:
 					var facing := state == State.HUNT and _player.global_position.distance_to(crown) < face_range
 					var spread := lerpf(0.1, 0.45, open) if not facing else lerpf(0.45, 0.75, open)
 					arm.goals_spread(axis, out, spread, 2.5 + open * 1.5, phase, 0.35 + open * 0.4)
+		if arm.role == KrakenArm.Role.FREE or arm.role == KrakenArm.Role.RECOIL:
+			_keep_under_surface(arm, surface_y)
+
+## Loose arms stay in the sea: they spread just under the surface rather than
+## rising out of it. Only an arm reaching the prey or gripping a hull breaks it.
+func _keep_under_surface(arm: KrakenArm, surface_y: float) -> void:
+	for i in arm.goals.size():
+		arm.goals[i].y = minf(arm.goals[i].y, surface_y - 1.5)
 
 ## Wrapped round the rock: each arm winds its own way, creeping slowly.
 func _wrap_goals(arm: KrakenArm) -> void:
-	var drift := sin(_time * 0.17 + arm.index * 1.3) * idle_drift
+	var drift := sin(_time * 0.1 + arm.index * 1.3) * idle_drift
 	if perch_column_radius > 0.0:
 		var up := perch.global_basis.y.normalized()
 		var side := global_basis.x
 		var turn := 1.0 if (arm.root() - global_position).dot(side) >= 0.0 else -1.0
 		const PITCHES := [-0.25, -0.45, -0.1, -0.6, 0.2, -0.35, -0.15, 0.3]
 		var pitch: float = PITCHES[arm.index % PITCHES.size()] + drift
-		arm.goals_wrap_column(perch.global_position, up, _rock_e1, _rock_e2, _rock_radius, turn, pitch, drift * 0.5)
+		arm.goals_wrap_column(perch.global_position, up, _rock_e1, _rock_e2, _rock_radius, turn, pitch, -1.25, drift * 0.5)
 	else:
 		var normal := perch.global_basis.y.normalized()
 		var out := arm.root() - global_position

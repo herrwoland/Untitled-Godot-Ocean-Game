@@ -7,6 +7,8 @@
 #   arm_<a>_<k>           a = 0..7 around the crown, k = 0.. from root to tip,
 #                         each bone's +Y running down the arm toward the tip.
 #                         Any number of bones per arm; all arms the same count.
+#                         Bones shorten toward the tip (long stiff base, short
+#                         curling tip): kraken_arm.gd bends short bones more.
 # Blender +Y (mantle tip) becomes Godot -Z, so the creature swims toward -Z.
 import bpy, bmesh, math, os, random
 from mathutils import Vector
@@ -16,14 +18,15 @@ GLB = os.path.normpath(os.path.join(HERE, "..", "kraken_placeholder.glb"))
 BLEND = os.path.join(HERE, "kraken_placeholder.blend")
 
 ARMS = 8
-BONES_PER_ARM = 15
+BONES_PER_ARM = 20
+TIP_BONE_RATIO = 0.2 # tip bone length / root bone length (geometric taper: ~5.2 m down to ~1 m)
 ARM_LENGTH = 52.0 # m, crown to tip; plus ~14 m of head/mantle = ~66 m overall
 ARM_ROOT_RADIUS = 1.35
 ARM_TIP_RADIUS = 0.12
 CROWN_RADIUS = 2.3 # ring the arms grow from (sunk into the head)
 WEB_LENGTH = 9.0 # m of webbing between neighbouring arms
 SIDES = 8 # PS1-cheap tubes
-RINGS_PER_BONE = 4
+ARM_RINGS = 96 # rings along each arm, evenly spaced (~0.54 m)
 
 random.seed(7)
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -108,7 +111,22 @@ for side in (-1, 1):
 		f.material_index = 3 if outward else 2
 
 # ---- arms ---------------------------------------------------------------------
-bone_len = ARM_LENGTH / BONES_PER_ARM
+ratio = TIP_BONE_RATIO ** (1.0 / (BONES_PER_ARM - 1))
+first = ARM_LENGTH * (1.0 - ratio) / (1.0 - ratio ** BONES_PER_ARM)
+bone_lengths = [first * ratio ** k for k in range(BONES_PER_ARM)]
+bone_starts = [sum(bone_lengths[:k]) for k in range(BONES_PER_ARM)]
+bone_centers = [bone_starts[k] + bone_lengths[k] * 0.5 for k in range(BONES_PER_ARM)]
+
+def arm_weights(a, s):
+	"""Blend between the two bones whose centers s lies between."""
+	if s <= bone_centers[0]:
+		return [("arm_%d_0" % a, 1.0)]
+	if s >= bone_centers[-1]:
+		return [("arm_%d_%d" % (a, BONES_PER_ARM - 1), 1.0)]
+	k = max(i for i in range(BONES_PER_ARM) if bone_centers[i] <= s)
+	w1 = (s - bone_centers[k]) / (bone_centers[k + 1] - bone_centers[k])
+	return [("arm_%d_%d" % (a, k), 1.0 - w1), ("arm_%d_%d" % (a, k + 1), w1)]
+
 roots = []
 for a in range(ARMS):
 	ang = math.tau * (a + 0.5) / ARMS
@@ -117,7 +135,7 @@ for a in range(ARMS):
 	roots.append((out, Vector((0.0, 0.6, 0.0)) + out * CROWN_RADIUS))
 all_rings = [] # per arm: its vertex rings
 all_names = [] # per arm: the bone weights of each ring
-n_rings = BONES_PER_ARM * RINGS_PER_BONE + 1
+n_rings = ARM_RINGS + 1
 for a, (out, root) in enumerate(roots):
 	arm_rings = []
 	arm_names = []
@@ -126,12 +144,7 @@ for a, (out, root) in enumerate(roots):
 		t = s / ARM_LENGTH
 		r = ARM_ROOT_RADIUS + (ARM_TIP_RADIUS - ARM_ROOT_RADIUS) * (t ** 0.8)
 		axis = root + Vector((0.0, -s, 0.0))
-		# bone weights: a smooth blend between neighbouring bone centers
-		f = s / bone_len - 0.5
-		k0 = max(0, min(BONES_PER_ARM - 1, math.floor(f)))
-		k1 = min(BONES_PER_ARM - 1, k0 + 1)
-		w1 = min(max(f - k0, 0.0), 1.0) if k1 != k0 else 0.0
-		names = [("arm_%d_%d" % (a, k0), 1.0 - w1), ("arm_%d_%d" % (a, k1), w1)]
+		names = arm_weights(a, s)
 		if s < 1.5: # root blends into the body so the crown does not tear
 			b = 1.0 - s / 1.5
 			names = [(n, w * (1.0 - b)) for n, w in names] + [("body", b)]
@@ -198,8 +211,8 @@ for a, (out, root) in enumerate(roots):
 	parent = body
 	for k in range(BONES_PER_ARM):
 		b = arm_data.edit_bones.new("arm_%d_%d" % (a, k))
-		b.head = root + Vector((0, -bone_len * k, 0))
-		b.tail = root + Vector((0, -bone_len * (k + 1), 0))
+		b.head = root + Vector((0, -bone_starts[k], 0))
+		b.tail = root + Vector((0, -(bone_starts[k] + bone_lengths[k]), 0))
 		b.parent = parent
 		b.use_connect = k > 0
 		parent = b
