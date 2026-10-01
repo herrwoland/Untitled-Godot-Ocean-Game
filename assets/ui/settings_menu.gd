@@ -169,7 +169,8 @@ func _apply_render_scale() -> void:
 		var pixelate = post.material.get_shader_parameter(&'pixelate') if post and post.material else false
 		var height := get_viewport().get_visible_rect().size.y
 		if pixelate == true and rows is float and height > 0.0:
-			# Same whole-pixel cell as ps1_post.gdshader, so each 3D pixel is exactly one big pixel.
+			# Whole-pixel cells, so each 3D pixel is exactly one big pixel (a post shader with
+			# target_rows/pixelate; the current lowres_post snaps by resolution_scale instead).
 			scale *= 1.0 / maxf(round(height / rows), 1.0)
 	get_viewport().scaling_3d_scale = scale
 

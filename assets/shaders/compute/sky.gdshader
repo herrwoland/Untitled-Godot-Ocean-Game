@@ -1,5 +1,6 @@
 shader_type sky;
-render_mode use_debanding;
+// No use_debanding: its per-channel noise, blown up by the sRGB curve near black, gave every
+// pixel of a dark night sky a random hue that the low-res post dither turned into rainbow specks.
 /**
  * Stormy sky: a dark churning cloud deck built from warped FBM noise.
  * Two layers (high deck + faster low scud), thickness-based darkening,

@@ -22,7 +22,7 @@
 [ext_resource type="PackedScene" uid="uid://cf2rcpsk3hrt1" path="res://assets/ui/start_screen.tscn" id="18_start"]
 [ext_resource type="PackedScene" uid="uid://dsm5csm5s7y4k" path="res://assets/ui/pause_menu.tscn" id="19_pause"]
 [ext_resource type="PackedScene" uid="uid://dt05m04hsc0p0" path="res://assets/ui/settings_menu.tscn" id="21_settings"]
-[ext_resource type="Shader" uid="uid://bo8roxh5bsnai" path="res://assets/shaders/post/ps1_post.gdshader" id="24_ps1"]
+[ext_resource type="Shader" path="res://assets/shaders/post/lowres_post.gdshader" id="24_ps1"]
 [ext_resource type="Script" uid="uid://cfdhchsvnkb3e" path="res://assets/ui/fps_meter.gd" id="25_fps"]
 [ext_resource type="PackedScene" uid="uid://dbejhouby1a6p" path="res://assets/models/shed/House_01.glb" id="25_wnkbs"]
 [ext_resource type="Script" uid="uid://d23qkx5iyk16y" path="res://assets/scripts/core/mission_controller.gd" id="26_mission"]
@@ -288,11 +288,14 @@ size = Vector3(10, 6, 4)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ps1"]
 shader = ExtResource("24_ps1")
-shader_parameter/target_rows = 240.0
-shader_parameter/pixelate = false
-shader_parameter/color_levels = 16
-shader_parameter/dither_strength = 1.0
-shader_parameter/chromatic_aberration = 1.5
+shader_parameter/shader_enabled = true
+shader_parameter/use_palette = false
+shader_parameter/dithering = true
+shader_parameter/dithering_size = 2
+shader_parameter/resolution_scale = 1
+shader_parameter/quantization_level = 18
+shader_parameter/aberration_intensity = 1.0
+shader_parameter/aberration_threshold = 1.0
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_shore"]
 size = Vector3(60, 4, 60)
