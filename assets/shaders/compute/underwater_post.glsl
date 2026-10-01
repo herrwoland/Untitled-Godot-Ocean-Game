@@ -59,6 +59,13 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 beam_b[8];       // (direction it shines, cos of the cone edge; omni: -2)
 	vec4 beam_c[8];       // (colour * energy, cos where the cone reaches full brightness; omni: -1)
 	vec4 beam_info2;      // x = shafts (0 smooth cone .. 1 fully broken into streaks by the waves)
+	vec4 pulse_a;         // Sonar pulse, see sonar_pulse.gd: xyz where it was sent from, w = radius the front has reached (m)
+	vec4 pulse_b;         // x visibility (0 = off), y range (m), z grain, w sideways streaks
+	vec4 pulse_c;         // rgb echo colour * brightness, w = range ring spacing (m, 0 = none)
+	vec4 pulse_d;         // rgb background colour, w = facing sharpness
+	vec4 pulse_e;         // x front glow, y grain seed, z dissolve, w opacity
+	vec4 pulse_f;         // x seconds since sent, y front speed (m/s), z afterglow time (s), w afterglow flare
+	vec4 pulse_g;         // x how bright an echo is at the edge of the range compared to close by, y echo of the sea surface itself
 } p;
 
 #include "water_shapes.glsli"
@@ -179,6 +186,80 @@ vec3 underwater_glow(vec3 o, vec3 d, float len) {
 		sum += b.rgb * max(along, 0.0) * fade;
 	}
 	return sum;
+}
+
+vec3 world_at(vec2 uv) {
+	return (p.cam_to_world * vec4(view_pos(uv, textureLod(depth_tex, uv, 0.0).r), 1.0)).xyz;
+}
+
+// Sonar pulse (sonar_pulse.gd): a shell of sound races out from where it was sent, and every
+// surface it has passed answers in proportion to how squarely it faces back at the sender,
+// fading with distance. The answer is drawn as a grainy, scan-smeared echo in place of the
+// murk; as the pulse dies the picture crumbles away grain by grain instead of dimming.
+// Like the phosphor on a sonar screen, each point flares as the front passes it and settles
+// to an afterglow, and the strongest echoes are the last to let go as the picture fades.
+// Costs nothing unless a pulse is showing (a handful of extra depth taps per pixel then).
+vec3 sonar_pulse(vec2 uv, vec2 pxf, vec3 under) {
+	float range = max(p.pulse_b.y, 0.1);
+	float seed = p.pulse_e.y;
+	// Grain: blotchy speckle a few pixels across, like ultrasound, and runs of it smeared
+	// sideways like a scan line. Squared so it is mostly dark with bright flecks.
+	vec2 jitter = vec2(seed * 37.3, seed * 11.9);
+	// Sized for the game's low-res look: finer grain would just average away to grey.
+	float blotch = vnoise(pxf / 4.0 + jitter) * 0.7 + hash12(floor(pxf / 2.0) + seed * 91.7) * 0.3;
+	float streak = vnoise(vec2(pxf.x / mix(3.0, 22.0, p.pulse_b.w), pxf.y / 2.0) + jitter);
+	float grain = mix(blotch, streak, p.pulse_b.w * 0.7);
+	grain = smoothstep(0.3, 0.75, grain) * 1.8; // mostly dark, bright flecks
+
+	float echo = 0.0;
+	float depth = textureLod(depth_tex, uv, 0.0).r;
+	if (depth > 0.0) { // depth 0 = nothing there (sky)
+		vec3 pos = world_at(uv);
+		vec3 to_origin = p.pulse_a.xyz - pos;
+		float r = length(to_origin);
+		if (r < p.pulse_a.w && r < range) {
+			// Normal from the depth buffer a couple of pixels out (softer, like a blurry echo),
+			// taking the nearer neighbour on each axis so silhouettes do not grow a halo.
+			vec2 texel = 2.0 / pc.size;
+			vec3 xa = world_at(uv + vec2(texel.x, 0.0)) - pos, xb = pos - world_at(uv - vec2(texel.x, 0.0));
+			vec3 ya = world_at(uv + vec2(0.0, texel.y)) - pos, yb = pos - world_at(uv - vec2(0.0, texel.y));
+			float lxa = length(xa), lxb = length(xb), lya = length(ya), lyb = length(yb);
+			vec3 dx = lxa < lxb ? xa : xb;
+			vec3 dy = lya < lyb ? ya : yb;
+			vec3 n = normalize(cross(dx, dy));
+			float facing = pow(abs(dot(n, to_origin / max(r, 1e-4))), p.pulse_d.w);
+			// Edges (a jump in depth to the neighbour) answer hardest: outlines read first.
+			float jump = max(max(lxa, lxb) / max(min(lxa, lxb), 1e-4), max(lya, lyb) / max(min(lya, lyb), 1e-4));
+			float edge = smoothstep(2.0, 6.0, jump);
+			// Unlike light in this water, the pulse carries: echoes only dim gently with distance,
+			// so whatever is within range shows, then cut off over its last tenth.
+			float fall = mix(1.0, p.pulse_g.x, sqrt(r / range)) * (1.0 - smoothstep(range * 0.9, range, r));
+			echo = (facing * 0.7 + edge) * fall;
+			// The underside of the waves is everywhere overhead and would bury what hangs under
+			// it, so the sea surface itself gives only a faint answer.
+			if (abs(pos.y - wave_height(pos.xz)) < 0.3 + 0.01 * r) echo *= p.pulse_g.y;
+			// Phosphor: flares when the front reaches it, then decays to the afterglow.
+			float since_hit = max(p.pulse_f.x - r / max(p.pulse_f.y, 1.0), 0.0);
+			echo *= 1.0 + p.pulse_f.w * exp(-since_hit / max(p.pulse_f.z, 0.01));
+			if (p.pulse_c.w > 0.0) { // range rings
+				float ring = abs(fract(r / p.pulse_c.w) - 0.5) * 2.0;
+				echo *= 0.5 + 1.0 * smoothstep(0.82, 1.0, ring);
+			}
+			// The front itself: a bright band just behind it while it is still travelling.
+			float behind = p.pulse_a.w - r;
+			echo += p.pulse_e.x * exp(-behind * 0.8) * step(p.pulse_a.w, range - 0.01) * (0.3 + 0.7 * facing);
+		}
+	}
+	echo *= mix(1.0, grain, p.pulse_b.z); // speckle
+	echo = smoothstep(0.04, 1.4, echo); // dark floor, soft ceiling: near walls do not burn out flat
+	vec3 col = p.pulse_d.rgb * mix(1.0, 0.5 + grain * 0.5, p.pulse_b.z) + p.pulse_c.rgb * echo;
+
+	// As visibility falls, each 2x2 cell drops out at its own moment (dissolve 0 = plain fade).
+	float dz = clamp(p.pulse_e.z, 0.0, 0.95);
+	// Strong echoes hold on longer, like a phosphor burned in brighter.
+	float vis = pow(p.pulse_b.x, 1.0 / (1.0 + 3.0 * echo * step(0.01, p.pulse_f.z)));
+	float keep = clamp((vis - hash12(floor(pxf * 0.5) + 17.0) * dz) / (1.0 - dz), 0.0, 1.0);
+	return mix(under, col, keep * p.pulse_e.w);
 }
 
 // 3x3 tent of bilinear taps over the half-res shaft buffer: hides the ray march dither.
@@ -396,6 +477,8 @@ void main() {
 		if (p.glow_info.x > 0.5) under += underwater_glow(p.cam_to_world[3].xyz, view_dir, dist) * p.glow_info.y;
 
 		under += shafts_filtered(suv);
+
+		if (p.pulse_b.x > 0.0) under = sonar_pulse(suv, vec2(px), under);
 
 		vec2 v = uv - 0.5;
 		under *= 1.0 - p.effect2.x * dot(v, v) * 2.0 * wet;

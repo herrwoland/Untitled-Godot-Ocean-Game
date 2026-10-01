@@ -107,6 +107,10 @@ func _ready() -> void:
 	camera_shake.name = &'CameraShake'
 	camera_shake.camera = camera
 	add_child(camera_shake)
+	var sonar := SonarPulse.new() # V under the water: a moment's grainy echo of everything around
+	sonar.name = &'SonarPulse'
+	sonar.player = self
+	add_child(sonar)
 	_head_base_y = head.position.y
 	floor_snap_length = 0.5 # a deck falling out of a wave can outrun gravity; stay stuck to it
 	# Muffle all audio while underwater via a low-pass filter on the Master bus.

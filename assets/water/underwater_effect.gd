@@ -7,7 +7,7 @@ class_name UnderwaterEffect extends CompositorEffect
 const SHADER_PATH := 'res://assets/shaders/compute/underwater_post.glsl'
 const COPY_SHADER_PATH := 'res://assets/shaders/compute/image_copy.glsl'
 const CAUSTICS_SHADER_PATH := 'res://assets/shaders/compute/caustics.glsl'
-const PARAMS_SIZE := 2144 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow + fog gradient + 2x8 vec4 blockers + glow info + 2x16 vec4 glows + beam info + 3x8 vec4 beams + beam info 2, std140.
+const PARAMS_SIZE := 2256 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow + fog gradient + 2x8 vec4 blockers + glow info + 2x16 vec4 glows + beam info + 3x8 vec4 beams + beam info 2 + 7 vec4 sonar pulse, std140.
 const MAX_WATER_SHAPES := 16
 const MAX_GLOWS := 16
 const MAX_BEAMS := 8
@@ -70,6 +70,28 @@ var beam_strength := 1.0
 var beam_steps := 24 # Ray march steps per lamp.
 var beam_scattering := 0.25
 var beam_shafts := 0.7
+
+# ----- Set by SonarPulse while a pulse is showing ----- #
+var pulse_visibility := 0.0 # 0 = no pulse
+var pulse_origin := Vector3.ZERO
+var pulse_front := 0.0 # how far the front has travelled (m)
+var pulse_range := 35.0
+var pulse_grain := 0.7
+var pulse_streaks := 0.6
+var pulse_echo_color := Color(1.3, 1.25, 1.05)
+var pulse_rings := 0.0
+var pulse_background := Color(0.015, 0.02, 0.045)
+var pulse_facing := 1.5
+var pulse_front_glow := 1.0
+var pulse_seed := 0.0
+var pulse_dissolve := 0.8
+var pulse_opacity := 1.0
+var pulse_age := 0.0 # seconds since it was sent
+var pulse_speed := 140.0
+var pulse_afterglow := 0.35
+var pulse_flare := 1.5
+var pulse_far_brightness := 0.4 # echo at the edge of the range, compared to close by
+var pulse_surface := 0.15 # echo of the sea surface (the underside of the waves)
 
 var _rd : RenderingDevice
 var _shader : RID
@@ -294,6 +316,13 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 			var v : Vector4 = beams[i] if i < beams.size() else Vector4.ZERO
 			data.append_array([v.x, v.y, v.z, v.w])
 	data.append_array([beam_shafts, 0.0, 0.0, 0.0])
+	data.append_array([pulse_origin.x, pulse_origin.y, pulse_origin.z, pulse_front])
+	data.append_array([pulse_visibility, pulse_range, pulse_grain, pulse_streaks])
+	data.append_array([pulse_echo_color.r, pulse_echo_color.g, pulse_echo_color.b, pulse_rings])
+	data.append_array([pulse_background.r, pulse_background.g, pulse_background.b, pulse_facing])
+	data.append_array([pulse_front_glow, pulse_seed, pulse_dissolve, pulse_opacity])
+	data.append_array([pulse_age, pulse_speed, pulse_afterglow, pulse_flare])
+	data.append_array([pulse_far_brightness, pulse_surface, 0.0, 0.0])
 	var bytes := data.to_byte_array()
 	_rd.buffer_update(_params_buffer, 0, bytes.size(), bytes)
 

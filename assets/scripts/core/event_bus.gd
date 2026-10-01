@@ -13,4 +13,7 @@ signal strangeness_triggered(tier: int)
 ## Shake the player's view: trauma rises to at least `trauma` (0..1), then
 ## fades. Emit once for a jolt, every frame for a held rumble (CameraShake).
 signal camera_shake_requested(trauma: float)
+## The player sent a sonar pulse from `origin` (SonarPulse). Anything that should hear it --
+## a creature drawn to the sound -- can listen here.
+signal sonar_pulsed(origin: Vector3, reach: float)
 @warning_ignore_restore("unused_signal")
