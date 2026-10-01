@@ -10,4 +10,7 @@ signal package_delivered
 signal returned_home
 signal player_died
 signal strangeness_triggered(tier: int)
+## Shake the player's view: trauma rises to at least `trauma` (0..1), then
+## fades. Emit once for a jolt, every frame for a held rumble (CameraShake).
+signal camera_shake_requested(trauma: float)
 @warning_ignore_restore("unused_signal")

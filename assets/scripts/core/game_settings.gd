@@ -47,6 +47,10 @@ static func current() -> GameSettings:
 @export var item_glow_color := Color(1.0, 0.95, 0.7)
 @export_range(0.0, 4.0, 0.05) var item_glow_energy := 0.4
 
+@export_group("Camera shake", "camera_shake_")
+## Scales every camera shake (jolts, rumbles). 0 turns shaking off.
+@export_range(0.0, 2.0, 0.05) var camera_shake_strength := 1.0
+
 func _apply_highlight() -> void:
 	var m := HIGHLIGHT_MATERIAL
 	m.set_shader_parameter(&'color', highlight_color)

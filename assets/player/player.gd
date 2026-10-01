@@ -103,6 +103,10 @@ const GASP_AFTER_SECONDS := 4.0 # dives shorter than this surface without a gasp
 
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	var camera_shake := CameraShake.new() # answers EventBus.camera_shake_requested
+	camera_shake.name = &'CameraShake'
+	camera_shake.camera = camera
+	add_child(camera_shake)
 	_head_base_y = head.position.y
 	floor_snap_length = 0.5 # a deck falling out of a wave can outrun gravity; stay stuck to it
 	# Muffle all audio while underwater via a low-pass filter on the Master bus.
