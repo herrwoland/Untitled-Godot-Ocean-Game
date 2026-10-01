@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://c3q8m6t1p7f2a"]
+[gd_scene format=4 uid="uid://c3q8m6t1p7f2a"]
 
 [ext_resource type="Script" uid="uid://tusxajaaj8mt" path="res://assets/player/player.gd" id="1_player"]
 [ext_resource type="Script" uid="uid://daqw81ug7ha8c" path="res://assets/player/crosshair.gd" id="2_crosshair"]
@@ -37,10 +37,17 @@ shader_parameter/use_sprite = false
 shader_parameter/fade_distance = 14.0
 shader_parameter/water_level = 0.0
 shader_parameter/depth_darkening = 0.04
+shader_parameter/glow_count = 0
+shader_parameter/glow_a = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/glow_b = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/glow_strength = 1.0
+shader_parameter/viewport_height = 720.0
 shader_parameter/ambient_glow = 0.45
 shader_parameter/sun_scatter = 0.8
 shader_parameter/local_scatter = 5.0
 shader_parameter/forward_scatter = 0.6
+shader_parameter/glow_scatter = 100.0
+shader_parameter/glint_min_pixels = 2.5
 
 [sub_resource type="QuadMesh" id="QuadMesh_g7aau"]
 material = SubResource("ShaderMaterial_0eov8")
@@ -67,10 +74,17 @@ shader_parameter/use_sprite = false
 shader_parameter/fade_distance = 14.0
 shader_parameter/water_level = 0.0
 shader_parameter/depth_darkening = 0.04
+shader_parameter/glow_count = 0
+shader_parameter/glow_a = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/glow_b = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/glow_strength = 1.0
+shader_parameter/viewport_height = 720.0
 shader_parameter/ambient_glow = 0.45
 shader_parameter/sun_scatter = 0.8
 shader_parameter/local_scatter = 5.0
 shader_parameter/forward_scatter = 0.6
+shader_parameter/glow_scatter = 100.0
+shader_parameter/glint_min_pixels = 2.5
 
 [sub_resource type="QuadMesh" id="QuadMesh_plunge"]
 material = SubResource("ShaderMaterial_plungedraw")
@@ -81,16 +95,16 @@ shader_parameter/intensity = 0.0
 shader_parameter/flash_rate = 0.0
 shader_parameter/flash_amount = 0.0
 
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_splash"]
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_headsplash"]
 particle_flag_align_y = true
 emission_shape = 1
-emission_sphere_radius = 0.5
-direction = Vector3(0, 3, 0)
-spread = 35.0
-initial_velocity_min = 3.5
-initial_velocity_max = 6.5
-scale_min = 0.099999994
-scale_max = 5.0
+emission_sphere_radius = 0.22
+direction = Vector3(0, 2, 0)
+spread = 62.0
+initial_velocity_min = 1.6
+initial_velocity_max = 3.8
+scale_min = 0.03
+scale_max = 0.5
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ouxva"]
 render_priority = 2
@@ -103,28 +117,49 @@ particles_anim_h_frames = 1
 particles_anim_v_frames = 1
 particles_anim_loop = false
 
-[sub_resource type="QuadMesh" id="QuadMesh_d5dr7"]
+[sub_resource type="QuadMesh" id="QuadMesh_headsplash"]
 material = SubResource("StandardMaterial3D_ouxva")
 
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_headsplash"]
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_splash"]
 particle_flag_align_y = true
 emission_shape = 1
-emission_sphere_radius = 0.22
-direction = Vector3(0, 2, 0)
-spread = 62.0
-initial_velocity_min = 1.6
-initial_velocity_max = 3.8
-gravity = Vector3(0, -9.8, 0)
-scale_min = 0.03
-scale_max = 0.5
+emission_sphere_radius = 0.5
+direction = Vector3(0, 3, 0)
+spread = 35.0
+initial_velocity_min = 3.5
+initial_velocity_max = 6.5
+scale_min = 0.099999994
+scale_max = 5.0
 
-[sub_resource type="QuadMesh" id="QuadMesh_headsplash"]
+[sub_resource type="QuadMesh" id="QuadMesh_d5dr7"]
 material = SubResource("StandardMaterial3D_ouxva")
 
 [node name="Player" type="CharacterBody3D" unique_id=555801128 groups=["player"]]
 collision_layer = 2
 collision_mask = 3
 script = ExtResource("1_player")
+
+[node name="InspectionController" type="Node" parent="." unique_id=899785788 node_paths=PackedStringArray("player", "camera", "socket", "overlay", "item_label")]
+script = ExtResource("3_inspect")
+player = NodePath("..")
+camera = NodePath("../Head/Camera3D")
+socket = NodePath("../Head/Camera3D/InspectSocket")
+overlay = NodePath("../InspectOverlay")
+item_label = NodePath("../InspectOverlay/ItemName")
+
+[node name="OxygenController" type="Node" parent="." unique_id=1983899619 node_paths=PackedStringArray("player", "overlay_rect", "heartbeat_player", "breath_bubbles")]
+script = ExtResource("4_oxygen")
+player = NodePath("..")
+overlay_rect = NodePath("../OxygenOverlay/OxygenRect")
+heartbeat_player = NodePath("../HeartbeatPlayer")
+breath_bubbles = NodePath("../Head/Camera3D/BreathBubbles")
+flash_start_intensity = 0.1
+
+[node name="CarryController" type="Node" parent="." unique_id=259456634 node_paths=PackedStringArray("player", "socket", "swim_socket")]
+script = ExtResource("6_carry")
+player = NodePath("..")
+socket = NodePath("../Head/Camera3D/CarrySocket")
+swim_socket = NodePath("../Head/Camera3D/SwimCarrySocket")
 
 [node name="Collider" type="CollisionShape3D" parent="." unique_id=401350848]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
@@ -147,6 +182,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.55)
 
 [node name="CarrySocket" type="Marker3D" parent="Head/Camera3D" unique_id=429615435]
 transform = Transform3D(1, 0, 0, 0, 0.16443092, -0.9863925, 0, 0.9863925, 0.16443092, 0.13788526, -0.12041986, -0.620222)
+
+[node name="SwimCarrySocket" type="Marker3D" parent="Head/Camera3D"]
+transform = Transform3D(1, 0, 0, 0, 0.16443092, -0.9863925, 0, 0.9863925, 0.16443092, 0.24, -0.44, -0.66)
 
 [node name="BreathBubbles" type="GPUParticles3D" parent="Head/Camera3D" unique_id=1570342301]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.18, -0.3)
@@ -221,19 +259,6 @@ theme_type_variation = &"HeaderLabel"
 text = "drag — turn    scroll — closer    E — put away"
 horizontal_alignment = 1
 
-[node name="InspectionController" type="Node" parent="." unique_id=899785788 node_paths=PackedStringArray("player", "camera", "socket", "overlay", "item_label")]
-script = ExtResource("3_inspect")
-player = NodePath("..")
-camera = NodePath("../Head/Camera3D")
-socket = NodePath("../Head/Camera3D/InspectSocket")
-overlay = NodePath("../InspectOverlay")
-item_label = NodePath("../InspectOverlay/ItemName")
-
-[node name="CarryController" type="Node" parent="." unique_id=259456634 node_paths=PackedStringArray("player", "socket")]
-script = ExtResource("6_carry")
-player = NodePath("..")
-socket = NodePath("../Head/Camera3D/CarrySocket")
-
 [node name="OxygenOverlay" type="CanvasLayer" parent="." unique_id=2132335407]
 layer = -2
 
@@ -245,17 +270,8 @@ anchor_bottom = 1.0
 mouse_filter = 2
 
 [node name="HeartbeatPlayer" type="AudioStreamPlayer" parent="." unique_id=1949790051]
-bus = &"SFX"
 volume_db = -40.0
-
-[node name="OxygenController" type="Node" parent="." unique_id=1983899619 node_paths=PackedStringArray("player", "overlay_rect", "heartbeat_player", "breath_bubbles")]
-script = ExtResource("4_oxygen")
-player = NodePath("..")
-overlay_rect = NodePath("../OxygenOverlay/OxygenRect")
-heartbeat_player = NodePath("../HeartbeatPlayer")
-breath_bubbles = NodePath("../Head/Camera3D/BreathBubbles")
-max_breath = 20.0
-flash_start_intensity = 0.1
+bus = &"SFX"
 
 [node name="HeadSplash" type="GPUParticles3D" parent="." unique_id=771203046]
 top_level = true

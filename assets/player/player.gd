@@ -402,6 +402,11 @@ func _carry_with_deck(delta: float) -> void:
 	global_position = carried_to
 	head.rotation.y += step.basis.get_euler().y
 
+## How fast the deck we stand on is carrying us (zero on land or afloat):
+## what a dropped item has to inherit to stay with the ship.
+func deck_velocity() -> Vector3:
+	return _deck_velocity if _deck else Vector3.ZERO
+
 ## The deck's movement since we last looked.
 func _deck_step() -> Transform3D:
 	var step := _deck.global_transform * _deck_xform.affine_inverse()

@@ -3,10 +3,13 @@ extends Node
 ## The single rule (enforced in player._try_interact): interacting with a
 ## carryable picks it up; interacting while holding anything drops it.
 ## Move/tilt the CarrySocket marker in the editor to adjust where held items
-## sit — bring it closer to make paper readable.
+## sit — bring it closer to make paper readable. While swimming they move to
+## SwimCarrySocket instead, low and out of the way of the view.
 
 @export var player: CharacterBody3D
 @export var socket: Node3D
+## Where held items sit while swimming (falls back to `socket` if unset).
+@export var swim_socket: Node3D
 
 const FOLLOW_STIFFNESS := 18.0 # higher = snappier follow
 const DROP_CLEAR_TIME := 0.6 # seconds a dropped item ignores the player while it falls clear
@@ -29,7 +32,10 @@ func drop() -> void:
 	if not carried:
 		return
 	var item := carried
-	item.on_dropped(player.velocity * 0.8)
+	# Our velocity is only our own walking: riding a ship is extra. Hand the
+	# item the ship's motion too, or the deck slides away from under it.
+	var riding: Vector3 = player.deck_velocity() if player.has_method(&'deck_velocity') else Vector3.ZERO
+	item.on_dropped(player.velocity * 0.8 + riding)
 	carried = null
 	# It leaves our hands right in front of our face: let it fall clear of us before it can
 	# bump the body that is still standing there.
@@ -47,6 +53,10 @@ func reset_day() -> void:
 func _physics_process(delta: float) -> void:
 	if not carried:
 		return
-	# Smoothly chase the socket; exponential decay keeps it framerate-stable.
+	# Smoothly chase the socket; exponential decay keeps it framerate-stable,
+	# and makes the move between the two sockets a glide rather than a jump.
+	var target := socket
+	if swim_socket and &'state' in player and player.state == 1: # Player State.SWIM
+		target = swim_socket
 	var weight := 1.0 - exp(-FOLLOW_STIFFNESS * delta)
-	carried.global_transform = carried.global_transform.interpolate_with(socket.global_transform, weight)
+	carried.global_transform = carried.global_transform.interpolate_with(target.global_transform, weight)
