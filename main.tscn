@@ -471,6 +471,7 @@ creature_count = 4
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 327)
+visible = false
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")

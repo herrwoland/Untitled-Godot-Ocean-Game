@@ -9,13 +9,11 @@ size = Vector3(20, 150, 20)
 [sub_resource type="SphereShape3D" id="SphereShape3D_kb4ww"]
 radius = 9.037
 
-[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_5s6u7"]
-radius = 17.555176
-height = 145.28424
-
 [node name="HunterFish" type="Node3D" unique_id=2037867007 node_paths=PackedStringArray("jaw", "mouth", "mouth_area")]
 script = ExtResource("1_hunter")
 creep_rate = 5.0
+tail_sway_angle = 16.0
+tail_sway_frequency_per_speed = 0.02
 jaw = NodePath("fish_01/jaw")
 mouth = NodePath("Marker3D_mouth")
 mouth_area = NodePath("Area3D")
@@ -28,8 +26,11 @@ mesh = SubResource("BoxMesh_kb4ww")
 [node name="fish_01" parent="." unique_id=1251501196 instance=ExtResource("2_kb4ww")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
 
-[node name="jaw" parent="fish_01" index="1" unique_id=32383918]
-transform = Transform3D(9.226266, 0, 0, 0, 9.15091, 1.6972822, 0, -1.3349733, 11.634447, 0.011582494, -9.22423, 34.43833)
+[node name="CollisionShape3D" parent="fish_01/Armature/Skeleton3D/body/StaticBody3D" parent_id_path=PackedInt32Array(1251501196, 1578191906) index="0" unique_id=1452379843]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1883131, -12.812396, -27.958656)
+
+[node name="jaw" parent="fish_01" index="1" unique_id=30888285]
+transform = Transform3D(1, 4.2787747e-09, -2.7015123e-08, 2.7015123e-08, -0.30901697, 0.95105654, -4.2787747e-09, -0.95105654, -0.30901697, 0, -9.262006, 34.452488)
 
 [node name="Marker3D_mouth" type="Marker3D" parent="." unique_id=567968181]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -45.783745)
@@ -77,12 +78,5 @@ bus = &"SFX"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.35, -40.93)
 max_distance = 250.0
 bus = &"SFX"
-
-[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=2037917407]
-collision_mask = 3
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=1674133410]
-transform = Transform3D(0.495, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 1.5024444e-06, 34.371918)
-shape = SubResource("CapsuleShape3D_5s6u7")
 
 [editable path="fish_01"]

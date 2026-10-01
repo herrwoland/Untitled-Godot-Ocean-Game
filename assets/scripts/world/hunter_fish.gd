@@ -48,7 +48,7 @@ enum Pass { PEEL, TURN_IN, CHARGE } # the three beats of one attack run
 
 @export_group("Attack")
 @export var kill_distance := 12.0 # fallback bite range, used only if no mouth_area is set
-@export var jaw_open_angle := 95.0 # degrees the jaw swings to when open (rest pose = closed)
+@export var jaw_open_angle := 180 # degrees the jaw swings to when open (rest pose = closed)
 @export var jaw_open_time := 1.0 # seconds for the jaw to swing fully open — it gapes as the charge begins
 @export var jaw_close_time := 1.0 # seconds to clamp shut, on the bite or after a miss
 @export var run_up_distance := 250.0 # after a miss (or when not lined up) it swims this far off before turning back — keep ≥ 2.5× turn_radius
@@ -59,6 +59,24 @@ enum Pass { PEEL, TURN_IN, CHARGE } # the three beats of one attack run
 @export var max_passes := 3 # missed charges before it gives up and stalks again
 @export var attack_give_up_time := 150.0 # safety net: longest an attack sequence lasts
 @export var carry_time := 10.0 # seconds the catch is dragged down before the day resets
+
+@export_group("Camera shake")
+## One jolt the moment it commits to a charge: the warning.
+@export_range(0.0, 1.0, 0.05) var charge_warning_shake := 0.5
+## While charging, a rumble that builds as the snout closes in: it starts
+## this many meters out...
+@export var close_shake_range := 100.0
+## ...at this strength, and grows to close_shake_max with the teeth on you.
+@export_range(0.0, 1.0, 0.05) var close_shake_min := 0.35
+@export_range(0.0, 1.0, 0.05) var close_shake_max := 1.0
+
+@export_group("Body bend")
+## The spine follows the path the head swam; on top of that the tail sways.
+@export var tail_sway_angle := 8.0 # degrees at the tail tip
+@export var tail_sway_frequency := 0.3 # beats per second when barely moving...
+@export var tail_sway_frequency_per_speed := 0.01 # ...plus this much per m/s of speed
+@export var max_joint_bend := 25.0 # degrees one joint may fold against the next
+@export var bend_cull_distance := 450.0 # m from the camera beyond which the spine is left alone
 
 @export_group("Body")
 @export var jaw: Node3D # opens for the attack; found in the model if left unset
@@ -96,6 +114,8 @@ var _carry_left := 0.0
 var _pull_left := 0.0 # remaining seconds of the reel-in at carry start
 var _died_emitted := false
 var _player_in_mouth := false # kept current by the mouth_area overlap signals
+var _spine: FishSpine # bends the skeleton along the swum path; null without a rig
+var _own_bodies: Array[RID] = [] # its own colliders, which must never hide it from view
 
 func _ready() -> void:
 	if jaw == null:
@@ -114,6 +134,11 @@ func _ready() -> void:
 		mouth_area.set_collision_mask_value(2, true) # the player body lives on layer 2
 		mouth_area.body_entered.connect(_on_mouth_body_entered)
 		mouth_area.body_exited.connect(_on_mouth_body_exited)
+	var skeletons := find_children("*", "Skeleton3D", true, false)
+	if not skeletons.is_empty():
+		_spine = FishSpine.new(skeletons[0])
+	for body: CollisionObject3D in find_children("*", "CollisionObject3D", true, false):
+		_own_bodies.append(body.get_rid())
 
 func _on_mouth_body_entered(body: Node3D) -> void:
 	if body.is_in_group(&'player'):
@@ -178,6 +203,7 @@ func cruise_toward(point: Vector3, delta: float) -> void:
 ## ---- behaviour ---------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
+	_update_spine(delta) # idle drifting and scripted passes bend too
 	if state == State.LURK or player == null:
 		return
 	_track_player(delta)
@@ -241,6 +267,7 @@ func _begin_charge() -> void:
 	_pass = Pass.CHARGE
 	_strike_locked = false
 	_play(_charge_sound) # the rush itself
+	EventBus.camera_shake_requested.emit(charge_warning_shake)
 	if not _jaw_opened:
 		_jaw_opened = true
 		set_jaw_open(true) # it comes with the mouth already opening
@@ -278,6 +305,7 @@ func _process_attack(delta: float) -> void:
 			if not _strike_locked:
 				_steer_toward(_aim_point() - mouth_position(), charge_turn_radius, delta)
 			_swim(attack_speed * speed_multiplier, delta)
+			_shake_with_closeness(to_player.length())
 			# Swept past: the prey is well behind the snout and not in the mouth.
 			if to_player.dot(_heading()) < -10.0 and not _player_caught():
 				_miss()
@@ -352,6 +380,29 @@ func _process_carry(delta: float) -> void:
 		EventBus.player_died.emit() # the mission controller fades out and restages
 
 ## ---- helpers -----------------------------------------------------------------
+
+## Keep the body curving along its path. Skipped far from the camera, where
+## nobody could see it anyway.
+func _update_spine(delta: float) -> void:
+	if _spine == null:
+		return
+	var cam := get_viewport().get_camera_3d()
+	if cam and cam.global_position.distance_to(global_position) > bend_cull_distance:
+		return
+	_spine.sway_angle = tail_sway_angle
+	_spine.sway_frequency = tail_sway_frequency
+	_spine.sway_frequency_per_speed = tail_sway_frequency_per_speed
+	_spine.max_joint_bend = max_joint_bend
+	_spine.update(delta, _speed)
+
+## The charge's rumble: held every frame while the snout is within
+## close_shake_range, from close_shake_min out there to close_shake_max at
+## the mouth. Stops being sent once the charge ends, so it fades away.
+func _shake_with_closeness(distance: float) -> void:
+	if distance > close_shake_range:
+		return
+	var closeness := 1.0 - clampf((distance - kill_distance) / (close_shake_range - kill_distance), 0.0, 1.0)
+	EventBus.camera_shake_requested.emit(lerpf(close_shake_min, close_shake_max, closeness))
 
 ## Forward is the only way this body moves. Speed eases toward the target
 ## instead of snapping, so charges build and misses coast.
@@ -476,8 +527,10 @@ func _is_seen() -> bool:
 		if not cam.is_position_in_frustum(point):
 			continue
 		var ray := PhysicsRayQueryParameters3D.create(eye, point, sight_blockers)
+		var exclude := _own_bodies.duplicate()
 		if player is CollisionObject3D:
-			ray.exclude = [player.get_rid()]
+			exclude.append(player.get_rid())
+		ray.exclude = exclude
 		if space.intersect_ray(ray).is_empty():
 			return true
 	return false
