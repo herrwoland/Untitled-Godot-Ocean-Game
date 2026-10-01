@@ -66,9 +66,14 @@ func _physics_process(delta: float) -> void:
 	var in_exclusion := Vector2(player.global_position.x - hunt_exclusion_center.x,
 		player.global_position.z - hunt_exclusion_center.z).length() < hunt_exclusion_radius
 	var swimming: bool = (&'state' in player and player.state == 1) # Player State.SWIM
+	# An awake kraken owns the player; nothing else hunts until it settles again.
+	var kraken_awake := false
+	for kraken in get_tree().get_nodes_in_group(&'kraken'):
+		if kraken.is_awake() or kraken.is_holding_player():
+			kraken_awake = true
 	var huntable: bool = swimming and player_depth > hunt_depth \
-		and not in_exclusion and _grace <= 0.0
-	var escaped: bool = not swimming or player_depth < escape_depth or in_exclusion
+		and not in_exclusion and not kraken_awake and _grace <= 0.0
+	var escaped: bool = not swimming or player_depth < escape_depth or in_exclusion or kraken_awake
 
 	if huntable:
 		_assign_stalkers()

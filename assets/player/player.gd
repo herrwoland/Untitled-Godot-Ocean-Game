@@ -653,6 +653,26 @@ func exit_station() -> void:
 	station = null
 	state = State.WALK
 
+## The ship we are aboard -- at her helm, or standing on her deck -- or null.
+func ship_aboard() -> RigidBody3D:
+	if captured:
+		return null
+	if state == State.PILOT:
+		return piloted_ship as RigidBody3D
+	if state == State.WALK or state == State.OPERATE:
+		return _deck as RigidBody3D
+	return null
+
+## Thrown clear of whatever we stand on or steer (a capsizing ship): hands off the
+## controls, and the body flies with `impulse` (m/s).
+func throw_off(impulse: Vector3) -> void:
+	release_controls()
+	_deck = null
+	_deck_coyote = 0.0
+	_deck_velocity = Vector3.ZERO
+	collider.disabled = false
+	velocity = impulse
+
 ## Leaves the helm or a station cleanly, eg. when a new day puts us back in bed.
 func release_controls() -> void:
 	if state == State.PILOT:

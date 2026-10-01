@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://us7wao1gawyg" path="res://assets/scripts/world/kraken.gd" id="1_kraken"]
+[ext_resource type="PackedScene" uid="uid://dj8a1rkcimwkp" path="res://assets/models/creatures/kraken/kraken_placeholder.glb" id="2_model"]
+
+[node name="Kraken" type="Node3D"]
+script = ExtResource("1_kraken")
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+
+[node name="PresenceLoop" type="AudioStreamPlayer3D" parent="."]
+max_distance = 250.0
+
+[node name="WakeSound" type="AudioStreamPlayer3D" parent="."]
+max_distance = 300.0
+
+[node name="GrabSound" type="AudioStreamPlayer3D" parent="."]
+max_distance = 150.0
+
+[node name="StruggleSound" type="AudioStreamPlayer3D" parent="."]
+max_distance = 150.0
+
+[node name="HullSound" type="AudioStreamPlayer3D" parent="."]
+max_distance = 200.0

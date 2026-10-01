@@ -92,6 +92,23 @@ Standard "hold-to-inspect" pattern (Resident Evil / Gone Home style):
 ### Ship
 - Stairs/ladders on both sides of the hull (part of ship model or separate): Area3D + interact while swimming lerps you onto the deck. Same pattern as helm enter/exit.
 
+### The kraken (guardian of a rock)
+A giant, very old octopus (~66 m) wrapped round a rock column (`kraken_lair.tscn`: Column, Perch
+marker, GuardArea, Kraken). Code: `kraken.gd` (behaviour) + `kraken_arm.gd` (procedural arms).
+- **Idle:** arms wound round the rock (the rock's real shape is measured with rays once, so any rock
+  works), creeping slowly, a couple of arms restless, the mantle breathing. Never fully still.
+- **Wakes** when the player enters the GuardArea (any shapes the user sizes), swimming or sailing.
+  Slow and huge: jet strokes (arms open slowly, snap shut), gradual turns.
+- **Swimming player:** one arm reaches, two more follow a few seconds apart. Caught = coiled, swung
+  about, dragged down; the arms never kill — the breath does. Mashing jump/swim_up (Space) loosens
+  the grip; harder for each arm holding (1 arm ≈ 3.5 s at 8 presses/s, 2 barely, 3 never).
+- **Player aboard a ship:** it takes the ship. Rises beneath her (its one fast burst), grips the hull
+  (first grip drags her to a stop), shakes her ~12 s, rolls her over (player thrown off, one arm goes
+  for them), drags her down and home and keeps her. Fighting free of that one arm = left alone.
+- **Gives up** when the player is 200 m from the perch; swims home and wraps round the rock again.
+  Hunters stand down while it is awake. A new morning resets it and gives the ship back.
+- Open: the kept ship strands the player at sea until they drown or the day resets — see §8.
+
 ## 5. Code Architecture
 
 Existing foundation to build on: FFT ocean + `get_wave_height()`, buoyancy ship + helm piloting,
@@ -163,6 +180,12 @@ Later (milestones 4–7):
 - The amulet (sonar echo): hangs at the neck, rises into view on cooldown; needs an emissive
   part (or separate mesh) that can glow pale blue, and something that can show the cooldown filling
   (facets/runes as separate meshes, or a texture strip the shader can reveal)
+- The kraken: ~50–80 m octopus, replacing `kraken/kraken_placeholder.glb`. Rig convention (the code
+  finds bones by name): `body` root at the arm crown, `mantle` child (scaled to breathe), arm chains
+  `arm_<a>_<k>` (a = arm 0.., k = joint from root, each bone's +Y down the arm, same count per arm).
+  Mantle toward -Z, arms toward +Z, eyes up. Script that built the placeholder (and documents the
+  rig): `kraken/source/build_kraken_placeholder.py`. Plus its rock column (with a collider, layer 1)
+  and sounds: presence loop, wake, arm grab, grip breaking, hull creak.
 
 ## 8. Open Questions (decide when relevant)
 
@@ -171,3 +194,5 @@ Later (milestones 4–7):
 - Whether day 4's eel is lethal or only a terror (suggest: lethal only if touched — Mario 64 rules).
 - Wall-calendar or other diegetic day indicator in the shack (crossed-out days).
 - Title.
+- Kraken keeping the ship: the player is left at sea with no way home but drowning (or diving until
+  the air runs out). Accept as a deliberate dead end, or have the morning come on its own after a while?

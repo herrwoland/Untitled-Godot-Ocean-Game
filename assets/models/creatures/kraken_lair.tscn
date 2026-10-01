@@ -1,0 +1,51 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/models/creatures/kraken.tscn" id="1_kraken"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_rock"]
+albedo_color = Color(0.2, 0.19, 0.17, 1)
+roughness = 1.0
+
+[sub_resource type="CylinderMesh" id="Mesh_column"]
+material = SubResource("Mat_rock")
+top_radius = 8.0
+bottom_radius = 14.0
+height = 195.0
+radial_segments = 12
+rings = 6
+
+[sub_resource type="CylinderShape3D" id="Shape_column"]
+height = 195.0
+radius = 11.0
+
+[sub_resource type="CylinderShape3D" id="Shape_guard"]
+height = 230.0
+radius = 120.0
+
+[node name="KrakenLair" type="Node3D"]
+
+[node name="Column" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -107.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Column"]
+mesh = SubResource("Mesh_column")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Column"]
+shape = SubResource("Shape_column")
+
+[node name="Perch" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -70, 0)
+
+[node name="GuardArea" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="GuardArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -100, 0)
+shape = SubResource("Shape_guard")
+
+[node name="Kraken" parent="." node_paths=PackedStringArray("perch", "guard_area") instance=ExtResource("1_kraken")]
+perch = NodePath("../Perch")
+guard_area = NodePath("../GuardArea")

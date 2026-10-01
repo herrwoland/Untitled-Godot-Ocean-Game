@@ -52,6 +52,7 @@
 [ext_resource type="Script" uid="uid://c7xykbyb5m0er" path="res://assets/scripts/world/rain.gd" id="60_rain"]
 [ext_resource type="Script" uid="uid://5j2rqum415rn" path="res://assets/weather/weather.gd" id="70_weather"]
 [ext_resource type="Texture2D" path="res://assets/textures/Ground057_1K-PNG_Normal.res" id="99_gnorm"]
+[ext_resource type="PackedScene" path="res://assets/models/creatures/kraken_lair.tscn" id="80_kraken_lair"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_d13ii"]
 seed = 666
@@ -887,6 +888,9 @@ debug_color = Color(0.97, 0, 0.4688336, 1)
 
 [node name="IsleOfTheDead" parent="." unique_id=1706685954 instance=ExtResource("39_isle")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 260, 0, -260)
+
+[node name="KrakenLair" parent="." instance=ExtResource("80_kraken_lair")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 480, 0, 380)
 
 [node name="EndingFish" parent="." unique_id=1659028753 instance=ExtResource("40_endfish")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -110, 3, 16)
