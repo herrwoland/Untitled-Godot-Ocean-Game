@@ -6,3 +6,14 @@
 script = ExtResource("1_gs")
 highlight_energy = 0.4
 item_glow_energy = 0.1
+sonar_look = 2
+sonar_cooldown = 1.0
+sonar_range = 300.0
+sonar_far_brightness = 1.0
+sonar_speed = 500.0
+sonar_hold = 1.0
+sonar_echo_color = Color(0.7840764, 1.2999998, 1.2188836, 1)
+sonar_background = Color(0, 0, 0, 1)
+sonar_grain = 1.0
+sonar_grain_rate = 10.0
+sonar_rings = 5.25
