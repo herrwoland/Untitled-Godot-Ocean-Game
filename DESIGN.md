@@ -57,6 +57,24 @@ Strangeness fires at transitions (wake up, return from a trip) — transformatio
 - Danger is depth-based and readable by darkness: hunters aggro below a depth threshold.
 - **Death (drowning or eaten): you wake panting in your bed, same day restarts** (packages reset). No fail screen. The game never sends you back further than the current morning.
 
+### The amulet (sonar echo)
+Underwater you can barely see. A magical amulet the player finds lets them send an echo (V,
+underwater only): for a moment everything within 300 m shows as a grainy pale echo, then it
+crumbles back into the murk. **The echo itself is done** (`SonarPulse`, dials in GameSettings →
+Sonar pulse); the amulet around it is next. Plan (agreed 2026-10-01, build once the model exists):
+- **Found, not given:** the echo only works once the amulet is picked up (where/when — decide; a
+  `has_amulet` flag in GameState, so it survives the death→morning loop and saves on sleep).
+- **On cooldown:** the amulet rises from the player's neck into the bottom of the view, dull, not
+  glowing. It shows how long is left — e.g. a pale light slowly filling it, or runes/facets lighting
+  one by one, or the glow creeping back from its edge. Pick to suit the model. No HUD numbers.
+- **Ready + pressed:** it glows pale blue as the echo goes out (emission + a small pale-blue OmniLight3D
+  on it, so it lights the hands and nearby water), then dims as the cooldown starts.
+- When ready and idle it rests on the chest, out of view (maybe a faint pulse in it when it's
+  ready again — a sound or a glimmer at the screen's edge).
+- Code side: an `Amulet` node on the player camera driven by `SonarPulse.cooldown_left()` and
+  `EventBus.sonar_pulsed`; the raise/lower like the carry sockets. Ideas still open: the pulse
+  attracting the hunter fish, and echo-only apparitions (shapes that show in the echo but aren't there).
+
 ### Item inspection (letter, paper, package)
 Standard "hold-to-inspect" pattern (Resident Evil / Gone Home style):
 - Interact picks the item into an **inspect state**: player input frozen, item lerps to a socket ~0.5 m in front of the camera, slight DOF/dim on the world behind.
@@ -142,6 +160,9 @@ Later (milestones 4–7):
 - Strangeness variants: ship-fish, shack-fish, altered lighthouse (+ small prop swaps)
 - The hovering shore fish (ending) + moon flight cutscene assets
 - Distant giant ship silhouettes
+- The amulet (sonar echo): hangs at the neck, rises into view on cooldown; needs an emissive
+  part (or separate mesh) that can glow pale blue, and something that can show the cooldown filling
+  (facets/runes as separate meshes, or a texture strip the shader can reveal)
 
 ## 8. Open Questions (decide when relevant)
 

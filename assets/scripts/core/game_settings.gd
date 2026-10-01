@@ -9,19 +9,6 @@ const HIGHLIGHT_MATERIAL := preload("res://assets/scripts/interact_highlight_mat
 
 static var _current: GameSettings
 
-enum SonarLook { ULTRASOUND, SONAR, OWN_DIALS }
-## What each sonar look sets; anything not listed comes from the sonar_ dials.
-const SONAR_LOOKS := {
-	SonarLook.ULTRASOUND: {
-		echo_color = Color(1.15, 1.15, 1.15), background = Color(0.0, 0.0, 0.0),
-		grain = 1.0, streaks = 0.1, facing = 0.6, front_glow = 0.6, rings = 0.0,
-	},
-	SonarLook.SONAR: {
-		echo_color = Color(1.7, 0.75, 0.2), background = Color(0.035, 0.012, 0.0),
-		grain = 0.6, streaks = 0.3, facing = 1.0, front_glow = 1.2, rings = 5.0,
-	},
-}
-
 static func current() -> GameSettings:
 	if _current == null:
 		_current = load(PATH)
@@ -67,41 +54,36 @@ static func current() -> GameSettings:
 @export_group("Sonar pulse", "sonar_")
 ## Under the water, the sonar_pulse key (V) sends a pulse out around the player: for a moment
 ## everything it reaches shows as a grainy echo, then the picture crumbles back into the murk.
-## Which look the echo has. Ultrasound and Sonar are fixed presets; Own dials uses the
-## colour/grain settings further down (they hold the bone-white look). While testing, the
-## sonar_cycle_look key (B) flips through them in game and pings straight away.
-@export var sonar_look := SonarLook.ULTRASOUND
 ## Seconds before another pulse can be sent (counted from the last one).
-@export_range(0.0, 60.0, 0.1) var sonar_cooldown := 3.0
+@export_range(0.0, 60.0, 0.1) var sonar_cooldown := 1.0
 ## How far it reaches (m).
-@export_range(1.0, 500.0, 0.5) var sonar_range := 200.0
+@export_range(1.0, 500.0, 0.5) var sonar_range := 300.0
 ## How bright an echo from the edge of the range is, compared to one from close by. The pulse
 ## sees far past the murk: everything within range answers, the distance only a bit dimmer.
-@export_range(0.0, 1.0, 0.01) var sonar_far_brightness := 0.4
+@export_range(0.0, 1.0, 0.01) var sonar_far_brightness := 1.0
 ## How strongly the underside of the waves answers. Kept faint: it is everywhere overhead and
 ## would bury whatever hangs under it, like a hull.
 @export_range(0.0, 1.0, 0.01) var sonar_surface := 0.15
 ## How fast the front races out (m/s). range / speed is how long the sweep takes; keep it
 ## shorter than the hold or the echo starts fading before the front gets all the way out.
 ## (Real sound in water: about 1500.)
-@export_range(5.0, 2000.0, 1.0) var sonar_speed := 600.0
+@export_range(5.0, 2000.0, 1.0) var sonar_speed := 500.0
 ## How long the echo holds at full strength once sent (s).
-@export_range(0.0, 5.0, 0.05) var sonar_hold := 0.5
+@export_range(0.0, 5.0, 0.05) var sonar_hold := 1.0
 ## Then how long it takes to fade away (s).
 @export_range(0.05, 5.0, 0.05) var sonar_fade := 0.6
 ## 0 = it simply dims away, 1 = it crumbles away grain by grain.
 @export_range(0.0, 0.95, 0.01) var sonar_dissolve := 0.8
-## ----- Own dials: only used when sonar_look is Own dials. -----
 ## Colour of what answers the pulse. Above 1 it blooms.
-@export var sonar_echo_color := Color(1.3, 1.24, 1.02)
+@export var sonar_echo_color := Color(0.784, 1.3, 1.219)
 ## Colour of everything that does not answer (open water, the surface).
-@export var sonar_background := Color(0.015, 0.02, 0.045)
+@export var sonar_background := Color(0.0, 0.0, 0.0)
 ## How strongly the echo is broken up by speckle (0 = clean).
-@export_range(0.0, 1.0, 0.01) var sonar_grain := 0.75
+@export_range(0.0, 1.0, 0.01) var sonar_grain := 1.0
 ## How much of the grain is smeared sideways like a scan line.
 @export_range(0.0, 1.0, 0.01) var sonar_streaks := 0.6
 ## How many times a second the grain changes (0 = frozen).
-@export_range(0.0, 60.0, 1.0) var sonar_grain_rate := 18.0
+@export_range(0.0, 60.0, 1.0) var sonar_grain_rate := 10.0
 ## Higher = only surfaces facing you answer, so shapes read by their outlines and hollows.
 @export_range(0.1, 6.0, 0.05) var sonar_facing := 2.5
 ## Brightness of the band just behind the travelling front.
@@ -112,15 +94,9 @@ static func current() -> GameSettings:
 ## How bright that flare is, on top of the settled echo.
 @export_range(0.0, 6.0, 0.05) var sonar_flare := 1.5
 ## Distance between range rings drawn into the echo (m, 0 = none).
-@export_range(0.0, 20.0, 0.25) var sonar_rings := 0.0
+@export_range(0.0, 20.0, 0.25) var sonar_rings := 5.25
 ## How much the echo replaces the normal view (1 = completely).
 @export_range(0.0, 1.0, 0.01) var sonar_opacity := 1.0
-
-## One of the echo's look values (echo_color, background, grain, streaks, facing, front_glow,
-## rings) for the chosen sonar_look.
-func sonar_look_value(key: StringName) -> Variant:
-	var look: Dictionary = SONAR_LOOKS.get(sonar_look, {})
-	return look[key] if look.has(key) else get(&'sonar_' + key)
 
 func _apply_highlight() -> void:
 	var m := HIGHLIGHT_MATERIAL

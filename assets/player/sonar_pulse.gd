@@ -6,8 +6,6 @@ class_name SonarPulse extends Node
 ## picture is drawn by the underwater effect (sonar_pulse() in underwater_post.glsl).
 
 const ACTION := &'sonar_pulse'
-## Testing aid: flips to the next look (GameSettings.sonar_look) and pings at once.
-const CYCLE_ACTION := &'sonar_cycle_look'
 
 var player: Node # player.gd: its camera, water and whether its ears are under
 
@@ -16,36 +14,23 @@ var _origin := Vector3.ZERO
 var _last_sent_msec := -1000000
 
 func _ready() -> void:
-	# project.godot binds them to V and B; this covers the editor having saved over that.
-	_ensure_action(ACTION, KEY_V)
-	_ensure_action(CYCLE_ACTION, KEY_B)
-
-func _ensure_action(action: StringName, keycode: Key) -> void:
-	if InputMap.has_action(action):
-		return
-	InputMap.add_action(action)
-	var key := InputEventKey.new()
-	key.physical_keycode = keycode
-	InputMap.action_add_event(action, key)
+	# project.godot binds it to V; this covers the editor having saved over that.
+	if not InputMap.has_action(ACTION):
+		InputMap.add_action(ACTION)
+		var key := InputEventKey.new()
+		key.physical_keycode = KEY_V
+		InputMap.action_add_event(ACTION, key)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_echo():
-		return
-	if event.is_action_pressed(ACTION):
+	if event.is_action_pressed(ACTION) and not event.is_echo():
 		send()
-	elif event.is_action_pressed(CYCLE_ACTION):
-		var s := GameSettings.current()
-		s.sonar_look = ((s.sonar_look + 1) % GameSettings.SonarLook.size()) as GameSettings.SonarLook
-		print("Sonar look: ", GameSettings.SonarLook.keys()[s.sonar_look])
-		send(true)
 
-## Sends a pulse if we are under the water and it has cooled down (or `ignore_cooldown`).
-## True if it went.
-func send(ignore_cooldown := false) -> bool:
+## Sends a pulse if we are under the water and it has cooled down. True if it went.
+func send() -> bool:
 	var s := GameSettings.current()
 	if not player or not player.water or player.unconscious or not player._ears_underwater:
 		return false
-	if not ignore_cooldown and Time.get_ticks_msec() - _last_sent_msec < s.sonar_cooldown * 1000.0:
+	if Time.get_ticks_msec() - _last_sent_msec < s.sonar_cooldown * 1000.0:
 		return false
 	_last_sent_msec = Time.get_ticks_msec()
 	_age = 0.0
@@ -91,13 +76,13 @@ static func apply_to(fx: UnderwaterEffect, s: GameSettings, origin: Vector3, age
 	fx.pulse_range = s.sonar_range
 	fx.pulse_far_brightness = s.sonar_far_brightness
 	fx.pulse_surface = s.sonar_surface
-	fx.pulse_grain = s.sonar_look_value(&'grain')
-	fx.pulse_streaks = s.sonar_look_value(&'streaks')
-	fx.pulse_echo_color = s.sonar_look_value(&'echo_color')
-	fx.pulse_rings = s.sonar_look_value(&'rings')
-	fx.pulse_background = s.sonar_look_value(&'background')
-	fx.pulse_facing = s.sonar_look_value(&'facing')
-	fx.pulse_front_glow = s.sonar_look_value(&'front_glow')
+	fx.pulse_grain = s.sonar_grain
+	fx.pulse_streaks = s.sonar_streaks
+	fx.pulse_echo_color = s.sonar_echo_color
+	fx.pulse_rings = s.sonar_rings
+	fx.pulse_background = s.sonar_background
+	fx.pulse_facing = s.sonar_facing
+	fx.pulse_front_glow = s.sonar_front_glow
 	fx.pulse_dissolve = s.sonar_dissolve
 	fx.pulse_opacity = s.sonar_opacity
 	var rate := s.sonar_grain_rate
