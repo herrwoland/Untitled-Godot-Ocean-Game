@@ -17,16 +17,17 @@ const CoordinateSystem := preload("res://assets/scripts/core/coordinate_system.g
 @export var note_view: CanvasLayer
 @export var sleep_fade: ColorRect
 
-const LETTER_HOME := Vector3(-129.4, 3.3, 10)
 const DELIVERY_RADIUS := 4.0 # how close the package must get to complete the hand-off
 
 var days: Array[DayConfig] = []
 var _boat_start: Transform3D
+var _letter_home: Vector3 # wherever LetterPoint is placed in the editor
 
 func _ready() -> void:
 	add_to_group(&'mission_controller')
 	_build_placeholder_days()
 	_boat_start = boat.global_transform
+	_letter_home = letter_point.global_position
 	EventBus.package_picked_up.connect(_on_package_picked_up)
 	EventBus.package_delivered.connect(_on_package_delivered)
 	EventBus.player_died.connect(_on_player_died)
@@ -56,7 +57,7 @@ func _on_day_started(_day: int) -> void:
 
 	# Stage the mission props. The letter carries the pickup coordinates; the
 	# package rests below the surface marker and carries the delivery ones.
-	letter_point.restage(get_parent(), LETTER_HOME)
+	letter_point.restage(get_parent(), _letter_home)
 	letter_point.set_label_text("%s\n\nPickup:\n%s" % [cfg.letter_text, CoordinateSystem.format_position(cfg.pickup_position)])
 	package.restage(get_parent(), cfg.pickup_position + Vector3.DOWN * cfg.package_depth)
 	package.set_label_text("DELIVER TO:\n%s" % CoordinateSystem.format_position(cfg.delivery_position))

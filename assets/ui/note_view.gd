@@ -20,6 +20,9 @@ func show_note(text: String) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if visible and event.is_action_pressed(&'interact') and Time.get_ticks_msec() > _closable_after_msec:
+		# The press that closes the note must not also reach the player, who
+		# would re-interact with whatever was hovered before the pause.
+		get_viewport().set_input_as_handled()
 		visible = false
 		get_tree().paused = false
 		_play_paper()
