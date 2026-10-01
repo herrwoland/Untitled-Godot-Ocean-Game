@@ -63,6 +63,8 @@ var curl_rate := 0.0
 ## Reaching: the bend front, 0..1 along the arm. Joints behind it aim at the
 ## goal; joints past it stay rolled up. 1 = no front (the whole arm aims).
 var reach_front := 1.0
+## Smoothing passes along the arm (curves). A grip lies on its route exactly: 0.
+var smooth_passes := 2
 
 var role := Role.FREE
 var pin_tip := false # BOAT, gripped: the tip is held exactly on tip_target
@@ -70,7 +72,9 @@ var pin_tip := false # BOAT, gripped: the tip is held exactly on tip_target
 ## fine finish of a reach, done by the light distal arm.
 var seek_tip := 0.0
 var tip_target := Vector3.ZERO # world
-var hull_point := Vector3.ZERO # BOAT: where it grips, in the ship's local space
+## BOAT: its route onto the hull, in the ship's local space, from the tip's
+## hold on the deck back down the outside of the hull and under the keel.
+var hull_path := PackedVector3Array()
 var timer := 0.0 # seconds in the current role
 var gripped := false # BOAT: the tip has hold of the hull
 
@@ -231,19 +235,28 @@ func goals_reach(target: Vector3, bow: Vector3) -> void:
 		var t := along[i] / length
 		goals[i] = start.lerp(target, t) + bow * sin(t * PI) * span * 0.12
 
-## Gripping a hull: the tip hooks over at attach, the last wrap_length meters
-## run down the hull's side (out = away from the hull, down = down its side),
-## and the rest of the arm comes up to it from below.
-func goals_hull(attach: Vector3, out: Vector3, down: Vector3, wrap_length: float) -> void:
+## Following a route laid onto something (a hull), given in the world from
+## the tip's end back toward the body: the distal arm lies along the route —
+## as much of it as 60 % of the arm can cover — and the rest of the arm comes
+## straight from the crown to where the route starts.
+func goals_path(path: PackedVector3Array) -> void:
 	var start := points[0]
-	var s0 := maxf(length - wrap_length, 1.0)
-	var low := attach + out * 0.8 + down * wrap_length
+	var walked := PackedFloat32Array([0.0])
+	for j in range(1, path.size()):
+		walked.append(walked[-1] + path[j].distance_to(path[j - 1]))
+	var wrap := minf(walked[-1], length * 0.6)
+	var join := _point_on(path, walked, wrap)
+	var s0 := maxf(length - wrap, 1.0)
 	for i in points.size():
-		var s := along[i]
-		if s <= s0:
-			goals[i] = start.lerp(low, s / s0)
-		else:
-			goals[i] = attach + out * 0.8 + down * (length - s)
+		var from_tip := length - along[i]
+		goals[i] = _point_on(path, walked, from_tip) if from_tip <= wrap else start.lerp(join, along[i] / s0)
+
+static func _point_on(path: PackedVector3Array, walked: PackedFloat32Array, distance: float) -> Vector3:
+	for j in range(1, path.size()):
+		if walked[j] >= distance:
+			var seg := walked[j] - walked[j - 1]
+			return path[j - 1].lerp(path[j], (distance - walked[j - 1]) / seg if seg > 0.0 else 0.0)
+	return path[-1]
 
 ## ---- simulation ----------------------------------------------------------------
 
@@ -309,7 +322,7 @@ func _targets_from(chain: PackedVector3Array) -> void:
 
 ## Average each joint's target with its neighbours: no kinks, only curves.
 func _smooth_targets() -> void:
-	for _pass in 2:
+	for _pass in smooth_passes:
 		var prev := _target[0]
 		for k in range(1, _n - 1):
 			var here := _target[k]

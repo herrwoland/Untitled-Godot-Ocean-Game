@@ -105,6 +105,13 @@ marker, GuardArea, Kraken). Code: `kraken.gd` (behaviour) + `kraken_arm.gd` (pro
 - **Player aboard a ship:** it takes the ship. Rises beneath her (its one fast burst), grips the hull
   (first grip drags her to a stop), shakes her ~12 s, rolls her over (player thrown off, one arm goes
   for them), drags her down and home and keeps her. Fighting free of that one arm = left alone.
+- **Arms** move like real octopus arms: stiff long base, curling tip (per-joint bend limits rising toward
+  the tip), always smooth curves, eased and slow (joint 18 deg/s, tip 14 m/s caps). A reach is a bend
+  travelling base to tip. A caught player rides in the tip's coil; it loosens as they struggle.
+- **Looks at its catch:** once it holds the player it slowly turns its head until they hang in front
+  of its eyes (eye_center / gaze_direction on the Kraken match the model's eyes).
+- **Grips the real ship:** it measures her visible meshes once and lays each arm up her side and over
+  her rail. Optional exact spots: Marker3D nodes named `KrakenGrip*` on the ship (their height = hook).
 - **Gives up** when the player is 200 m from the perch; swims home and wraps round the rock again.
   Hunters stand down while it is awake. A new morning resets it and gives the ship back.
 - Open: the kept ship strands the player at sea until they drown or the day resets — see §8.
