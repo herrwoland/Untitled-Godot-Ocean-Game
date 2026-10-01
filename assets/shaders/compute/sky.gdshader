@@ -4,7 +4,9 @@ render_mode use_debanding;
  * Stormy sky: a dark churning cloud deck built from warped FBM noise.
  * Two layers (high deck + faster low scud), thickness-based darkening,
  * faint sun glow, horizon haze and occasional distant lightning that
- * lights the cloud undersides.
+ * lights the cloud undersides. The scene's light (LIGHT0) is drawn as a disc:
+ * the sun by day, the moon by night (moon_amount, set per weather preset),
+ * sitting behind the clouds so the deck hides it and thin edges let it glow.
  */
 
 group_uniforms Clouds;
@@ -32,6 +34,18 @@ uniform float lightning_strength : hint_range(0.0, 1.0) = 0.35; // 0 disables di
 uniform float exposure : hint_range(0.0, 4.0) = 1.0;
 group_uniforms;
 
+group_uniforms SunAndMoon;
+uniform float sun_size : hint_range(0.1, 10.0) = 1.4; // apparent diameter, degrees (the real one is ~0.5)
+uniform float sun_disc_energy : hint_range(0.0, 50.0) = 14.0; // HDR brightness of the disc: feeds the glow/bloom
+uniform float sun_corona : hint_range(0.0, 3.0) = 0.8; // bright haze hugging the disc
+uniform float moon_amount : hint_range(0.0, 1.0) = 0.0; // 0 = the light is the sun, 1 = it is the moon
+uniform float moon_size : hint_range(0.1, 10.0) = 2.4; // apparent diameter, degrees
+uniform vec3 moon_color : source_color = vec3(0.86, 0.88, 0.92);
+uniform float moon_brightness : hint_range(0.0, 40.0) = 1.8; // night presets dim the whole sky (background energy): raise this to match
+uniform float moon_phase : hint_range(-1.0, 1.0) = 0.25; // 0 = full, +-1 = new; the sign picks the lit side
+uniform float moon_halo : hint_range(0.0, 2.0) = 0.35; // pale ring of light around the moon
+group_uniforms;
+
 group_uniforms Sunset;
 uniform vec3 sunset_color : source_color = vec3(0.9, 0.45, 0.2);
 uniform float sunset_strength : hint_range(0.0, 2.0) = 1.0; // 0 disables the sunset band
@@ -47,6 +61,42 @@ float fbm(vec2 uv) {
 		amplitude *= 0.5;
 	}
 	return value;
+}
+
+// The light's disc in the sky: the sun (limb-darkened, with a corona) or the
+// moon (maria from the noise, a lit phase, a faint halo), blended by
+// moon_amount. Returns light to add before the clouds go over it.
+vec3 celestial_disc(vec3 dir, vec3 to_light, vec3 light_color) {
+	float cos_angle = dot(dir, to_light);
+	if (cos_angle < 0.9) {
+		return vec3(0.0); // far from it: skip (corona and halo are long gone by 25 degrees)
+	}
+	float angle = acos(clamp(cos_angle, -1.0, 1.0));
+	vec3 right = normalize(cross(to_light, abs(to_light.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+	vec3 up = cross(right, to_light);
+
+	// Sun: a hot disc, darker toward its rim, in a soft corona.
+	float sun_radius = radians(sun_size) * 0.5;
+	float sr = angle / sun_radius;
+	float sun_disc = smoothstep(1.0, 0.96, sr);
+	float limb = 1.0 - 0.55 * (1.0 - sqrt(max(1.0 - sr * sr, 0.0)));
+	vec3 sun = light_color * (sun_disc * limb * sun_disc_energy
+			+ sun_corona * (exp(-sr * 0.55) * 0.6 + exp(-sr * 0.12) * 0.15));
+
+	// Moon: a sphere lit from the side by an unseen sun, its seas from the noise.
+	float moon_radius = radians(moon_size) * 0.5;
+	vec2 p = vec2(dot(dir, right), dot(dir, up)) / max(sin(moon_radius), 1e-4);
+	float mr = length(p);
+	float moon_disc = smoothstep(1.0, 0.95, mr);
+	vec3 n = vec3(p, sqrt(max(1.0 - mr * mr, 0.0)));
+	float ph = moon_phase * 3.14159;
+	float lit = smoothstep(-0.08, 0.12, dot(n, vec3(sin(ph), 0.0, cos(ph))));
+	float maria = texture(noise_texture, p * 0.35 + vec2(0.37, 0.61)).r;
+	float albedo = mix(0.62, 1.0, smoothstep(0.35, 0.7, maria));
+	vec3 moon = moon_color * moon_brightness * (moon_disc * albedo * mix(0.03, 1.0, lit)
+			+ moon_halo * exp(-max(mr - 1.0, 0.0) * 1.6) * (1.0 - moon_disc) * 0.25);
+
+	return mix(sun, moon, moon_amount);
 }
 
 void sky() {
@@ -111,6 +161,13 @@ void sky() {
 
 	// Rare gaps in the deck show a joyless zenith, and horizon haze flattens it all.
 	vec3 sky_col = mix(zenith_color, horizon_color, horizon_fade);
+	// The sun or moon hangs in that sky, behind the deck: thick cloud hides it,
+	// thin edges let some of it through. Low down, the haze swallows it too.
+	if (LIGHT0_ENABLED) {
+		vec3 body = celestial_disc(dir, LIGHT0_DIRECTION, LIGHT0_COLOR);
+		sky_col += body * (1.0 - horizon_fade * 0.85);
+		cloud_col += body * (1.0 - thickness) * 0.15;
+	}
 	vec3 col = mix(sky_col, cloud_col, cover);
 	col = mix(col, horizon_color, horizon_fade * 0.85);
 
