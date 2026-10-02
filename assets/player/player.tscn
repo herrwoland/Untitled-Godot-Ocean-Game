@@ -9,6 +9,8 @@
 [ext_resource type="Script" uid="uid://c4nwfe56kuued" path="res://assets/player/oxygen_controller.gd" id="4_oxygen"]
 [ext_resource type="Shader" uid="uid://b2rcikvib8wn8" path="res://assets/shaders/post/oxygen_overlay.gdshader" id="5_oxyshader"]
 [ext_resource type="Script" uid="uid://dbs8itod2p6jf" path="res://assets/player/carry_controller.gd" id="6_carry"]
+[ext_resource type="Texture2D" uid="uid://bvm8qldu1eduv" path="res://assets/textures/bubble_1.png" id="7_hai6l"]
+[ext_resource type="QuadMesh" uid="uid://cjtvpvkk5ps3a" path="res://assets/player/air_bubbles_2d.tres" id="9_vlpqo"]
 [ext_resource type="Script" uid="uid://f1i0c0keg8l6" path="res://assets/scripts/world/bubble_emitter.gd" id="30_bubbles"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
@@ -34,6 +36,7 @@ shader_parameter/ring = 1.0
 shader_parameter/square = false
 shader_parameter/pixel_grid = 6.0
 shader_parameter/use_sprite = false
+shader_parameter/sprite = ExtResource("7_hai6l")
 shader_parameter/fade_distance = 14.0
 shader_parameter/water_level = 0.0
 shader_parameter/depth_darkening = 0.04
@@ -62,32 +65,6 @@ shader_parameter/wobble = 0.6
 shader_parameter/size_min = 0.006
 shader_parameter/size_max = 0.03
 shader_parameter/surface_y = 0.0
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_plungedraw"]
-render_priority = 0
-shader = ExtResource("3_hai6l")
-shader_parameter/color = Color(0.7, 0.85, 0.85, 1)
-shader_parameter/ring = 1.0
-shader_parameter/square = false
-shader_parameter/pixel_grid = 6.0
-shader_parameter/use_sprite = false
-shader_parameter/fade_distance = 14.0
-shader_parameter/water_level = 0.0
-shader_parameter/depth_darkening = 0.04
-shader_parameter/glow_count = 0
-shader_parameter/glow_a = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-shader_parameter/glow_b = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-shader_parameter/glow_strength = 1.0
-shader_parameter/viewport_height = 720.0
-shader_parameter/ambient_glow = 0.45
-shader_parameter/sun_scatter = 0.8
-shader_parameter/local_scatter = 5.0
-shader_parameter/forward_scatter = 0.6
-shader_parameter/glow_scatter = 100.0
-shader_parameter/glint_min_pixels = 2.5
-
-[sub_resource type="QuadMesh" id="QuadMesh_plunge"]
-material = SubResource("ShaderMaterial_plungedraw")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_oxygen"]
 shader = ExtResource("5_oxyshader")
@@ -206,14 +183,12 @@ spawn_radius = 0.05
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.45)
 layers = 524288
 cast_shadow = 0
-emitting = false
 amount = 500
-amount_ratio = 0.0
 lifetime = 3.0
 randomness = 0.6
 visibility_aabb = AABB(-15, -5, -15, 30, 60, 30)
 process_material = SubResource("ShaderMaterial_plunge")
-draw_pass_1 = SubResource("QuadMesh_plunge")
+draw_pass_1 = ExtResource("9_vlpqo")
 script = ExtResource("30_bubbles")
 trail_full_speed = 0.0
 size_min = 0.006

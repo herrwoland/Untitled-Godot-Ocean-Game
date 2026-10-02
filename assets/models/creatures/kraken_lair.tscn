@@ -1,10 +1,9 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cnp3jjyjpjamw"]
 
-[ext_resource type="PackedScene" path="res://assets/models/creatures/kraken.tscn" id="1_kraken"]
+[ext_resource type="PackedScene" uid="uid://cvqqmvujpktau" path="res://assets/models/creatures/kraken.tscn" id="1_kraken"]
 
 [sub_resource type="StandardMaterial3D" id="Mat_rock"]
 albedo_color = Color(0.2, 0.19, 0.17, 1)
-roughness = 1.0
 
 [sub_resource type="CylinderMesh" id="Mesh_column"]
 material = SubResource("Mat_rock")
@@ -22,30 +21,30 @@ radius = 11.0
 height = 230.0
 radius = 120.0
 
-[node name="KrakenLair" type="Node3D"]
+[node name="KrakenLair" type="Node3D" unique_id=1406963979]
 
-[node name="Column" type="StaticBody3D" parent="."]
+[node name="Column" type="StaticBody3D" parent="." unique_id=1274165918]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -107.5, 0)
 
-[node name="Mesh" type="MeshInstance3D" parent="Column"]
+[node name="Mesh" type="MeshInstance3D" parent="Column" unique_id=169594090]
 mesh = SubResource("Mesh_column")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Column"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Column" unique_id=1135930702]
 shape = SubResource("Shape_column")
 
-[node name="Perch" type="Marker3D" parent="."]
+[node name="Perch" type="Marker3D" parent="." unique_id=1004442944]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -70, 0)
 
-[node name="GuardArea" type="Area3D" parent="."]
+[node name="GuardArea" type="Area3D" parent="." unique_id=934003475]
 collision_layer = 0
 collision_mask = 0
 monitoring = false
 monitorable = false
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="GuardArea"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="GuardArea" unique_id=991034324]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -100, 0)
 shape = SubResource("Shape_guard")
 
-[node name="Kraken" parent="." node_paths=PackedStringArray("perch", "guard_area") instance=ExtResource("1_kraken")]
+[node name="Kraken" parent="." unique_id=764573148 node_paths=PackedStringArray("perch", "guard_area") instance=ExtResource("1_kraken")]
 perch = NodePath("../Perch")
 guard_area = NodePath("../GuardArea")

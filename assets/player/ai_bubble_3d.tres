@@ -1,0 +1,15 @@
+[gd_resource type="SphereMesh" format=3 uid="uid://bpndp015pqy0k"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hai6l"]
+transparency = 1
+albedo_color = Color(0.7, 0.88, 1, 0.49803922)
+emission_enabled = true
+emission = Color(0.78, 0.8643333, 1, 1)
+emission_energy_multiplier = 0.2
+
+[resource]
+material = SubResource("StandardMaterial3D_hai6l")
+radius = 5.0
+height = 10.0
+radial_segments = 4
+rings = 2

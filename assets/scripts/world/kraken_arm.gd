@@ -89,6 +89,7 @@ var _base: Basis # skeleton space: joint 0's frame before its bend (the crown so
 var _root_origin: Vector3 # skeleton space
 var _frames: Array[Basis] = [] # skeleton space, per bone, from the last rebuild
 var _pos: PackedVector3Array # skeleton space, joints then the tip
+var _world := 1.0 # world meters per skeleton unit (the model's scale in its scene)
 const TELEPORT := 30.0 # a root jump this big in one step starts the arm over
 
 func _init(target: Skeleton3D, arm_index: int, chain: PackedInt32Array) -> void:
@@ -106,9 +107,12 @@ func _init(target: Skeleton3D, arm_index: int, chain: PackedInt32Array) -> void:
 	if _n > 2 and _segments[-2] > 0.0:
 		last = _segments[-1] * _segments[-1] / _segments[-2]
 	_segments.append(last)
+	# The model may be scaled in its scene: goals, lengths and radii are world
+	# meters, the chain itself is built in the skeleton's own units.
+	_world = skeleton.global_transform.basis.get_scale().x
 	along.append(0.0)
 	for s in _segments:
-		length += s
+		length += s * _world
 		along.append(length)
 	var parent := skeleton.get_bone_parent(bones[0])
 	var parent_basis := skeleton.get_bone_global_rest(parent).basis.orthonormalized() if parent >= 0 else Basis.IDENTITY
@@ -132,7 +136,7 @@ func configure() -> void:
 		if k == 0:
 			_limit[k] = swing_limit
 		else:
-			var t := (along[k] + _segments[k] * 0.5) / length
+			var t := (along[k] + _segments[k] * _world * 0.5) / length
 			_limit[k] = lerpf(bend_root, bend_tip, pow(t, bend_exponent))
 
 func root() -> Vector3:
@@ -157,12 +161,16 @@ func set_role(new_role: Role) -> void:
 		tip_target = tip() # the reach for the hull starts from wherever the tip is now
 
 ## Where a held body sits: the centre of the coil (world). Valid while
-## curl_from >= 0.
+## curl_from >= 0. Uses the coil the joints can really make: short of bones
+## or bend, it is wider than asked for.
 func coil_center() -> Vector3:
 	for k in _n:
-		if along[k] + _segments[k] * 0.5 > curl_from:
+		var seg := _segments[k] * _world
+		if along[k] + seg * 0.5 > curl_from:
 			var before := _base if k == 0 else _frames[k - 1] * _rest_local[k]
-			return skeleton.global_transform * (_pos[k] + before.z.normalized() / maxf(curl_rate, 0.01))
+			var bend := minf(curl_rate * seg, _limit[k])
+			var radius := seg / maxf(bend, 0.01) / _world # in skeleton units
+			return skeleton.global_transform * (_pos[k] + before.z.normalized() * radius)
 	return tip()
 
 ## Jump straight into the goal pose (a new morning: nobody saw it move).
@@ -288,8 +296,8 @@ func simulate(delta: float) -> void:
 	# faster than max_tip_speed (relative to the body), scale every joint's
 	# step down alike — same shape, slower.
 	var moved := _pos[_n].distance_to(tip_before)
-	if moved > max_tip_speed * delta:
-		var scale := max_tip_speed * delta / moved
+	if moved * _world > max_tip_speed * delta:
+		var scale := max_tip_speed * delta / (moved * _world)
 		for k in _n:
 			_bend[k] = before_bend[k].lerp(_bend[k], scale)
 			_vel[k] *= scale
@@ -333,9 +341,9 @@ func _smooth_targets() -> void:
 ## reach's bend front, and the coil round a held body.
 func _lay_over_shapes() -> void:
 	for k in _n:
-		var mid := along[k] + _segments[k] * 0.5
+		var mid := along[k] + _segments[k] * _world * 0.5
 		if curl_from >= 0.0 and mid > curl_from:
-			_target[k] = Vector2(minf(curl_rate * _segments[k], _limit[k]), 0.0)
+			_target[k] = Vector2(minf(curl_rate * _segments[k] * _world, _limit[k]), 0.0)
 		elif reach_front < 1.0 and mid > maxf(reach_front, 0.5) * length:
 			_target[k] = Vector2(_limit[k] * 0.45, 0.0) # the far half stays rolled until the bend arrives
 

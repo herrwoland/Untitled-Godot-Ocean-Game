@@ -1,24 +1,48 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cvqqmvujpktau"]
 
 [ext_resource type="Script" uid="uid://us7wao1gawyg" path="res://assets/scripts/world/kraken.gd" id="1_kraken"]
 [ext_resource type="PackedScene" uid="uid://dj8a1rkcimwkp" path="res://assets/models/creatures/kraken/kraken_placeholder.glb" id="2_model"]
+[ext_resource type="Script" uid="uid://csyjpi4nlac4u" path="res://assets/scripts/world/underwater_glow.gd" id="3_u0aex"]
 
-[node name="Kraken" type="Node3D"]
+[node name="Kraken" type="Node3D" unique_id=2048527563]
 script = ExtResource("1_kraken")
 
-[node name="Model" parent="." instance=ExtResource("2_model")]
+[node name="Model" parent="." unique_id=14561178 instance=ExtResource("2_model")]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
 
-[node name="PresenceLoop" type="AudioStreamPlayer3D" parent="."]
+[node name="PresenceLoop" type="AudioStreamPlayer3D" parent="." unique_id=1069231408]
 max_distance = 250.0
 
-[node name="WakeSound" type="AudioStreamPlayer3D" parent="."]
+[node name="WakeSound" type="AudioStreamPlayer3D" parent="." unique_id=357207085]
 max_distance = 300.0
 
-[node name="GrabSound" type="AudioStreamPlayer3D" parent="."]
+[node name="GrabSound" type="AudioStreamPlayer3D" parent="." unique_id=388718294]
 max_distance = 150.0
 
-[node name="StruggleSound" type="AudioStreamPlayer3D" parent="."]
+[node name="StruggleSound" type="AudioStreamPlayer3D" parent="." unique_id=376125174]
 max_distance = 150.0
 
-[node name="HullSound" type="AudioStreamPlayer3D" parent="."]
+[node name="HullSound" type="AudioStreamPlayer3D" parent="." unique_id=575079950]
 max_distance = 200.0
+
+[node name="eye_light" type="OmniLight3D" parent="." unique_id=361563543]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.128911, 1.676866, -2.3575335)
+light_color = Color(0, 0.72234213, 0.8735508, 1)
+omni_range = 5.508
+
+[node name="UnderwaterGlow" type="Node3D" parent="eye_light" unique_id=254953927]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 0)
+script = ExtResource("3_u0aex")
+strength = 0.7
+metadata/_custom_type_script = "uid://csyjpi4nlac4u"
+
+[node name="eye_light2" type="OmniLight3D" parent="." unique_id=416063636]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.9086876, 1.676866, -2.3575335)
+light_color = Color(0, 0.72234213, 0.8735508, 1)
+omni_range = 5.508
+
+[node name="UnderwaterGlow" type="Node3D" parent="eye_light2" unique_id=990025511]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)
+script = ExtResource("3_u0aex")
+strength = 0.7
+metadata/_custom_type_script = "uid://csyjpi4nlac4u"

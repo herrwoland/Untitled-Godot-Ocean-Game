@@ -400,7 +400,7 @@ height = 15.95
 script = ExtResource("1_skarq")
 
 [node name="PlayerSpawn" type="Marker3D" parent="." unique_id=1902926855]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 431.07135, 5.467661, 319.36017)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 407.29782, 5.467661, 324.56738)
 gizmo_extents = 0.54
 
 [node name="Environment" type="WorldEnvironment" parent="." unique_id=1400611425]
@@ -425,7 +425,7 @@ shadow_opacity = 0.8
 shadow_blur = 4.592
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 408.69623, 21.499897, 298.93195)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 464.6261, 767.0743, 435.76794)
 script = ExtResource("60_rain")
 intensity = 0.85
 wind_strength = 9.0
@@ -458,7 +458,7 @@ creature_count = 4
 speed_multiplier = 2.5
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 409, 0, 299)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 465, 0, 436)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -530,7 +530,7 @@ volume_db = -8.0
 autoplay = true
 
 [node name="Boat" parent="." unique_id=108108734 node_paths=PackedStringArray("water") instance=ExtResource("45_boat")]
-transform = Transform3D(-0.99955845, 0.027389033, -0.011583984, 0.027358893, 0.9996218, 0.0027563104, 0.0116551, 0.0024383024, -0.99992985, 420.09473, 1.5854063, 319.84723)
+transform = Transform3D(-0.99955845, 0.027389033, -0.011583984, 0.027358893, 0.9996218, 0.0027563104, 0.0116551, 0.0024383024, -0.99992985, 396.3212, 1.5854063, 325.05444)
 water = NodePath("../Water")
 
 [node name="Box Octet Experiment" type="RigidBody3D" parent="." unique_id=1036328041 node_paths=PackedStringArray("buoyant_cells", "mesh")]

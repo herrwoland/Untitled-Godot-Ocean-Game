@@ -53,9 +53,17 @@ enum BoatPhase { REACH, SHAKE, FLIP, DRAG }
 ## shut and push the body on.
 @export var stroke_period := 7.0
 @export_range(0.0, 2.0, 0.05) var jet_boost := 0.8 # extra speed at the push, as a fraction
-## Within this distance of the prey it turns its arms toward it (otherwise it
+## Within this distance of the prey it rears up for the attack (otherwise it
 ## swims mantle first with the arms trailing).
 @export var face_range := 90.0
+## Reared up for the attack: degrees the crown tilts down from level (90 =
+## upright, mantle straight up). The bottom arms swim it forward meanwhile.
+@export var attack_tilt := 55.0
+## The swimming arms' stroke, degrees below straight back: where the power
+## sweep ends (nearly straight back)...
+@export var swim_power_angle := 10.0
+## ...and where the slow recovery brings them (forward and down under the body).
+@export var swim_recovery_angle := 70.0
 @export var hover_distance := 30.0 # m crown to prey it closes to
 @export var approach_below := 12.0 # m it keeps beneath the prey while closing in
 @export var surface_clearance := 10.0 # m the body stays below the waves
@@ -105,7 +113,7 @@ enum BoatPhase { REACH, SHAKE, FLIP, DRAG }
 @export var dive_time := 10.0 # ...or for this long at most; then it hangs there while the air runs out
 ## Looking at the catch: it turns its head so the prey is in front of its eyes.
 @export var look_turn_rate := 0.2 # rad/s at most: a slow, heavy turn
-@export var eye_center := Vector3(0.0, 1.5, -2.4) # between the eyes, in the body's space (the model's eyes)
+@export var eye_center := Vector3(0.0, 1.5, -2.4) # between the eyes, in the model's own (unscaled) space
 @export var gaze_direction := Vector3(0.0, 0.8, 0.6) # the way the eyes look together: up from the head, toward the arms
 @export var gaze_hold_distance := 18.0 # m in front of the eyes the prey is held
 @export var hold_min_depth := 3.0 # m under the surface the catch is always held, at least: it must drown
@@ -140,9 +148,17 @@ enum BoatPhase { REACH, SHAKE, FLIP, DRAG }
 @export var loose_swap_time := 25.0 # s before another arm is the restless one
 
 @export_group("Camera shake")
-@export_range(0.0, 1.0, 0.05) var wake_shake := 0.3
-@export_range(0.0, 1.0, 0.05) var catch_shake := 0.6
-@export_range(0.0, 1.0, 0.05) var struggle_shake := 0.2
+## The jolt when it wakes and turns on the player (felt within wake_shake_reach m)...
+@export_range(0.0, 1.0, 0.05) var wake_shake := 0.75
+## ...then a rumble while it uncoils from the rock, fading out over wake_time.
+@export_range(0.0, 1.0, 0.05) var wake_rumble := 0.4
+@export var wake_shake_reach := 400.0
+## The hit when an arm closes on the player.
+@export_range(0.0, 1.0, 0.05) var catch_shake := 1.0
+## A steady, smaller shake for as long as the player is held (stops once drowned).
+@export_range(0.0, 1.0, 0.05) var held_shake := 0.35
+## Each struggle press: a little above the held rumble, so it is felt.
+@export_range(0.0, 1.0, 0.05) var struggle_shake := 0.45
 @export_range(0.0, 1.0, 0.05) var ship_shake := 0.55 # rumble while it shakes her, at the end of the shaking
 
 @onready var _presence_loop: AudioStreamPlayer3D = get_node_or_null(^'PresenceLoop') # while awake
@@ -155,6 +171,9 @@ var state := State.PERCHED
 var boat_phase := BoatPhase.REACH
 
 var _skeleton: Skeleton3D
+var _scale := 1.0 # the model's scale in this scene: body-size distances are multiplied by it
+var _attacking := false # reared up and closing on a swimming prey
+var _top_arms: Array[int] = [] # arms on the top half of the crown (the eye side): they reach; the rest swim
 var _mantle_bone := -1
 var _arms: Array[KrakenArm] = []
 var _player: Node3D
@@ -217,6 +236,8 @@ func _ready() -> void:
 		return
 	_skeleton = skeletons[0]
 	_mantle_bone = _skeleton.find_bone("mantle")
+	# The model may be scaled in the scene: body distances grow with it.
+	_scale = _skeleton.global_basis.get_scale().x / maxf(global_basis.get_scale().x, 0.0001)
 	_build_arms()
 	if guard_area:
 		guard_area.monitoring = false # containment is tested directly (a piloting player has no collider)
@@ -244,8 +265,8 @@ func _build_arms() -> void:
 		for k: int in order:
 			chain.append(joints[k])
 		var arm := KrakenArm.new(_skeleton, a, chain)
-		arm.root_radius = arm_root_radius
-		arm.tip_radius = arm_tip_radius
+		arm.root_radius = arm_root_radius * _scale
+		arm.tip_radius = arm_tip_radius * _scale
 		arm.swing_limit = deg_to_rad(arm_swing_limit)
 		arm.bend_root = deg_to_rad(arm_bend_root)
 		arm.bend_tip = deg_to_rad(arm_bend_tip)
@@ -253,6 +274,13 @@ func _build_arms() -> void:
 		arm.max_tip_speed = arm_max_tip_speed
 		arm.configure()
 		_arms.append(arm)
+	# The top half of the crown ring (the eye side, +Y) reaches in an attack,
+	# the bottom half swims.
+	var by_height := _arms.duplicate()
+	by_height.sort_custom(func(a: KrakenArm, b: KrakenArm) -> bool:
+		return _skeleton.get_bone_global_rest(a.bones[0]).origin.y > _skeleton.get_bone_global_rest(b.bones[0]).origin.y)
+	for i in by_height.size() / 2:
+		_top_arms.append(by_height[i].index)
 
 func _on_day_started(_day: int) -> void:
 	_reset()
@@ -328,6 +356,7 @@ func _physics_process(delta: float) -> void:
 
 func _set_state(new_state: State) -> void:
 	state = new_state
+	_attacking = false
 	_state_time = 0.0
 
 ## ---- states ------------------------------------------------------------------
@@ -344,10 +373,11 @@ func _process_perched(_delta: float) -> void:
 		_set_state(State.WAKING)
 		_play(_wake_sound)
 		_play(_presence_loop)
-		_shake_near(wake_shake, 120.0)
+		_shake_near(wake_shake, wake_shake_reach)
 
 ## Uncoiling: the arms let go of the rock and it eases away from it.
 func _process_waking(delta: float) -> void:
+	_shake_near(wake_rumble * (1.0 - clampf(_state_time / maxf(wake_time, 0.1), 0.0, 1.0)), wake_shake_reach)
 	var away := perch.global_basis.z.normalized() if perch_column_radius > 0.0 else perch.global_basis.y.normalized()
 	_velocity = _velocity.move_toward(away * 1.2, acceleration * delta)
 	global_position += _velocity * delta
@@ -371,6 +401,7 @@ func _process_hunt(delta: float) -> void:
 		return
 
 	if _holding:
+		_attacking = false
 		# Down with the catch, then hang there in the dark.
 		var deep_enough := _player.global_position.y < _surface_y(_player.global_position) - dive_depth
 		if not deep_enough and _state_hold_time() < dive_time:
@@ -386,8 +417,14 @@ func _process_hunt(delta: float) -> void:
 	var flat := Vector3(to_prey.x, 0.0, to_prey.z)
 	flat = flat.normalized() if flat.length() > 0.1 else -global_basis.z
 	# Close to hover_distance from the prey, a little below it.
-	var goal := prey - flat * hover_distance + Vector3.DOWN * approach_below
-	var face: Variant = to_prey.normalized() if dist < face_range else null
+	var goal := prey - flat * hover_distance * _scale + Vector3.DOWN * approach_below * _scale
+	# Close in: it rears up — mantle up and back, crown tilted forward-down —
+	# the top arms opening toward the prey and the bottom arms swimming behind.
+	_attacking = dist < face_range * _scale
+	var face: Variant = null
+	if _attacking:
+		var tilt := deg_to_rad(attack_tilt)
+		face = (flat * cos(tilt) + Vector3.DOWN * sin(tilt)).normalized()
 	_swim_toward(goal, chase_speed, face, delta)
 
 ## Going after the ship the player is on: rise beneath her, grip, shake,
@@ -409,9 +446,9 @@ func _process_boat(delta: float) -> void:
 			# Rise to where she is going to be, beneath her.
 			var ship_vel := _ship.linear_velocity
 			var lead := minf(global_position.distance_to(_ship.global_position) / maxf(ship_chase_speed, 1.0), 4.0)
-			var below := _ship.global_position + ship_vel * lead + Vector3.DOWN * ship_grab_depth
+			var below := _ship.global_position + ship_vel * lead + Vector3.DOWN * ship_grab_depth * _scale
 			_swim_toward(below, ship_chase_speed, Vector3.UP, delta)
-			if global_position.distance_to(_ship.global_position) < reach_range + ship_grab_depth:
+			if global_position.distance_to(_ship.global_position) < (reach_range + ship_grab_depth) * _scale:
 				_assign_ship_arms()
 			var gripping := 0
 			var assigned := 0
@@ -447,7 +484,7 @@ func _process_boat(delta: float) -> void:
 			_ship_roll_sign = signf(rock) if absf(rock) > 0.2 else _ship_roll_sign
 			var heave := shake_heave * maxf(0.0, -cos(_state_time * TAU * shake_frequency * 2.0)) * (0.4 + t)
 			_pose_ship(heave)
-			_swim_toward(_ship.global_position + Vector3.DOWN * ship_grab_depth, chase_speed, Vector3.UP, delta)
+			_swim_toward(_ship.global_position + Vector3.DOWN * ship_grab_depth * _scale, chase_speed, Vector3.UP, delta)
 			_shake_near(lerpf(ship_shake * 0.3, ship_shake, t), 80.0)
 			if _state_time >= shake_time:
 				boat_phase = BoatPhase.FLIP
@@ -459,7 +496,7 @@ func _process_boat(delta: float) -> void:
 			var start := deg_to_rad(shake_roll.y) * _ship_roll_sign
 			_ship_roll = lerpf(start, PI * _ship_roll_sign, t * t * (3.0 - 2.0 * t))
 			_pose_ship(t * 4.0)
-			_swim_toward(_ship.global_position + Vector3.DOWN * ship_grab_depth, chase_speed, Vector3.UP, delta)
+			_swim_toward(_ship.global_position + Vector3.DOWN * ship_grab_depth * _scale, chase_speed, Vector3.UP, delta)
 			_shake_near(ship_shake, 80.0)
 			if absf(_ship_roll) > deg_to_rad(65.0) and not _thrown:
 				_throw_player_off()
@@ -472,7 +509,7 @@ func _process_boat(delta: float) -> void:
 			_hold_ship_arms()
 			# Straight down first, then home along the bottom of the dark.
 			var deep_y := _surface_y(global_position) - drag_depth
-			var home := _perch_pose().origin + _perch_out() * 25.0
+			var home := _perch_pose().origin + _perch_out() * 25.0 * _scale
 			if global_position.y > deep_y + 3.0 and _state_time < 30.0:
 				_swim_toward(Vector3(global_position.x, deep_y, global_position.z), drag_speed, Vector3.UP, delta)
 			else:
@@ -488,7 +525,7 @@ func _process_boat(delta: float) -> void:
 ## Swim home, then ease back onto the rock.
 func _process_return(delta: float) -> void:
 	var pose := _perch_pose()
-	var approach := pose.origin + _perch_out() * 25.0
+	var approach := pose.origin + _perch_out() * 25.0 * _scale
 	if _ship_kept:
 		_carry_kept_ship()
 	if _settle_from == Transform3D():
@@ -552,7 +589,7 @@ func _update_reaching(delta: float) -> void:
 			_reach_start = -1.0
 		return
 	if _reach_start < 0.0:
-		if prey.distance_to(global_position) <= reach_range and _start_reach(prey):
+		if prey.distance_to(global_position) <= reach_range * _scale and _start_reach(prey):
 			_reach_start = _time
 			_reinforced = 0
 	elif _reinforced < (reinforcements_with_ship if state == State.BOAT else reinforcements) and _time - _reach_start >= reinforce_delay * (_reinforced + 1):
@@ -566,6 +603,8 @@ func _start_reach(prey: Vector3) -> bool:
 		if arm.role != KrakenArm.Role.FREE:
 			continue
 		var d := arm.points[arm.points.size() / 3].distance_to(prey)
+		if _attacking and not _top_arms.has(arm.index):
+			d += 1000.0 # the bottom arms are swimming: the top ones reach
 		if d < best_d:
 			best_d = d
 			best = arm
@@ -615,6 +654,8 @@ func _update_hold(delta: float) -> void:
 		_struggle += struggle_per_press / sqrt(float(holders))
 		EventBus.camera_shake_requested.emit(struggle_shake)
 	_struggle = maxf(_struggle - grip_regain * holders * delta, 0.0)
+	if not unconscious:
+		EventBus.camera_shake_requested.emit(held_shake) # trapped: a steady tremor through the arm
 	if _struggle >= 1.0:
 		_break_free()
 		return
@@ -622,7 +663,7 @@ func _update_hold(delta: float) -> void:
 	var w := TAU / maxf(hold_sway_period, 0.1)
 	var sway := global_basis.x * sin(_time * w) + global_basis.y * sin(_time * w * 0.73 + 1.0) * 0.6
 	if state == State.BOAT:
-		_hold_point = global_transform * hold_offset_with_ship + sway * hold_sway
+		_hold_point = global_transform * (hold_offset_with_ship * _scale) + sway * hold_sway
 	else:
 		# held out in front of its eyes, along a direction fixed at the catch
 		# (not along the gaze: the body turns its eyes onto the prey, and a hold
@@ -631,7 +672,7 @@ func _update_hold(delta: float) -> void:
 		side = side.normalized() if side.length() > 0.1 else Vector3.RIGHT
 		var lift := side.cross(_hold_dir).normalized()
 		var world_sway := side * sin(_time * w) + lift * sin(_time * w * 0.73 + 1.0) * 0.6
-		_hold_point = _eye_position() + _hold_dir * gaze_hold_distance + world_sway * hold_sway
+		_hold_point = _eye_position() + _hold_dir * gaze_hold_distance * _scale + world_sway * hold_sway
 	_hold_point.y = minf(_hold_point.y, _surface_y(_hold_point) - hold_min_depth)
 	# The carrier arm swings the prey about; the prey rides in its coil. As
 	# they struggle the coil loosens, visibly.
@@ -899,7 +940,7 @@ func _carry_kept_ship() -> void:
 	var out := _perch_out()
 	var up := perch.global_basis.y.normalized()
 	var side := up.cross(out).normalized()
-	var target_origin := pose.origin + side * kept_ship_offset.x + up * kept_ship_offset.y + out * kept_ship_offset.z
+	var target_origin := pose.origin + (side * kept_ship_offset.x + up * kept_ship_offset.y + out * kept_ship_offset.z) * _scale
 	var flipped := Basis(side, up, out).orthonormalized() * Basis(Vector3.RIGHT, PI)
 	var k := 1.0 - exp(-0.5 * get_physics_process_delta_time())
 	var current := _ship.global_transform
@@ -971,9 +1012,14 @@ func _update_arms(delta: float) -> void:
 		# On a rolling hull the gripping arms must keep up with her or cut
 		# through her: the speed caps are lifted for them.
 		var on_ship := arm.role == KrakenArm.Role.BOAT
+		# the swimming arms of an attack sweep hard on the power stroke
+		var swimming := _attacking and arm.role == KrakenArm.Role.FREE and not _top_arms.has(arm.index)
 		arm.smooth_passes = 0 if on_ship else 2
-		arm.max_joint_speed = deg_to_rad(arm_max_joint_speed) * (5.0 if on_ship else 1.0)
-		arm.max_tip_speed = arm_max_tip_speed * (3.0 if on_ship else 1.0)
+		arm.max_joint_speed = deg_to_rad(arm_max_joint_speed) * (5.0 if on_ship else (3.0 if swimming else 1.0))
+		arm.max_tip_speed = arm_max_tip_speed * (3.0 if on_ship or swimming else 1.0)
+		if swimming:
+			response = arm_response * 2.5
+			arm.response = response
 		arm.pin_tip = arm.role == KrakenArm.Role.BOAT and arm.gripped
 		arm.simulate(delta)
 		if not far:
@@ -1023,12 +1069,33 @@ func _set_arm_goals(_delta: float) -> void:
 					arm.goals_spread(axis, out, 0.45, 3.0, _time * 0.2 + arm.index * 2.0, 0.8)
 				elif state == State.WAKING:
 					arm.goals_spread(axis, out, 0.6, 3.0, phase, 0.6)
+				elif state == State.HUNT and _attacking:
+					_attack_goals(arm, crown, open, phase)
 				else:
-					var facing := state == State.HUNT and _player.global_position.distance_to(crown) < face_range
-					var spread := lerpf(0.1, 0.45, open) if not facing else lerpf(0.45, 0.75, open)
-					arm.goals_spread(axis, out, spread, 2.5 + open * 1.5, phase, 0.35 + open * 0.4)
+					arm.goals_spread(axis, out, lerpf(0.1, 0.45, open), 2.5 + open * 1.5, phase, 0.35 + open * 0.4)
 		if arm.role == KrakenArm.Role.FREE or arm.role == KrakenArm.Role.RECOIL:
 			_keep_under_surface(arm, surface_y)
+
+## The attack: reared up, the top arms opened toward the prey like an
+## umbrella, the bottom arms trailing behind it and swimming — swung slowly
+## forward under the body as the stroke opens, then swept hard back as it
+## shuts, when the body surges forward (_stroke_thrust).
+func _attack_goals(arm: KrakenArm, crown: Vector3, open: float, phase: float) -> void:
+	var to_prey := _prey_point() - crown
+	var flat := Vector3(to_prey.x, 0.0, to_prey.z)
+	flat = flat.normalized() if flat.length() > 0.1 else -global_basis.z
+	var out := arm.root() - crown
+	if _top_arms.has(arm.index):
+		var axis := to_prey.normalized()
+		out = (out - axis * out.dot(axis)).normalized()
+		arm.goals_spread(axis, out, lerpf(0.4, 0.65, open), 2.0, phase, 0.5)
+	else:
+		# recovery (stroke opening): forward and down under the body; power
+		# (stroke shutting): straight back, away from the prey
+		var sweep := deg_to_rad(lerpf(swim_power_angle, swim_recovery_angle, open))
+		var axis := (-flat * cos(sweep) + Vector3.DOWN * sin(sweep)).normalized()
+		out = (out - axis * out.dot(axis)).normalized()
+		arm.goals_spread(axis, out, 0.15, 1.0, phase, 0.2)
 
 ## Loose arms stay in the sea: they spread just under the surface rather than
 ## rising out of it. Only an arm reaching the prey or gripping a hull breaks it.
@@ -1131,8 +1198,8 @@ func _swim_toward(target: Vector3, max_speed: float, face: Variant, delta: float
 	var desired := to.normalized() * speed if dist > 0.01 else Vector3.ZERO
 	_velocity = _velocity.move_toward(desired, acceleration * accel_scale * delta)
 	var pos := global_position + _velocity * delta
-	pos.y = minf(pos.y, _surface_y(pos) - surface_clearance)
-	pos.y = maxf(pos.y, _floor_height(delta) + floor_clearance)
+	pos.y = minf(pos.y, _surface_y(pos) - surface_clearance * _scale)
+	pos.y = maxf(pos.y, _floor_height(delta) + floor_clearance * _scale)
 	global_position = pos
 
 	var crown_dir: Vector3
@@ -1151,6 +1218,7 @@ func _swim_toward(target: Vector3, max_speed: float, face: Variant, delta: float
 ## the arm carries the prey into view as it turns). Easing off as it lines up.
 func _look_at_prey(delta: float) -> void:
 	var eye := _eye_position()
+	var eye_local := global_transform.affine_inverse() * eye
 	var want := _prey_point() - eye
 	if want.length() < 0.5:
 		return
@@ -1164,15 +1232,15 @@ func _look_at_prey(delta: float) -> void:
 		axis = global_basis.x
 	var step := minf(angle, look_turn_rate * delta * clampf(angle / 0.35, 0.15, 1.0))
 	global_basis = (Basis(axis.normalized(), step) * global_basis).orthonormalized()
-	global_position = eye - global_basis * eye_center # pivot at the head, not the crown
+	global_position = eye - global_basis * eye_local # pivot at the head, not the crown
 
 ## Between the eyes, in the world.
 func _eye_position() -> Vector3:
-	return global_transform * eye_center
+	return _skeleton.global_transform * eye_center # eye_center is in the model's own space
 
 ## Which way its eyes look, in the world.
 func _gaze() -> Vector3:
-	return (global_basis * gaze_direction).normalized()
+	return (_skeleton.global_basis * gaze_direction).normalized()
 
 ## Turn the body so its arms (+Z) point along dir, at turn_rate at most,
 ## keeping its back (+Y) as near up as it can.
@@ -1198,7 +1266,7 @@ func _perch_pose() -> Transform3D:
 		var out := _perch_out()
 		var z := -up
 		var x := out.cross(z).normalized()
-		return Transform3D(Basis(x, out, z), perch.global_position + out * (float(_rock_radius.call(0.0, 0.0)) + 3.6))
+		return Transform3D(Basis(x, out, z), perch.global_position + out * (float(_rock_radius.call(0.0, 0.0)) + 3.6 * _scale))
 	var fwd := -perch.global_basis.z.normalized()
 	var z := (-up * 0.8 - fwd * 0.6).normalized() # crown to the ground, mantle tipped back
 	var y := (up - z * up.dot(z)).normalized()

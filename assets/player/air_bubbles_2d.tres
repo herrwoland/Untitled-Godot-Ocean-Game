@@ -1,0 +1,31 @@
+[gd_resource type="QuadMesh" format=4 uid="uid://cjtvpvkk5ps3a"]
+
+[ext_resource type="Shader" uid="uid://bikiihl7insv7" path="res://assets/shaders/particles/water_speck.gdshader" id="1_mb46j"]
+[ext_resource type="Texture2D" uid="uid://bvm8qldu1eduv" path="res://assets/textures/bubble_1.png" id="2_dc8x7"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_plungedraw"]
+render_priority = 0
+shader = ExtResource("1_mb46j")
+shader_parameter/color = Color(0.55, 0.62, 0.58, 1)
+shader_parameter/ring = 1.0
+shader_parameter/square = false
+shader_parameter/pixel_grid = 6.0
+shader_parameter/use_sprite = false
+shader_parameter/sprite = ExtResource("2_dc8x7")
+shader_parameter/fade_distance = 14.0
+shader_parameter/water_level = 0.0
+shader_parameter/depth_darkening = 0.04
+shader_parameter/glow_count = 0
+shader_parameter/glow_a = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/glow_b = PackedVector4Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/glow_strength = 1.0
+shader_parameter/viewport_height = 720.0
+shader_parameter/ambient_glow = 0.45
+shader_parameter/sun_scatter = 0.8
+shader_parameter/local_scatter = 5.0
+shader_parameter/forward_scatter = 0.6
+shader_parameter/glow_scatter = 100.0
+shader_parameter/glint_min_pixels = 2.5
+
+[resource]
+material = SubResource("ShaderMaterial_plungedraw")
