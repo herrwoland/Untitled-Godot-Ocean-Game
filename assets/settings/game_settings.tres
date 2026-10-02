@@ -6,5 +6,5 @@
 script = ExtResource("1_gs")
 highlight_energy = 0.4
 item_glow_energy = 0.1
-camera_shake_strength = 2.0
+camera_shake_strength = 1.5
 sonar_echo_color = Color(0.7840764, 1.2999998, 1.2188836, 1)

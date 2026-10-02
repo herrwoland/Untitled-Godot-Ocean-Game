@@ -51,7 +51,7 @@
 [ext_resource type="PackedScene" path="res://scenes/test/buoyancy_point_test.tscn" id="54_6iyjs"]
 [ext_resource type="Script" uid="uid://c7xykbyb5m0er" path="res://assets/scripts/world/rain.gd" id="60_rain"]
 [ext_resource type="Script" uid="uid://5j2rqum415rn" path="res://assets/weather/weather.gd" id="70_weather"]
-[ext_resource type="PackedScene" path="res://assets/models/creatures/kraken_lair.tscn" id="80_kraken_lair"]
+[ext_resource type="PackedScene" uid="uid://cnp3jjyjpjamw" path="res://assets/models/creatures/kraken_lair.tscn" id="80_kraken_lair"]
 [ext_resource type="Texture2D" path="res://assets/textures/Ground057_1K-PNG_Normal.res" id="99_gnorm"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_d13ii"]
@@ -425,7 +425,7 @@ shadow_opacity = 0.8
 shadow_blur = 4.592
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 464.6261, 767.0743, 435.76794)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 464.62646, 767.07635, 435.76862)
 script = ExtResource("60_rain")
 intensity = 0.85
 wind_strength = 9.0
@@ -440,6 +440,25 @@ sun = NodePath("../Sun")
 world_environment = NodePath("../Environment")
 world_fog = NodePath("../FogVolume")
 rain = NodePath("../Rain")
+
+[node name="MissionController" type="Node" parent="." unique_id=1801545549 node_paths=PackedStringArray("player", "boat", "player_spawn", "letter_point", "pickup_point", "delivery_point", "package", "ending_fish", "note_view", "sleep_fade")]
+script = ExtResource("26_mission")
+player = NodePath("../Player")
+boat = NodePath("../Boat")
+player_spawn = NodePath("../PlayerSpawn")
+letter_point = NodePath("../LetterPoint")
+pickup_point = NodePath("../PickupPoint")
+delivery_point = NodePath("../DeliveryPoint")
+package = NodePath("../Package")
+ending_fish = NodePath("../EndingFish")
+note_view = NodePath("../NoteView")
+sleep_fade = NodePath("../SleepFade/FadeRect")
+
+[node name="SanityDirector" type="Node" parent="." unique_id=1057535268]
+script = ExtResource("37_sanity")
+
+[node name="StrangenessSting" type="Node" parent="." unique_id=955426932]
+script = ExtResource("42_sting")
 
 [node name="Terrain3D" type="Terrain3D" parent="." unique_id=454773932]
 data_directory = "res://assets/Terrain3D"
@@ -557,6 +576,19 @@ calc_f_gravity = true
 
 [node name="Island" parent="." unique_id=1072612934 instance=ExtResource("17_island")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 790.53076, -8.565859, 15.829681)
+
+[node name="NoteView" parent="." unique_id=591198653 instance=ExtResource("31_note")]
+
+[node name="SleepFade" type="CanvasLayer" parent="." unique_id=1732156623]
+layer = 5
+
+[node name="FadeRect" type="ColorRect" parent="SleepFade" unique_id=2073815185]
+modulate = Color(1, 1, 1, 0)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
 
 [node name="StartScreen" parent="." unique_id=1207969224 instance=ExtResource("18_start")]
 
@@ -682,32 +714,6 @@ billboard = 1
 text = "DELIVERY"
 font_size = 128
 outline_size = 24
-
-[node name="NoteView" parent="." unique_id=591198653 instance=ExtResource("31_note")]
-
-[node name="SleepFade" type="CanvasLayer" parent="." unique_id=1732156623]
-layer = 5
-
-[node name="FadeRect" type="ColorRect" parent="SleepFade" unique_id=2073815185]
-modulate = Color(1, 1, 1, 0)
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-color = Color(0, 0, 0, 1)
-
-[node name="MissionController" type="Node" parent="." unique_id=1801545549 node_paths=PackedStringArray("player", "boat", "player_spawn", "letter_point", "pickup_point", "delivery_point", "package", "ending_fish", "note_view", "sleep_fade")]
-script = ExtResource("26_mission")
-player = NodePath("../Player")
-boat = NodePath("../Boat")
-player_spawn = NodePath("../PlayerSpawn")
-letter_point = NodePath("../LetterPoint")
-pickup_point = NodePath("../PickupPoint")
-delivery_point = NodePath("../DeliveryPoint")
-package = NodePath("../Package")
-ending_fish = NodePath("../EndingFish")
-note_view = NodePath("../NoteView")
-sleep_fade = NodePath("../SleepFade/FadeRect")
 
 [node name="Package" parent="." unique_id=1857504503 node_paths=PackedStringArray("water") instance=ExtResource("44_package")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, -6, 60)
@@ -857,9 +863,6 @@ spot_range = 900.0
 spot_attenuation = 0.6
 spot_angle = 4.0
 
-[node name="SanityDirector" type="Node" parent="." unique_id=1057535268]
-script = ExtResource("37_sanity")
-
 [node name="ShoreCalm" type="Area3D" parent="." unique_id=590891729]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -138.98691, 0, 10)
 collision_layer = 0
@@ -899,9 +902,6 @@ visible = false
 [node name="DeepPassing" type="Node3D" parent="." unique_id=80484297 node_paths=PackedStringArray("player")]
 script = ExtResource("41_passing")
 player = NodePath("../Player")
-
-[node name="StrangenessSting" type="Node" parent="." unique_id=955426932]
-script = ExtResource("42_sting")
 
 [node name="HunterFish" parent="." unique_id=2037867007 instance=ExtResource("50_hrvbo")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 86.672325, -21.21131, -12.386536)

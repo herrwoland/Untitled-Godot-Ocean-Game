@@ -9,7 +9,6 @@
 [ext_resource type="Script" uid="uid://c4nwfe56kuued" path="res://assets/player/oxygen_controller.gd" id="4_oxygen"]
 [ext_resource type="Shader" uid="uid://b2rcikvib8wn8" path="res://assets/shaders/post/oxygen_overlay.gdshader" id="5_oxyshader"]
 [ext_resource type="Script" uid="uid://dbs8itod2p6jf" path="res://assets/player/carry_controller.gd" id="6_carry"]
-[ext_resource type="Texture2D" uid="uid://bvm8qldu1eduv" path="res://assets/textures/bubble_1.png" id="7_hai6l"]
 [ext_resource type="QuadMesh" uid="uid://cjtvpvkk5ps3a" path="res://assets/player/air_bubbles_2d.tres" id="9_vlpqo"]
 [ext_resource type="Script" uid="uid://f1i0c0keg8l6" path="res://assets/scripts/world/bubble_emitter.gd" id="30_bubbles"]
 
@@ -36,7 +35,6 @@ shader_parameter/ring = 1.0
 shader_parameter/square = false
 shader_parameter/pixel_grid = 6.0
 shader_parameter/use_sprite = false
-shader_parameter/sprite = ExtResource("7_hai6l")
 shader_parameter/fade_distance = 14.0
 shader_parameter/water_level = 0.0
 shader_parameter/depth_darkening = 0.04
@@ -183,7 +181,9 @@ spawn_radius = 0.05
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.45)
 layers = 524288
 cast_shadow = 0
+emitting = false
 amount = 500
+amount_ratio = 0.0
 lifetime = 3.0
 randomness = 0.6
 visibility_aabb = AABB(-15, -5, -15, 30, 60, 30)
