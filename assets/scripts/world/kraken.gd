@@ -24,6 +24,7 @@ class_name Kraken extends Node3D
 
 enum State { PERCHED, WAKING, HUNT, BOAT, RETURN }
 enum BoatPhase { REACH, SHAKE, FLIP, DRAG }
+enum Jet { GATHER, PUSH, GLIDE } # the stroke that carries it home
 
 @export_group("Territory")
 ## Where it clings. On a column: put the marker on the column's center line at
@@ -43,6 +44,18 @@ enum BoatPhase { REACH, SHAKE, FLIP, DRAG }
 @export var wake_time := 3.0
 ## Seconds to settle back onto the rock after swimming home.
 @export var settle_time := 5.0
+
+@export_group("Going home")
+## Home is one jet stroke: arms opened wide while it turns mantle-first to
+## home, snapped shut together, then a long glide. More strokes only if home
+## is farther than one can carry it.
+@export var jet_open_time := 2.5 # s the arms take to open (it turns toward home meanwhile)
+@export var jet_close_time := 1.0 # s for the arms to snap shut: the push
+@export var jet_open_spread := 1.1 # how wide the umbrella opens (0 = arms together)
+@export var jet_max_speed := 6.0 # m/s the push can give at most: about its usual cruise — the stroke is the look, not a dash
+## 1/s the water slows the glide. The push is sized so the glide coasts to a
+## stop at home: lower = a longer, gentler coast from a softer push.
+@export var jet_glide_drag := 0.08
 
 @export_group("Swimming")
 @export var cruise_speed := 4.0 # m/s going home, idle travel
@@ -173,6 +186,11 @@ var boat_phase := BoatPhase.REACH
 var _skeleton: Skeleton3D
 var _scale := 1.0 # the model's scale in this scene: body-size distances are multiplied by it
 var _attacking := false # reared up and closing on a swimming prey
+var _jet := Jet.GATHER
+var _jet_time := 0.0
+var _settle_duration := 5.0 # s this settle onto the rock takes (longer from farther)
+var _jet_speed := 0.0 # m/s the push gives
+var _jet_spread := 0.2 # how open the arms are through the stroke
 var _top_arms: Array[int] = [] # arms on the top half of the crown (the eye side): they reach; the rest swim
 var _mantle_bone := -1
 var _arms: Array[KrakenArm] = []
@@ -356,6 +374,9 @@ func _physics_process(delta: float) -> void:
 
 func _set_state(new_state: State) -> void:
 	state = new_state
+	if new_state == State.RETURN:
+		_jet = Jet.GATHER
+		_jet_time = 0.0
 	_attacking = false
 	_state_time = 0.0
 
@@ -519,22 +540,27 @@ func _process_boat(delta: float) -> void:
 				_ship_kept = true
 				_player_ignored = true
 				_settle_from = global_transform
+				_settle_duration = settle_time
 				_set_state(State.RETURN)
 				_state_time = 0.0
 
 ## Swim home, then ease back onto the rock.
 func _process_return(delta: float) -> void:
 	var pose := _perch_pose()
-	var approach := pose.origin + _perch_out() * 25.0 * _scale
+	# the stroke aims at its place on the rock itself, just off the surface:
+	# the settle then only has the last few meters to ease in
+	var approach := pose.origin + _perch_out() * 6.0 * _scale
 	if _ship_kept:
 		_carry_kept_ship()
 	if _settle_from == Transform3D():
-		_swim_toward(approach, cruise_speed, null, delta)
-		if global_position.distance_to(approach) < 6.0:
+		_jet_home(approach, delta)
+		if global_position.distance_to(approach) < 10.0 * _scale:
 			_settle_from = global_transform
+			# never faster than ~2 m/s onto the rock (smoothstep peaks at 1.5x the average)
+			_settle_duration = maxf(settle_time, global_position.distance_to(pose.origin) * 0.75)
 			_state_time = 0.0
 		return
-	var t := clampf(_state_time / maxf(settle_time, 0.1), 0.0, 1.0)
+	var t := clampf(_state_time / maxf(_settle_duration, 0.1), 0.0, 1.0)
 	var s := t * t * (3.0 - 2.0 * t)
 	global_transform = Transform3D(
 		Basis(_settle_from.basis.get_rotation_quaternion().slerp(pose.basis.get_rotation_quaternion(), s)),
@@ -544,6 +570,56 @@ func _process_return(delta: float) -> void:
 		_settle_from = Transform3D()
 		_stop(_presence_loop)
 		_set_state(State.PERCHED)
+
+## Home the way an octopus travels: one jet stroke. It turns its mantle
+## toward home while the arms open wide (the umbrella opening), then snaps
+## them shut together — the water squeezed out drives it off mantle first —
+## and glides with the arms trailing in a tight bundle, slowing in the water.
+## The push is sized so the glide ends at home; if home is farther than one
+## push can carry it (jet_max_speed), it simply strokes again.
+func _jet_home(home: Vector3, delta: float) -> void:
+	_jet_time += delta
+	var to_home := home - global_position
+	var dir := to_home.normalized() if to_home.length() > 0.01 else -global_basis.z
+	match _jet:
+		Jet.GATHER:
+			_velocity *= exp(-jet_glide_drag * 3.0 * delta) # it brakes as it gathers
+			_glide(delta)
+			_turn_crown_toward(-dir, delta) # mantle toward home: arms toward the push
+			_jet_spread = lerpf(0.2, jet_open_spread, smoothstep(0.0, jet_open_time, _jet_time))
+			var aligned := (-global_basis.z).angle_to(dir) < deg_to_rad(25.0)
+			if (_jet_time >= jet_open_time and aligned) or _jet_time >= jet_open_time * 2.5:
+				_jet = Jet.PUSH
+				_jet_time = 0.0
+				# speed for a glide that coasts to a stop right at home
+				_jet_speed = minf(to_home.length() * jet_glide_drag * 1.15, jet_max_speed) # a little extra: the glide carries it all the way in
+		Jet.PUSH:
+			var t := smoothstep(0.0, jet_close_time, _jet_time)
+			_jet_spread = lerpf(jet_open_spread, 0.02, t)
+			_velocity = -global_basis.z * _jet_speed * t # the surge builds as the arms close
+			_glide(delta)
+			if _jet_time >= jet_close_time:
+				_jet = Jet.GLIDE
+				_jet_time = 0.0
+		Jet.GLIDE:
+			# coast, bending gently onto home, the bundle trailing behind
+			var speed := _velocity.length() * exp(-jet_glide_drag * delta)
+			var heading := _velocity.normalized() if speed > 0.01 else dir
+			heading = heading.slerp(dir, minf(1.0, 0.4 * delta)).normalized()
+			_velocity = heading * speed
+			_glide(delta)
+			_turn_crown_toward(-heading, delta)
+			_jet_spread = lerpf(0.02, 0.15, smoothstep(jet_max_speed * 0.3, 1.0, speed))
+			if speed < 1.0:
+				_jet = Jet.GATHER # not home yet: another stroke
+				_jet_time = 0.0
+
+## Move by the current velocity, kept under the waves and over the floor.
+func _glide(delta: float) -> void:
+	var pos := global_position + _velocity * delta
+	pos.y = minf(pos.y, _surface_y(pos) - surface_clearance * _scale)
+	pos.y = maxf(pos.y, _floor_height(delta) + floor_clearance * _scale)
+	global_position = pos
 
 ## Lost interest: everything lets go, home it goes.
 func _give_up() -> void:
@@ -1020,6 +1096,11 @@ func _update_arms(delta: float) -> void:
 		if swimming:
 			response = arm_response * 2.5
 			arm.response = response
+		# the jet home: one big open-and-snap of all the arms together
+		if state == State.RETURN and _settle_from == Transform3D() and arm.role == KrakenArm.Role.FREE and _jet != Jet.GLIDE:
+			arm.max_joint_speed = deg_to_rad(arm_max_joint_speed) * 4.0
+			arm.max_tip_speed = arm_max_tip_speed * 4.0
+			arm.response = arm_response * 3.0
 		arm.pin_tip = arm.role == KrakenArm.Role.BOAT and arm.gripped
 		arm.simulate(delta)
 		if not far:
@@ -1069,6 +1150,8 @@ func _set_arm_goals(_delta: float) -> void:
 					arm.goals_spread(axis, out, 0.45, 3.0, _time * 0.2 + arm.index * 2.0, 0.8)
 				elif state == State.WAKING:
 					arm.goals_spread(axis, out, 0.6, 3.0, phase, 0.6)
+				elif state == State.RETURN:
+					arm.goals_spread(axis, out, _jet_spread, 1.0, phase, 0.3) # the umbrella: open, shut, trailing
 				elif state == State.HUNT and _attacking:
 					_attack_goals(arm, crown, open, phase)
 				else:
