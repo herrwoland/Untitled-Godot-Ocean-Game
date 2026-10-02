@@ -17,12 +17,24 @@ var sway_frequency := 0.3 # tail beats per second when barely moving...
 var sway_frequency_per_speed := 0.01 # ...plus this much per m/s
 var max_joint_bend := 25.0 # degrees one joint may fold against the previous
 var max_joint_pitch := 2.0 # degrees one joint may tip up or down; the bend is mostly sideways
+## Soft: held, not swimming (in a kraken's arms). The body no longer follows a
+## swum path: each joint drifts toward where it would lie on a straight body,
+## sagging soft_sag meters at the tail tip (more toward the tail), keeping its
+## momentum so it lags, swings and settles as the body is moved — a soft
+## weight, not a plank. Joints may then also tip up/down by soft_pitch.
+var soft := false
+var soft_sag := 10.0 # m the tail tip hangs below a straight body
+var soft_follow := 2.5 # 1/s how quickly the joints catch up
+var soft_damping := 2.0 # 1/s water slowing their swing
+var soft_pitch := 15.0 # degrees one joint may tip up or down while soft
 
 var _lengths: PackedFloat32Array # bone k origin -> bone k+1 origin
 var _trail: PackedVector3Array = [] # world positions of the head bone, newest first
 var _trail_length := 0.0
 var _body_length := 0.0
 var _phase := 0.0
+var _soft_points := PackedVector3Array() # soft: where each joint is drifting (world)
+var _soft_prev := PackedVector3Array()
 
 func _init(target: Skeleton3D) -> void:
 	skeleton = target
@@ -55,7 +67,7 @@ func update(delta: float, speed: float) -> void:
 		var dir := prev_dir
 		if k < bones - 1:
 			walked += _lengths[k]
-			var target := _point_behind(head, walked, rest_back)
+			var target := _soft_target(k, head + rest_back * walked, walked, delta) if soft else _point_behind(head, walked, rest_back)
 			if target.distance_to(pos) > 0.001:
 				dir = (target - pos).normalized()
 		# Keep any one joint from folding too sharply (fresh trails, hard turns).
@@ -73,7 +85,7 @@ func update(delta: float, speed: float) -> void:
 		# +Z and an up/down tip about +X held to max_joint_pitch. No roll.
 		var d := (parent_basis.inverse() * (inv * dir)).normalized()
 		var bend_side := atan2(-d.x, d.y)
-		var limit_pitch := deg_to_rad(max_joint_pitch)
+		var limit_pitch := deg_to_rad(soft_pitch if soft else max_joint_pitch)
 		var tip := clampf(asin(clampf(d.z, -1.0, 1.0)), -limit_pitch, limit_pitch)
 		var joint := Basis(Vector3(0, 0, 1), bend_side) * Basis(Vector3(1, 0, 0), tip)
 		skeleton.set_bone_pose_rotation(k, joint.get_rotation_quaternion())
@@ -82,6 +94,32 @@ func update(delta: float, speed: float) -> void:
 		if k < bones - 1:
 			pos += dir * _lengths[k]
 		prev_dir = dir
+
+## Soft: joint k drifts toward its place on a straight body (straight), sagging
+## toward the tail, with momentum and water drag.
+func _soft_target(k: int, straight: Vector3, walked: float, delta: float) -> Vector3:
+	if _soft_points.size() != skeleton.get_bone_count():
+		_soft_points.resize(skeleton.get_bone_count())
+		_soft_prev.resize(skeleton.get_bone_count())
+		_soft_points.fill(Vector3.INF)
+	var along := walked / maxf(_body_length, 0.01)
+	var goal := straight + Vector3.DOWN * soft_sag * along * along
+	var p := _soft_points[k]
+	if p == Vector3.INF or p.distance_to(goal) > TELEPORT:
+		_soft_points[k] = goal
+		_soft_prev[k] = goal
+		return goal
+	var momentum := (p - _soft_prev[k]) * exp(-soft_damping * delta)
+	_soft_prev[k] = p
+	p += momentum + (goal - p) * (1.0 - exp(-soft_follow * delta))
+	_soft_points[k] = p
+	return p
+
+## Back to swimming: forget the soft joints.
+func end_soft() -> void:
+	soft = false
+	_soft_points.clear()
+	_soft_prev.clear()
 
 ## Remember where the head has been, one point per TRAIL_SPACING meters,
 ## only as far back as the body reaches.

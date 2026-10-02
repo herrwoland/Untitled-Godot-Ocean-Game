@@ -34,6 +34,20 @@ enum Pass { PEEL, TURN_IN, CHARGE } # the three beats of one attack run
 @export_range(0.0, 1.0) var turn_pivot := 0.9 # where the body turns: 0 = center, 1 = snout. Head leads, tail swings wide
 @export var snatch_pull_time := 0.5 # seconds from the grab until the player sits in the mouth
 
+@export_group("Not through rock")
+@export_flags_3d_physics var avoid_mask := 1 # what it swims round: the world (rocks, the floor)
+@export var avoid_radius := 16.0 # m it keeps from rock: its body's half-thickness plus room for the tail cutting the corner
+@export var avoid_look_ahead := 40.0 # m it always looks ahead...
+@export var avoid_look_seconds := 3.0 # ...plus how far it swims in this many seconds
+@export var avoid_turn_radius := 40.0 # m, its tightest turn when rock is in the way
+
+@export_group("Held (in a kraken's arms)")
+## Not rigid: the body sags from where it is held and swings softly behind
+## every move, keeping its shape.
+@export var held_sag := 45.0 # m the tail hangs off a straight body while it still fights...
+@export var held_dead_sag := 105.0 # ...and once it is still: with the snout tipped down (Kraken.fish_drape_tilt) the body drapes in an arch over the bite
+@export var held_follow := 2.5 # 1/s how quickly the body catches up with the hold (lower = softer)
+
 @export_group("Stalking")
 @export var stalk_behind_distance := 50.0 # first hold point this far behind the player
 @export var stalk_below_depth := 30.0 # and this far beneath them (sets the approach angle)
@@ -123,6 +137,10 @@ var _died_emitted := false
 var _struggle_time := 20.0 # SEIZED: how long it fights...
 var _struggle_left := 0.0 # ...and how much fight is left
 var _snap_left := 0.0 # s until the jaw snaps again
+var _avoid_tick := 0 # frames until it looks ahead again
+var _avoid_urgency := 0.0 # 0 = clear ahead .. 1 = rock right at the snout
+var _avoid_normal := Vector3.UP # away from the rock it saw
+var _avoid_shape := SphereShape3D.new()
 var _player_in_mouth := false # kept current by the mouth_area overlap signals
 var _spine: FishSpine # bends the skeleton along the swum path; null without a rig
 var _own_bodies: Array[RID] = [] # its own colliders, which must never hide it from view
@@ -243,6 +261,18 @@ func body_ends() -> PackedVector3Array:
 	var head := mouth_position()
 	return PackedVector3Array([head, head - _heading() * body_length])
 
+## Where its body really is (0 = head .. 1 = tail tip), bent as it is now:
+## along its spine bones. Without a rig, along its straight body.
+func body_point(t: float) -> Vector3:
+	if _spine == null:
+		var ends := body_ends()
+		return ends[0].lerp(ends[1], t)
+	var sk := _spine.skeleton
+	var f := clampf(t, 0.0, 1.0) * (sk.get_bone_count() - 1)
+	var i := mini(int(f), sk.get_bone_count() - 2)
+	var xf := sk.global_transform
+	return (xf * sk.get_bone_global_pose(i).origin).lerp(xf * sk.get_bone_global_pose(i + 1).origin, f - i)
+
 ## Thrash while it has fight left: the jaw snaps, then hangs open once dead.
 func _process_seized(delta: float) -> void:
 	var was_alive := _struggle_left > 0.0
@@ -271,6 +301,7 @@ func _physics_process(delta: float) -> void:
 	if state == State.SEIZED:
 		_process_seized(delta)
 		return
+	_sense_ahead() # rock in the way? (the steering bends round it)
 	if state == State.LURK or player == null:
 		return
 	_track_player(delta)
@@ -369,6 +400,8 @@ func _process_attack(delta: float) -> void:
 			# the mouth is wide enough that a near-miss is still a catch.
 			if to_player.length() < strike_lock_distance:
 				_strike_locked = true
+			if _strike_locked and _avoid_urgency > 0.3:
+				_strike_locked = false # rock ahead: it breaks off rather than ram it
 			if not _strike_locked:
 				_steer_toward(_aim_point() - mouth_position(), charge_turn_radius, delta)
 			_swim(attack_speed * speed_multiplier, delta)
@@ -462,7 +495,12 @@ func _update_spine(delta: float) -> void:
 		var fight := struggle()
 		_spine.sway_angle = tail_sway_angle * 3.5 * fight
 		_spine.sway_frequency = lerpf(0.0, 1.1, fight)
-		_spine.clear_trail() # carried, not swimming: no path to follow
+		# held, not swimming: a soft weight in the arms, sagging more once dead
+		_spine.soft = true
+		_spine.soft_sag = lerpf(held_dead_sag, held_sag, fight)
+		_spine.soft_follow = held_follow
+	elif _spine.soft:
+		_spine.end_soft()
 	_spine.sway_frequency_per_speed = tail_sway_frequency_per_speed
 	_spine.max_joint_bend = max_joint_bend
 	_spine.max_joint_pitch = max_joint_pitch
@@ -482,6 +520,8 @@ func _shake_with_closeness(distance: float) -> void:
 func _swim(target_speed: float, delta: float) -> void:
 	_speed = move_toward(_speed, target_speed, acceleration * speed_multiplier * delta)
 	global_position += _heading() * _speed * delta
+	if _avoid_urgency > 0.0:
+		_push_snout_out() # the last resort, should the turn not have been enough
 
 ## Smoothed player velocity from frame-to-frame movement, so the charge can
 ## aim where the prey is going. Big jumps (teleports, restage) are ignored.
@@ -641,6 +681,56 @@ static func _sample_points(box: AABB) -> PackedVector3Array:
 					points.append(c + n * h)
 	return points
 
+## ---- not through rock ------------------------------------------------------
+
+## Looks ahead along its heading a few times a second — a sphere as thick as
+## its head swept as far as it will swim in a few seconds — for the world
+## (layer 1: rocks, the floor). What it finds sets how hard the steering
+## bends away (_avoid_urgency, 0 = clear) and which way (_avoid_normal). The
+## body trails the head's path, so where the head goes round, all of it does.
+func _sense_ahead() -> void:
+	_avoid_tick -= 1
+	if _avoid_tick > 0:
+		return
+	_avoid_tick = 3
+	var look := avoid_look_ahead + _speed * avoid_look_seconds
+	var from := mouth_position()
+	var space := get_world_3d().direct_space_state
+	_avoid_shape.radius = avoid_radius
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _avoid_shape
+	query.collision_mask = avoid_mask
+	query.exclude = _own_bodies
+	query.transform = Transform3D(Basis.IDENTITY, from)
+	query.motion = _heading() * look
+	var fractions := space.cast_motion(query)
+	if fractions[1] >= 1.0:
+		_avoid_urgency = 0.0
+		return
+	query.motion = Vector3.ZERO
+	query.transform = Transform3D(Basis.IDENTITY, from + _heading() * look * fractions[1])
+	var hit := space.get_rest_info(query)
+	_avoid_normal = hit.normal if not hit.is_empty() else -_heading()
+	_avoid_urgency = 1.0 - fractions[0]
+
+## Should the snout still end up in rock, it is pushed back out.
+func _push_snout_out() -> void:
+	var query := PhysicsShapeQueryParameters3D.new()
+	_avoid_shape.radius = avoid_radius
+	query.shape = _avoid_shape
+	query.collision_mask = avoid_mask
+	query.exclude = _own_bodies
+	var mouth_pos := mouth_position()
+	query.transform = Transform3D(Basis.IDENTITY, mouth_pos)
+	var hit := get_world_3d().direct_space_state.get_rest_info(query)
+	if hit.is_empty():
+		return
+	var n: Vector3 = hit.normal
+	var hit_point: Vector3 = hit.point
+	var depth := avoid_radius - (mouth_pos - hit_point).dot(n)
+	if depth > 0.0:
+		global_position += n * (depth + 0.1)
+
 ## Current mouth-first travel direction.
 func _heading() -> Vector3:
 	var fwd := -global_basis.z if _head_minus_z else global_basis.z
@@ -674,6 +764,15 @@ func _limit_pitch(dir: Vector3) -> Vector3:
 func _steer_toward(dir: Vector3, radius_m: float, delta: float) -> void:
 	if dir.length() < 0.01:
 		return
+	if _avoid_urgency > 0.0:
+		# rock ahead: bend along it and away from it, the nearer the harder,
+		# turning as tightly as it can for once
+		var heading := _heading()
+		var along := heading - _avoid_normal * heading.dot(_avoid_normal)
+		along = along.normalized() if along.length() > 0.05 else heading.cross(Vector3.UP).normalized()
+		var away := (along + _avoid_normal * 0.6).normalized()
+		dir = dir.normalized().slerp(away, clampf(_avoid_urgency * 1.5, 0.0, 1.0))
+		radius_m = minf(radius_m, lerpf(radius_m, avoid_turn_radius, _avoid_urgency))
 	var turn_rate := maxf(_speed, 0.5) / maxf(radius_m, 1.0) # rad/s
 	dir = _limit_pitch(dir)
 	var look_dir := dir if _head_minus_z else -dir
