@@ -1674,7 +1674,7 @@ func _update_arms(delta: float) -> void:
 			KrakenArm.Role.HOLD: response *= hold_response
 			KrakenArm.Role.BOAT: response *= ship_response
 			_:
-				if not _perched_pose_wanted():
+				if not _perched_pose_wanted() and not _anchor_arms.has(arm.index):
 					arm.inertia = arm_drag # loose in open water: it trails
 		arm.response = response
 		# On a rolling hull the gripping arms must keep up with her or cut
@@ -1688,6 +1688,8 @@ func _update_arms(delta: float) -> void:
 		if swimming:
 			response = arm_response * 2.5
 			arm.response = response
+		if _anchor_arms.has(arm.index) and arm.role == KrakenArm.Role.FREE:
+			arm.response = arm_response * 2.0 # reaching for the rock
 		# the jet home: one big open-and-snap of all the arms together
 		if state == State.RETURN and _settle_from == Transform3D() and arm.role == KrakenArm.Role.FREE and _jet != Jet.GLIDE:
 			arm.max_joint_speed = deg_to_rad(arm_max_joint_speed) * 4.0
@@ -1757,7 +1759,7 @@ func _set_arm_goals(_delta: float) -> void:
 				elif state == State.WAKING:
 					arm.goals_spread(axis, out, 0.6, 3.0, phase, 0.6)
 				elif _anchor_arms.has(arm.index):
-					_wrap_goals(arm) # holding on to the rock while it wrestles
+					_anchor_goals(arm) # holding on to the rock while it wrestles
 				elif state == State.RETURN:
 					arm.goals_spread(axis, out, _jet_spread, 1.0, phase, 0.3) # the umbrella: open, shut, trailing
 				elif state == State.HUNT and _attacking:
@@ -1819,6 +1821,27 @@ func _update_anchor_arms() -> void:
 			break
 		keep.append(best.index)
 	_anchor_arms = keep
+
+## An anchoring arm: out to the nearest point of the rock, then its last
+## stretch wound round the stone (on its measured surface).
+func _anchor_goals(arm: KrakenArm) -> void:
+	var up := perch.global_basis.y.normalized()
+	var rel := arm.root() - perch.global_position
+	var h := clampf(rel.dot(up), ROCK_BELOW, ROCK_BELOW + ROCK_STEP * (ROCK_LEVELS - 1))
+	var flat := rel - up * rel.dot(up)
+	var a := atan2(flat.dot(_rock_e2), flat.dot(_rock_e1))
+	var turn := 1.0 if arm.index % 2 == 0 else -1.0
+	var pitch := -0.3
+	var wrap := arm.length * 0.4
+	var coil := PackedVector3Array()
+	var steps := 14
+	for j in steps + 1:
+		var r: float = float(_rock_radius.call(h, a)) + arm.radius_at(arm.points.size() - 1) + 1.0 * _scale
+		coil.append(perch.global_position + up * h + (_rock_e1 * cos(a) + _rock_e2 * sin(a)) * r)
+		a += turn * (wrap / steps) * cos(pitch) / maxf(r, 1.0)
+		h += (wrap / steps) * sin(pitch)
+	coil.reverse() # tip end first: it winds on from where it touches the rock
+	arm.goals_path(coil)
 
 ## How far a point is from the rock's surface (its measured shape), flat.
 func _rock_gap(p: Vector3) -> float:
