@@ -10,6 +10,7 @@ class_name FishSpine extends RefCounted
 
 const TRAIL_SPACING := 1.0 # m between remembered head positions
 const TELEPORT := 60.0 # a jump this big in one step restarts the trail
+const SOFT_MAX_SPEED := 90.0 # m/s a soft joint may travel at most (no snapping)
 
 var skeleton: Skeleton3D
 var sway_angle := 8.0 # degrees at the tail tip
@@ -70,6 +71,10 @@ func update(delta: float, speed: float) -> void:
 			var target := _soft_target(k, head + rest_back * walked, walked, delta) if soft else _point_behind(head, walked, rest_back)
 			if target.distance_to(pos) > 0.001:
 				dir = (target - pos).normalized()
+				# soft: a target that has fallen behind the joint (a fast turn) gives no
+				# sure side to bend to — it would flip sides each frame; carry on straight
+				if soft and dir.dot(prev_dir) < 0.3:
+					dir = prev_dir
 		# Keep any one joint from folding too sharply (fresh trails, hard turns).
 		var bend := prev_dir.angle_to(dir)
 		var limit := deg_to_rad(max_joint_bend)
@@ -105,13 +110,19 @@ func _soft_target(k: int, straight: Vector3, walked: float, delta: float) -> Vec
 	var along := walked / maxf(_body_length, 0.01)
 	var goal := straight + Vector3.DOWN * soft_sag * along * along
 	var p := _soft_points[k]
-	if p == Vector3.INF or p.distance_to(goal) > TELEPORT:
-		_soft_points[k] = goal
-		_soft_prev[k] = goal
-		return goal
+	if p == Vector3.INF:
+		# start from where the joint already is (it was swimming), not from the
+		# goal: going soft must not snap the body into a new shape in one frame
+		var start := goal
+		if k + 1 < skeleton.get_bone_count():
+			start = skeleton.global_transform * skeleton.get_bone_global_pose(k + 1).origin
+		_soft_points[k] = start
+		_soft_prev[k] = start
+		return start
 	var momentum := (p - _soft_prev[k]) * exp(-soft_damping * delta)
 	_soft_prev[k] = p
-	p += momentum + (goal - p) * (1.0 - exp(-soft_follow * delta))
+	# never a jump: however far behind it has fallen, it catches up at a limit
+	p += (momentum + (goal - p) * (1.0 - exp(-soft_follow * delta))).limit_length(SOFT_MAX_SPEED * delta)
 	_soft_points[k] = p
 	return p
 

@@ -26,23 +26,27 @@ max_distance = 150.0
 max_distance = 200.0
 
 [node name="eye_light" type="OmniLight3D" parent="." unique_id=361563543]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.128911, 1.676866, -2.3575335)
-light_color = Color(0, 0.72234213, 0.8735508, 1)
-omni_range = 5.508
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5737333, 6.554857, -5.2680516)
+light_color = Color(0.6186556, 0.6973648, 0.19886166, 1)
+omni_range = 10.39
 
 [node name="UnderwaterGlow" type="Node3D" parent="eye_light" unique_id=254953927]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 0)
 script = ExtResource("3_u0aex")
+color = Color(0.68547213, 0.8918278, 0.4292391, 1)
 strength = 0.7
+size = 3.0999999999999996
 metadata/_custom_type_script = "uid://csyjpi4nlac4u"
 
 [node name="eye_light2" type="OmniLight3D" parent="." unique_id=416063636]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.9086876, 1.676866, -2.3575335)
-light_color = Color(0, 0.72234213, 0.8735508, 1)
-omni_range = 5.508
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.266791, 2.9602365, -4.9618864)
+light_color = Color(0.6186556, 0.6973648, 0.19886166, 1)
+omni_range = 10.39
 
 [node name="UnderwaterGlow" type="Node3D" parent="eye_light2" unique_id=990025511]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)
 script = ExtResource("3_u0aex")
+color = Color(0.68547213, 0.8918278, 0.4292391, 1)
 strength = 0.7
+size = 3.0999999999999996
 metadata/_custom_type_script = "uid://csyjpi4nlac4u"

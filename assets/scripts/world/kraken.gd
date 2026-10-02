@@ -25,7 +25,7 @@ class_name Kraken extends Node3D
 enum State { PERCHED, WAKING, HUNT, BOAT, RETURN, FISH }
 enum BoatPhase { REACH, SHAKE, FLIP, DRAG }
 enum Jet { GATHER, PUSH, GLIDE } # the stroke that carries it home
-enum FishPhase { CHASE, DRAG, SETTLE, FEED } # a giant fish in its waters: lash, drag home, feed
+enum FishPhase { CHASE, REEL, DRAG, SETTLE, FEED } # a giant fish in its waters: lash, reel it in, drag home, feed
 
 @export_group("Territory")
 ## Where it clings. On a column: put the marker on the column's center line at
@@ -176,9 +176,22 @@ enum FishPhase { CHASE, DRAG, SETTLE, FEED } # a giant fish in its waters: lash,
 @export var fish_chase_speed := 8.0 # m/s it closes on a fish
 @export var fish_pounce_speed := 14.0 # m/s it lunges behind a lash: the one burst it has
 @export var fish_lose_time := 6.0 # s a fish may be out of the waters before it gives up on it
-@export var fish_struggle_time := 20.0 # s the fish thrashes in its arms before it goes still
+@export var fish_struggle_time := 45.0 # s its fight ebbs away once it is at the mouth, before it goes still
+## Seized, it turns away and swims flat out for this long (random in range) —
+## about as long as a fish's burst muscles last before they tire — going nowhere: the arms reel it in, tail first, to within fish_reel_stop m
+## (model units) of the crown. Then it is brought to the beak.
+@export var fish_reel_time := Vector2(12.0, 18.0)
+@export var fish_reel_stop := 22.0
 @export_range(0.0, 1.0, 0.05) var fish_bite_point := 0.4 # where the beak goes in, from snout (0) to tail (1)
 @export var feed_lean := 35.0 # degrees it leans out from its rock to feed, so the fish lies clear of the stone
+@export var carry_tilt := 60.0 # degrees its arms point up while it carries a catch home on top of them (90 = straight up)
+@export var fish_under_distance := 30.0 # m (model units) it keeps beneath a fish it hunts, arms up at it
+@export var fish_hold_gap := 5.0 # m between its mouth and the fish's skin while it holds and eats it
+@export var fish_anchor_arms := 2 # free arms that grab the rock while it wrestles a fish, if they can reach it
+## While it hunts and hauls in a fish its arms point up at it, but only so far:
+## between nearly level and steeply up (degrees above level), never down, never
+## straight up — it stays beneath the catch.
+@export var fish_arms_elevation := Vector2(10.0, 80.0)
 @export var fish_drape_tilt := 32.0 # degrees the dead fish's snout tips down from the bite: with its sag it drapes in an arch
 @export var munch_period := 3.0 # s, one slow press of the beak into the fish and back
 @export var munch_depth := 0.8 # m it presses in (grows with the model's scale)
@@ -265,17 +278,21 @@ var _fish_phase := FishPhase.CHASE
 var _fish_out_time := 0.0 # s the chased fish has been out of the waters
 var _fish_last_pos := Vector3.ZERO
 var _fish_vel := Vector3.ZERO # measured, for leading the lashes
-var _fish_offset: Transform3D # its pose in the body's space, dragged
 var _fish_from: Transform3D # its pose when the settle began
 var _lash_wait := 0.0
-var _bite_fix := Vector3.ZERO # shifts the held fish so its bent body meets the beak
+var _bite_bend := Vector3.ZERO # how far its bent body moves the bite point, in its own space
+var _reel_left := 0.0 # s the fish still fights to swim free before it is at the mouth
+var _reel_speed := 0.0 # m/s the arms reel it in meanwhile
+var _drag_time := 0.0
 var _sated := false # fed today: the player may pass
 var _guard_r := -1.0 # cached reach of the guard area from the perch
+var _anchor_arms: Array[int] = [] # free arms holding the rock while it wrestles a fish
 var _body_shape := SphereShape3D.new()
 var _fish_rids: Array[RID] = []
 
 # The rock's measured shape (see _measure_rock).
 const ROCK_LEVELS := 26
+const ROCK_PUSH_SPEED := 35.0 # m/s a held fish is moved out of the rock at most
 const ROCK_ANGLES := 16
 const ROCK_STEP := 4.0 # m between measured heights...
 const ROCK_BELOW := -70.0 # ...from this far below the perch (arms mostly wind downward)
@@ -709,6 +726,25 @@ func _move_body(target: Vector3) -> void:
 		var rest := motion * (1.0 - fractions[0])
 		global_position += rest - n * minf(rest.dot(n), 0.0)
 
+## Turning swings its head and mantle round the crown, which no move check
+## sees: if that has left them in rock, they are eased back out.
+func _push_body_out(delta: float) -> void:
+	_body_shape.radius = body_radius * _scale
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _body_shape
+	query.collision_mask = 1
+	query.exclude = _fish_bodies()
+	var center := _skeleton.global_transform * body_center
+	query.transform = Transform3D(Basis.IDENTITY, center)
+	var hit := get_world_3d().direct_space_state.get_rest_info(query)
+	if hit.is_empty():
+		return
+	var n: Vector3 = hit.normal
+	var hit_point: Vector3 = hit.point
+	var depth := _body_shape.radius - (center - hit_point).dot(n)
+	if depth > 0.0:
+		global_position += n * minf(depth, 15.0 * delta)
+
 ## The giant fishes' own colliders (they sit on the world layer too).
 func _fish_bodies() -> Array[RID]:
 	if _fish_rids.is_empty():
@@ -762,6 +798,7 @@ func _process_fish(delta: float) -> void:
 		return
 	match _fish_phase:
 		FishPhase.CHASE: _fish_chase(delta)
+		FishPhase.REEL: _fish_reel(delta)
 		FishPhase.DRAG: _fish_drag(delta)
 		FishPhase.SETTLE: _fish_settle()
 		FishPhase.FEED: _fish_feed()
@@ -786,17 +823,22 @@ func _fish_chase(delta: float) -> void:
 	for arm in _arms:
 		if arm.role == KrakenArm.Role.FISH:
 			pouncing = true
-	if pouncing: # it throws itself at the fish behind the lash
-		_swim_toward(near + _fish_vel * 0.8, fish_pounce_speed, to_fish.normalized(), delta, 5.0)
+	# from beneath: it keeps under the fish, arms up at it
+	var below := near + Vector3.DOWN * fish_under_distance * _scale
+	if pouncing: # it throws itself up at the fish behind the lash
+		_swim_toward(near + _fish_vel * 0.8 + Vector3.DOWN * fish_radius * 2.0, fish_pounce_speed, _arms_up_at(to_fish), delta, 5.0)
 	else:
-		_swim_toward(near + _fish_vel * 1.5 - to_fish.normalized() * hover_distance * _scale, fish_chase_speed, to_fish.normalized(), delta)
+		_swim_toward(below + _fish_vel * 1.5, fish_chase_speed, _arms_up_at(to_fish), delta)
 	# Lash: one more arm every fish_lash_interval while the body is within reach.
 	var lashing := 0
 	for arm in _arms:
 		if arm.role != KrakenArm.Role.FISH:
 			continue
 		lashing += 1
-		arm.tip_target = _clamp_reach(arm, _nearest_on_fish(arm.root()) + _fish_vel * 0.3)
+		# aim where the fish WILL be when the tip gets there, not where it is
+		var lead := maxf(fish_lash_time - arm.timer, 0.0) + 0.25
+		var ahead := _fish_vel * lead
+		arm.tip_target = _clamp_reach(arm, _nearest_on_fish(arm.root() - ahead) + ahead)
 		arm.reach_front = smoothstep(0.0, fish_lash_time, arm.timer)
 		arm.seek_tip = 4.0 * smoothstep(0.5, 1.0, arm.reach_front)
 		if _distance_to_fish(arm.tip()) < fish_grab_radius:
@@ -810,7 +852,7 @@ func _fish_chase(delta: float) -> void:
 		var best_d := INF
 		for arm in _arms:
 			# only an arm the fish is truly within reach of strikes
-			if arm.role == KrakenArm.Role.FREE and _distance_to_fish(arm.root()) < arm.length * 0.9:
+			if arm.role == KrakenArm.Role.FREE and _distance_to_fish(arm.root() - _fish_vel * fish_lash_time) < arm.length * 0.9:
 				var d := _distance_to_fish(arm.points[arm.points.size() / 2])
 				if d < best_d:
 					best_d = d
@@ -819,14 +861,17 @@ func _fish_chase(delta: float) -> void:
 			best.set_role(KrakenArm.Role.FISH)
 			_lash_wait = fish_lash_interval
 
-## Got it: the fish stops swimming and thrashes; the arms coil round it.
+## Got it: the arms coil round the fish, and it fights to swim free.
 func _seize_fish() -> void:
-	_bite_fix = Vector3.ZERO
+	_bite_bend = Vector3.ZERO
 	_fish.seize(fish_struggle_time)
 	_sated = true
 	_player_ignored = not _holding # fed: the player may pass (one already held stays held)
-	_fish_phase = FishPhase.DRAG
-	_fish_offset = global_transform.affine_inverse() * _fish.global_transform
+	_fish_phase = FishPhase.REEL
+	_reel_left = randf_range(fish_reel_time.x, fish_reel_time.y)
+	# reeled in from where it was caught to within fish_reel_stop of the crown
+	var gap := _nearest_on_fish(global_position).distance_to(global_position)
+	_reel_speed = maxf(gap - fish_reel_stop * _scale, 0.0) / _reel_left
 	_play(_grab_sound)
 	_shake_near(catch_shake, 150.0 * _scale)
 	var stations := [0.25, 0.4, 0.55, 0.7]
@@ -857,12 +902,93 @@ func _seize_fish() -> void:
 			arm.fish_station = stations[i % stations.size()]
 			i += 1
 
-## Home with it, the fish trailing softly at the hold it was caught at.
+## Trapped: the fish turns away and swims flat out — and goes nowhere. The arms
+## reel it in, tail first, slowly, while the kraken holds still, facing it.
+func _fish_reel(delta: float) -> void:
+	var ends: PackedVector3Array = _fish.body_ends()
+	var mid: Vector3 = ends[0].lerp(ends[1], 0.5)
+	var away := mid - global_position
+	away = away.normalized() if away.length() > 0.01 else -global_basis.z
+	# its underside — arms and beak — turns to the catch (keeping its back as
+	# near up as that allows) while it hauls it in
+	var to_catch := _nearest_on_fish(global_position) - global_position
+	_swim_toward(global_position, 0.0, _arms_up_at(to_catch if to_catch.length() > 0.01 else away), delta)
+	# it points its snout away from the kraken, as if to flee
+	var flat := Vector3(away.x, away.y * 0.3, away.z).normalized()
+	var head_minus_z: bool = _fish.get(&'_head_minus_z') != false
+	var look := Basis.looking_at(flat if head_minus_z else -flat, Vector3.UP)
+	var k := 1.0 - exp(-0.7 * delta) # a heavy turn: a 150 m body cannot whip round
+	var rot := _fish.global_basis.get_rotation_quaternion().slerp(look.get_rotation_quaternion(), k)
+	# dragged backwards toward its beak, a little jolt with every beat of its tail
+	var beak := global_position + global_basis.z.normalized() * (2.0 * _scale + fish_radius + fish_hold_gap)
+	var to_beak := beak - mid
+	to_beak = to_beak.normalized() if to_beak.length() > 0.01 else -away
+	var beat := 0.75 + 0.25 * sin(_time * TAU * 1.6)
+	_fish.global_transform = Transform3D(Basis(rot), _fish.global_position + to_beak * _reel_speed * beat * delta)
+	_keep_fish_under()
+	_clear_fish_of_rock()
+	_clear_fish_of_body()
+	_reel_left -= delta
+	if _reel_left <= 0.0:
+		_fish_phase = FishPhase.DRAG
+		_drag_time = 0.0
+
+## Arms toward dir, but kept between nearly level and steeply up
+## (fish_arms_elevation): beneath a fish, never over it, never on its back.
+func _arms_up_at(dir: Vector3) -> Vector3:
+	var flat := Vector3(dir.x, 0.0, dir.z)
+	flat = flat.normalized() if flat.length() > 0.01 else -global_basis.z
+	var elevation := asin(clampf(dir.normalized().y, -1.0, 1.0))
+	elevation = clampf(elevation, deg_to_rad(fish_arms_elevation.x), deg_to_rad(fish_arms_elevation.y))
+	return (flat * cos(elevation) + Vector3.UP * sin(elevation)).normalized()
+
+## Its posture while it carries a catch home: arms and beak up, the catch held
+## on top of them, tipped forward toward dir (flat) — it came from beneath and
+## keeps the catch above it.
+func _carry_face(dir: Vector3) -> Vector3:
+	var flat := Vector3(dir.x, 0.0, dir.z)
+	flat = flat.normalized() if flat.length() > 0.01 else -global_basis.z
+	var tilt := deg_to_rad(carry_tilt)
+	return (flat * cos(tilt) + Vector3.UP * sin(tilt)).normalized()
+
+## The held fish never passes through its head and mantle: wherever its body
+## is closer than both their thicknesses, it is eased away (no jolt).
+func _clear_fish_of_body() -> void:
+	var c := _skeleton.global_transform * body_center
+	var keep := body_radius * _scale + fish_radius
+	var worst := 0.0
+	var push := Vector3.ZERO
+	for i in 13:
+		var p: Vector3 = _fish.body_point(i / 12.0)
+		var deficit := keep - p.distance_to(c)
+		if deficit > worst:
+			worst = deficit
+			push = (p - c).normalized() if p.distance_to(c) > 0.01 else global_basis.z
+	if worst > 0.0:
+		_fish.global_position += push * minf(worst, ROCK_PUSH_SPEED * get_physics_process_delta_time())
+
+## Home with it, bringing it round to its mouth: its flank to the beak. Once
+## there, the fish still beats its tail, but slower and slower (fade_struggle).
 func _fish_drag(delta: float) -> void:
 	var home := _perch_pose().origin + _perch_out() * 6.0 * _scale # right to its place on the rock
-	_swim_toward(home, cruise_speed, null, delta)
-	_pose_fish(global_transform * _fish_offset, 0.8, delta)
+	_drag_time += delta
+	# a few seconds to bring it to the beak before it heads home with it
+	# upright the whole way, crown down and forward with the catch under it
+	var travel := home - global_position
+	travel.y = 0.0
+	var face := _carry_face(travel if travel.length() > 1.0 else -global_basis.z)
+	if _drag_time > 3.0:
+		_swim_toward(home, cruise_speed, face, delta)
+	else:
+		_swim_toward(global_position, 0.0, face, delta)
+	_pose_fish(_held_pose(global_transform), 1.2, delta)
+	_hold_bite(delta, global_transform)
 	_clear_fish_of_rock()
+	_clear_fish_of_body()
+	if not _fish.is_fading():
+		var beak := global_position + global_basis.z.normalized() * (2.0 * _scale + fish_radius + fish_hold_gap)
+		if _fish.body_point(fish_bite_point).distance_to(beak) < 6.0 * _scale or _drag_time > 8.0:
+			_fish.fade_struggle(fish_struggle_time) # at its mouth: the fight starts to ebb
 	if global_position.distance_to(home) < 10.0 * _scale:
 		_fish_phase = FishPhase.SETTLE
 		_settle_from = global_transform
@@ -872,6 +998,8 @@ func _fish_drag(delta: float) -> void:
 
 ## Onto the rock, bringing the fish round under its beak.
 func _fish_settle() -> void:
+	if not _fish.is_fading():
+		_fish.fade_struggle(fish_struggle_time) # home before it reached the beak: still, it starts to ebb
 	var pose := _feed_body_pose()
 	var t := clampf(_state_time / maxf(_settle_duration, 0.1), 0.0, 1.0)
 	var s := t * t * (3.0 - 2.0 * t)
@@ -885,6 +1013,7 @@ func _fish_settle() -> void:
 	_keep_fish_under()
 	_clear_fish_of_rock()
 	_hold_bite(get_physics_process_delta_time())
+	_clear_fish_of_body()
 	if t >= 1.0:
 		_fish_phase = FishPhase.FEED
 		_settle_from = Transform3D()
@@ -899,7 +1028,7 @@ func _fish_feed() -> void:
 	global_transform = Transform3D(pose.basis.rotated(pose.basis.x, wobble), pose.origin + pose.basis.z * munch)
 	# each press of the beak shoves the fish a little; its soft body sways after
 	var feed := _feed_pose()
-	var beak := pose.origin + pose.basis.z * (2.0 * _scale + fish_radius)
+	var beak := pose.origin + pose.basis.z * (2.0 * _scale + fish_radius + fish_hold_gap)
 	var tug := Basis(pose.basis.z.normalized(), deg_to_rad(munch_twist) * (munch / maxf(munch_depth * _scale, 0.01) - 0.5))
 	feed = Transform3D(tug * feed.basis, beak + tug * (feed.origin - beak)) # a twisting tug round the bite
 	feed.origin += pose.basis.z * munch * 0.7
@@ -925,7 +1054,11 @@ func _feed_body_pose() -> Transform3D:
 ## flank up against the beak at fish_bite_point of the way from its snout,
 ## lying along the rock.
 func _feed_pose() -> Transform3D:
-	var pose := _feed_body_pose()
+	return _held_pose(_feed_body_pose())
+
+## The fish held at the beak of a body in pose (its flank to the crown, along
+## the body's side axis), wherever the body is: in open water or on the rock.
+func _held_pose(pose: Transform3D) -> Transform3D:
 	var crown_dir := pose.basis.z.normalized() # down the rock, out of the crown
 	var beak := pose.origin + crown_dir * 2.0 * _scale
 	var lie := pose.basis.x.normalized() # along the rock's face
@@ -944,24 +1077,32 @@ func _feed_pose() -> Transform3D:
 	var heading_local := Vector3(0, 0, -1) if head_minus_z else Vector3(0, 0, 1)
 	var fish_length: float = _fish.body_length
 	var bite_local: Vector3 = snout_local - heading_local * fish_length * fish_bite_point
-	var contact := beak + crown_dir * fish_radius
-	# _bite_fix: what it takes to bring its REAL (bent) bite point onto the beak
-	return Transform3D(basis, contact - basis * bite_local + _bite_fix)
+	var contact := beak + crown_dir * (fish_radius + fish_hold_gap) # held a little off the mouth
+	# its body is bent (soft, sagging): where its REAL bite point sits, in its own
+	# space, is measured (_bite_bend) — that point goes onto the beak
+	return Transform3D(basis, contact - basis * (bite_local + _bite_bend))
 
-## Bring the bent body's bite point to the beak, a little each frame.
-func _hold_bite(delta: float) -> void:
-	var pose := _feed_body_pose()
-	var contact := pose.origin + pose.basis.z.normalized() * (2.0 * _scale + fish_radius)
-	var err: Vector3 = contact - _fish.body_point(fish_bite_point)
-	_bite_fix += err * (1.0 - exp(-1.5 * delta))
+## Measure how far its bent body has carried the bite point from where a
+## straight body would have it, in the fish's own space, smoothed. A plain
+## measurement, never an accumulated error: it cannot run away and shake.
+func _hold_bite(delta: float, _pose: Transform3D = Transform3D()) -> void:
+	var head_minus_z: bool = _fish.get(&'_head_minus_z') != false
+	var snout_local: Vector3 = _fish.to_local(_fish.mouth_position())
+	var heading_local := Vector3(0, 0, -1) if head_minus_z else Vector3(0, 0, 1)
+	var fish_length: float = _fish.body_length
+	var straight: Vector3 = snout_local - heading_local * fish_length * fish_bite_point
+	var bent: Vector3 = _fish.to_local(_fish.body_point(fish_bite_point))
+	_bite_bend = _bite_bend.lerp(bent - straight, 1.0 - exp(-2.0 * delta))
 
 ## Move the held fish toward a pose (softly, at rate 1/s) and add its thrashing.
 func _pose_fish(target: Transform3D, rate: float, delta: float) -> void:
 	var k := 1.0 - exp(-rate * delta)
 	var current := _fish.global_transform
 	var fight: float = _fish.struggle()
-	var jerk := Basis.from_euler(Vector3(sin(_time * 7.1) * 0.08, sin(_time * 5.3 + 1.0) * 0.06, sin(_time * 9.7 + 2.0) * 0.1) * fight)
-	var rot := current.basis.get_rotation_quaternion().slerp((target.basis * jerk).get_rotation_quaternion(), k)
+	# heavy lurches with its tail beats while it fights: slow and small, a body
+	# this size cannot shiver
+	var lurch := Basis.from_euler(Vector3(sin(_time * TAU * 0.8) * 0.03, sin(_time * TAU * 0.55 + 1.0) * 0.02, sin(_time * TAU * 0.8 + 2.0) * 0.035) * fight)
+	var rot := current.basis.get_rotation_quaternion().slerp((target.basis * lurch).get_rotation_quaternion(), k)
 	_fish.global_transform = Transform3D(Basis(rot), current.origin.lerp(target.origin, k))
 	_keep_fish_under()
 
@@ -987,7 +1128,8 @@ func _clear_fish_of_rock() -> void:
 				push = flat.normalized() if flat.length() > 0.01 else _perch_out()
 		if worst <= 0.0:
 			return
-		_fish.global_position += push * worst
+		# out smoothly over a few frames, never a jolt
+		_fish.global_position += push * minf(worst, ROCK_PUSH_SPEED * get_physics_process_delta_time())
 
 ## A held fish stays under the waves: never more of it above than below.
 func _keep_fish_under() -> void:
@@ -995,8 +1137,8 @@ func _keep_fish_under() -> void:
 	for i in 5:
 		top = maxf(top, _fish.body_point(i / 4.0).y)
 	var limit := _surface_y(_fish.global_position) - fish_radius - 4.0
-	if top > limit:
-		_fish.global_position.y -= top - limit
+	if top > limit: # eased down, never a jolt
+		_fish.global_position.y -= minf(top - limit, ROCK_PUSH_SPEED * get_physics_process_delta_time())
 
 ## The point on the fish's body line nearest to p.
 func _nearest_on_fish(p: Vector3) -> Vector3:
@@ -1569,6 +1711,7 @@ func _perched_pose_wanted() -> bool:
 
 ## Every arm's goal shape for this frame, by its role and the body's state.
 func _set_arm_goals(_delta: float) -> void:
+	_update_anchor_arms()
 	var crown := global_position
 	var axis := global_basis.z.normalized() # out of the crown, toward the arms
 	var open := _stroke_open()
@@ -1613,6 +1756,8 @@ func _set_arm_goals(_delta: float) -> void:
 					arm.goals_spread(axis, out, 0.45, 3.0, _time * 0.2 + arm.index * 2.0, 0.8)
 				elif state == State.WAKING:
 					arm.goals_spread(axis, out, 0.6, 3.0, phase, 0.6)
+				elif _anchor_arms.has(arm.index):
+					_wrap_goals(arm) # holding on to the rock while it wrestles
 				elif state == State.RETURN:
 					arm.goals_spread(axis, out, _jet_spread, 1.0, phase, 0.3) # the umbrella: open, shut, trailing
 				elif state == State.HUNT and _attacking:
@@ -1648,6 +1793,41 @@ func _attack_goals(arm: KrakenArm, crown: Vector3, open: float, phase: float) ->
 func _keep_under_surface(arm: KrakenArm, surface_y: float) -> void:
 	for i in arm.goals.size():
 		arm.goals[i].y = minf(arm.goals[i].y, surface_y - 1.5)
+
+## While it wrestles a fish, up to fish_anchor_arms of its free arms that can
+## reach the rock take hold of it — the nearest first. Kept while still in
+## reach (with some slack), so they do not let go and grab again.
+func _update_anchor_arms() -> void:
+	if state != State.FISH or perch_column_radius <= 0.0 or not _rock_measured:
+		_anchor_arms.clear()
+		return
+	var keep: Array[int] = []
+	for arm in _arms:
+		if _anchor_arms.has(arm.index) and arm.role == KrakenArm.Role.FREE and _rock_gap(arm.root()) < arm.length * 0.75:
+			keep.append(arm.index)
+	while keep.size() < fish_anchor_arms:
+		var best: KrakenArm = null
+		var best_gap := INF
+		for arm in _arms:
+			if arm.role != KrakenArm.Role.FREE or keep.has(arm.index):
+				continue
+			var gap := _rock_gap(arm.root())
+			if gap < arm.length * 0.6 and gap < best_gap:
+				best_gap = gap
+				best = arm
+		if best == null:
+			break
+		keep.append(best.index)
+	_anchor_arms = keep
+
+## How far a point is from the rock's surface (its measured shape), flat.
+func _rock_gap(p: Vector3) -> float:
+	var up := perch.global_basis.y.normalized()
+	var rel := p - perch.global_position
+	var h := rel.dot(up)
+	var flat := rel - up * h
+	var a := atan2(flat.dot(_rock_e2), flat.dot(_rock_e1))
+	return flat.length() - float(_rock_radius.call(h, a))
 
 ## Wrapped round the rock: each arm winds its own way, creeping slowly.
 func _wrap_goals(arm: KrakenArm) -> void:
@@ -1756,6 +1936,7 @@ func _swim_toward(target: Vector3, max_speed: float, face: Variant, delta: float
 	else:
 		return
 	_turn_crown_toward(crown_dir, delta)
+	_push_body_out(delta) # turning swings the head and mantle: never into rock
 
 ## Its eyes sit high on the sides of the head, so it "looks at" something by
 ## turning the top of its head toward it — both eyes on it. Once it has the

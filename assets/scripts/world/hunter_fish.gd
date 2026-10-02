@@ -44,9 +44,11 @@ enum Pass { PEEL, TURN_IN, CHARGE } # the three beats of one attack run
 @export_group("Held (in a kraken's arms)")
 ## Not rigid: the body sags from where it is held and swings softly behind
 ## every move, keeping its shape.
-@export var held_sag := 45.0 # m the tail hangs off a straight body while it still fights...
+@export var held_sag := 15.0 # m the tail hangs off a straight body while it still fights...
 @export var held_dead_sag := 105.0 # ...and once it is still: with the snout tipped down (Kraken.fish_drape_tilt) the body drapes in an arch over the bite
 @export var held_follow := 2.5 # 1/s how quickly the body catches up with the hold (lower = softer)
+@export var held_thrash_frequency := 1.6 # tail beats per second at full fight: swimming flat out, going nowhere
+@export var held_thrash_angle := 4.0 # how much wider than a cruising beat the tail swings at full fight
 
 @export_group("Stalking")
 @export var stalk_behind_distance := 50.0 # first hold point this far behind the player
@@ -136,7 +138,7 @@ var _pull_left := 0.0 # remaining seconds of the reel-in at carry start
 var _died_emitted := false
 var _struggle_time := 20.0 # SEIZED: how long it fights...
 var _struggle_left := 0.0 # ...and how much fight is left
-var _snap_left := 0.0 # s until the jaw snaps again
+var _fighting := false # SEIZED: still at full fight (not yet at the kraken's mouth)
 var _avoid_tick := 0 # frames until it looks ahead again
 var _avoid_urgency := 0.0 # 0 = clear ahead .. 1 = rock right at the snout
 var _avoid_normal := Vector3.UP # away from the rock it saw
@@ -233,8 +235,8 @@ func is_carrying() -> bool:
 ## ---- API for a Kraken -------------------------------------------------------
 
 ## Caught in a kraken's arms: from now on it is posed by the kraken and only
-## thrashes — tail lashing, jaw snapping — for struggle_time seconds, then goes
-## limp. A catch of its own in its mouth is let go. The morning's abort_hunt
+## fights — its tail beating as if it could swim free — at full strength until
+## fade_struggle(), then weaker and weaker over struggle_time seconds, then limp. A catch of its own in its mouth is let go. The morning's abort_hunt
 ## sets it free again.
 func seize(struggle_time: float) -> void:
 	if state == State.CARRY and player and player.has_method(&'set_captured'):
@@ -247,7 +249,20 @@ func seize(struggle_time: float) -> void:
 	_speed = 0.0
 	_struggle_time = maxf(struggle_time, 0.01)
 	_struggle_left = _struggle_time
-	_snap_left = 0.0
+	_fighting = true # full fight until the kraken has it at its mouth (fade_struggle)
+	# the jaw shuts once, gently, and then stays as it is
+	set_jaw_open(false)
+	_jaw_opened = false
+
+## At the kraken's mouth: from here its fight ebbs away over seconds.
+func fade_struggle(seconds: float) -> void:
+	if _fighting:
+		_fighting = false
+		_struggle_time = maxf(seconds, 0.01)
+		_struggle_left = _struggle_time
+
+func is_fading() -> bool:
+	return state == State.SEIZED and not _fighting
 
 func is_seized() -> bool:
 	return state == State.SEIZED
@@ -273,19 +288,10 @@ func body_point(t: float) -> Vector3:
 	var xf := sk.global_transform
 	return (xf * sk.get_bone_global_pose(i).origin).lerp(xf * sk.get_bone_global_pose(i + 1).origin, f - i)
 
-## Thrash while it has fight left: the jaw snaps, then hangs open once dead.
+## Its fight ebbs once the kraken has it at its mouth. The jaw stays still.
 func _process_seized(delta: float) -> void:
-	var was_alive := _struggle_left > 0.0
-	_struggle_left = maxf(_struggle_left - delta, 0.0)
-	if _struggle_left > 0.0:
-		_snap_left -= delta
-		if _snap_left <= 0.0:
-			_snap_left = randf_range(0.8, 2.0)
-			set_jaw_open(not _jaw_opened)
-			_jaw_opened = not _jaw_opened
-	elif was_alive:
-		set_jaw_open(true) # dead: the jaw falls open and stays
-		_jaw_opened = true
+	if not _fighting:
+		_struggle_left = maxf(_struggle_left - delta, 0.0)
 
 ## Idle drifting for the director: swim (forward only) after a moving point,
 ## faster the farther behind it falls.
@@ -493,8 +499,9 @@ func _update_spine(delta: float) -> void:
 	_spine.sway_frequency = tail_sway_frequency
 	if state == State.SEIZED: # thrashing in the arms: wild, fast tail beats fading to nothing
 		var fight := struggle()
-		_spine.sway_angle = tail_sway_angle * 3.5 * fight
-		_spine.sway_frequency = lerpf(0.0, 1.1, fight)
+		# beating its tail as if it could swim free, slower and weaker as it fades
+		_spine.sway_angle = tail_sway_angle * held_thrash_angle * fight
+		_spine.sway_frequency = held_thrash_frequency * fight
 		# held, not swimming: a soft weight in the arms, sagging more once dead
 		_spine.soft = true
 		_spine.soft_sag = lerpf(held_dead_sag, held_sag, fight)

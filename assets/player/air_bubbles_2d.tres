@@ -1,17 +1,15 @@
 [gd_resource type="QuadMesh" format=4 uid="uid://cjtvpvkk5ps3a"]
 
 [ext_resource type="Shader" uid="uid://bikiihl7insv7" path="res://assets/shaders/particles/water_speck.gdshader" id="1_mb46j"]
-[ext_resource type="Texture2D" uid="uid://bvm8qldu1eduv" path="res://assets/textures/bubble_1.png" id="2_dc8x7"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_plungedraw"]
 render_priority = 0
 shader = ExtResource("1_mb46j")
-shader_parameter/color = Color(0.55, 0.62, 0.58, 1)
+shader_parameter/color = Color(0.7, 0.85, 0.85, 1)
 shader_parameter/ring = 1.0
 shader_parameter/square = false
 shader_parameter/pixel_grid = 6.0
 shader_parameter/use_sprite = false
-shader_parameter/sprite = ExtResource("2_dc8x7")
 shader_parameter/fade_distance = 14.0
 shader_parameter/water_level = 0.0
 shader_parameter/depth_darkening = 0.04
