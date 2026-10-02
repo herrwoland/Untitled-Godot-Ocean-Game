@@ -18,7 +18,7 @@ extends Node3D
 ## All tuning lives here as exports so each instance can be balanced in the
 ## inspector. The model is ~150 m long: distances are mouth-relative.
 
-enum State { LURK, SNEAK, ATTACK, CARRY }
+enum State { LURK, SNEAK, ATTACK, CARRY, SEIZED } # SEIZED: in a kraken's arms, moved by it
 enum Pass { PEEL, TURN_IN, CHARGE } # the three beats of one attack run
 
 @export_group("Speeds")
@@ -87,6 +87,8 @@ enum Pass { PEEL, TURN_IN, CHARGE } # the three beats of one attack run
 @export var jaw: Node3D # opens for the attack; found in the model if left unset
 @export var mouth: Node3D # marker at the mouth; kills and carrying anchor here
 @export var mouth_area: Area3D # the actual mouth volume; overlap with the player = caught
+## Snout to tail tip (m), so a kraken knows how much of it there is to grab.
+@export var body_length := 150.0
 
 @onready var _presence_loop: AudioStreamPlayer3D = get_node_or_null(^'PresenceLoop') # the whole hunt
 @onready var _sneak_loop: AudioStreamPlayer3D = get_node_or_null(^'SneakLoop') # only while stalking
@@ -118,6 +120,9 @@ var _jaw_opened := false # gape already triggered during this attack
 var _carry_left := 0.0
 var _pull_left := 0.0 # remaining seconds of the reel-in at carry start
 var _died_emitted := false
+var _struggle_time := 20.0 # SEIZED: how long it fights...
+var _struggle_left := 0.0 # ...and how much fight is left
+var _snap_left := 0.0 # s until the jaw snaps again
 var _player_in_mouth := false # kept current by the mouth_area overlap signals
 var _spine: FishSpine # bends the skeleton along the swum path; null without a rig
 var _own_bodies: Array[RID] = [] # its own colliders, which must never hide it from view
@@ -127,6 +132,7 @@ const SIGHT_SPACING := 20.0 # m between sight_volume sample points
 const MAX_SIGHT_RAYS := 8 # line-of-sight checks per frame at most
 
 func _ready() -> void:
+	add_to_group(&'giant_fish') # so a kraken can find it (and keep idle fish out of its waters)
 	if jaw == null:
 		jaw = get_node_or_null(^'fish_01/jaw')
 	if jaw:
@@ -185,7 +191,7 @@ func begin_hunt(target: Node3D) -> void:
 ## Prey escaped (surfaced, climbed out, reached safe water). Ignored while
 ## carrying: the drag into the deep always ends in the day reset.
 func end_hunt() -> void:
-	if state == State.CARRY or state == State.LURK:
+	if state == State.CARRY or state == State.LURK or state == State.SEIZED:
 		return
 	set_jaw_open(false)
 	state = State.LURK
@@ -206,6 +212,51 @@ func is_busy() -> bool:
 func is_carrying() -> bool:
 	return state == State.CARRY
 
+## ---- API for a Kraken -------------------------------------------------------
+
+## Caught in a kraken's arms: from now on it is posed by the kraken and only
+## thrashes — tail lashing, jaw snapping — for struggle_time seconds, then goes
+## limp. A catch of its own in its mouth is let go. The morning's abort_hunt
+## sets it free again.
+func seize(struggle_time: float) -> void:
+	if state == State.CARRY and player and player.has_method(&'set_captured'):
+		player.set_captured(false)
+	_stop(_presence_loop)
+	_stop(_sneak_loop)
+	_stop(_charge_sound)
+	state = State.SEIZED
+	player = null
+	_speed = 0.0
+	_struggle_time = maxf(struggle_time, 0.01)
+	_struggle_left = _struggle_time
+	_snap_left = 0.0
+
+func is_seized() -> bool:
+	return state == State.SEIZED
+
+## How hard it still fights, 1 at the catch down to 0 (dead).
+func struggle() -> float:
+	return _struggle_left / _struggle_time if state == State.SEIZED else 0.0
+
+## Its body for whoever must grip it: snout and tail tip, in the world.
+func body_ends() -> PackedVector3Array:
+	var head := mouth_position()
+	return PackedVector3Array([head, head - _heading() * body_length])
+
+## Thrash while it has fight left: the jaw snaps, then hangs open once dead.
+func _process_seized(delta: float) -> void:
+	var was_alive := _struggle_left > 0.0
+	_struggle_left = maxf(_struggle_left - delta, 0.0)
+	if _struggle_left > 0.0:
+		_snap_left -= delta
+		if _snap_left <= 0.0:
+			_snap_left = randf_range(0.8, 2.0)
+			set_jaw_open(not _jaw_opened)
+			_jaw_opened = not _jaw_opened
+	elif was_alive:
+		set_jaw_open(true) # dead: the jaw falls open and stays
+		_jaw_opened = true
+
 ## Idle drifting for the director: swim (forward only) after a moving point,
 ## faster the farther behind it falls.
 func cruise_toward(point: Vector3, delta: float) -> void:
@@ -217,6 +268,9 @@ func cruise_toward(point: Vector3, delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	_update_spine(delta) # idle drifting and scripted passes bend too
+	if state == State.SEIZED:
+		_process_seized(delta)
+		return
 	if state == State.LURK or player == null:
 		return
 	_track_player(delta)
@@ -404,6 +458,11 @@ func _update_spine(delta: float) -> void:
 		return
 	_spine.sway_angle = tail_sway_angle
 	_spine.sway_frequency = tail_sway_frequency
+	if state == State.SEIZED: # thrashing in the arms: wild, fast tail beats fading to nothing
+		var fight := struggle()
+		_spine.sway_angle = tail_sway_angle * 3.5 * fight
+		_spine.sway_frequency = lerpf(0.0, 1.1, fight)
+		_spine.clear_trail() # carried, not swimming: no path to follow
 	_spine.sway_frequency_per_speed = tail_sway_frequency_per_speed
 	_spine.max_joint_bend = max_joint_bend
 	_spine.max_joint_pitch = max_joint_pitch

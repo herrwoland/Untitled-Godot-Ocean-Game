@@ -31,6 +31,12 @@ func _init(target: Skeleton3D) -> void:
 		_lengths.append(length)
 		_body_length += length
 
+## Forget the path swum: the body lies straight behind the head again (for a
+## fish that is being carried, not swimming).
+func clear_trail() -> void:
+	_trail.clear()
+	_trail_length = 0.0
+
 func update(delta: float, speed: float) -> void:
 	var xf := skeleton.global_transform
 	var head := xf * skeleton.get_bone_global_rest(0).origin

@@ -27,7 +27,7 @@ class_name KrakenArm extends RefCounted
 ## the tip, bones shortening toward the tip (see
 ## kraken/source/build_kraken_placeholder.py for the convention).
 
-enum Role { FREE, REACH, HOLD, BOAT, RECOIL }
+enum Role { FREE, REACH, HOLD, BOAT, RECOIL, FISH }
 
 var skeleton: Skeleton3D
 var index := 0 # which arm round the crown, 0..
@@ -77,6 +77,7 @@ var tip_target := Vector3.ZERO # world
 var hull_path := PackedVector3Array()
 var timer := 0.0 # seconds in the current role
 var gripped := false # BOAT: the tip has hold of the hull
+var fish_station := 0.5 # FISH: where along the fish (snout 0 .. tail 1) it coils
 
 var _n := 0 # joints (= bones)
 var _segments: PackedFloat32Array # m, bone lengths

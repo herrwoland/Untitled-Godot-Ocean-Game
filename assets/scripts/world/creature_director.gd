@@ -66,14 +66,13 @@ func _physics_process(delta: float) -> void:
 	var in_exclusion := Vector2(player.global_position.x - hunt_exclusion_center.x,
 		player.global_position.z - hunt_exclusion_center.z).length() < hunt_exclusion_radius
 	var swimming: bool = (&'state' in player and player.state == 1) # Player State.SWIM
-	# An awake kraken owns the player; nothing else hunts until it settles again.
-	var kraken_awake := false
-	for kraken in get_tree().get_nodes_in_group(&'kraken'):
-		if kraken.is_awake() or kraken.is_holding_player():
-			kraken_awake = true
+	# Hunters may follow the player into a kraken's waters (that is the lure: a
+	# kraken takes a giant fish over the player). Only a player already held by
+	# something is left alone.
+	var held: bool = player.get(&'captured') == true
 	var huntable: bool = swimming and player_depth > hunt_depth \
-		and not in_exclusion and not kraken_awake and _grace <= 0.0
-	var escaped: bool = not swimming or player_depth < escape_depth or in_exclusion or kraken_awake
+		and not in_exclusion and not held and _grace <= 0.0
+	var escaped: bool = not swimming or player_depth < escape_depth or in_exclusion or held
 
 	if huntable:
 		_assign_stalkers()
@@ -98,6 +97,9 @@ func _orbit_target(i: int, time: float) -> Vector3:
 		player.global_position.z + sin(angle) * _orbit_radius[i]
 	)
 	target.x = maxf(target.x, SHORE_X_LIMIT)
+	# Idle, they keep out of a kraken's waters; only a hunt leads them in.
+	for kraken in get_tree().get_nodes_in_group(&'kraken'):
+		target = kraken.keep_out(target)
 	return target
 
 ## Wake the nearest idle lurkers until stalker_count of them are on the hunt.

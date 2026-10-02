@@ -112,6 +112,12 @@ marker, GuardArea, Kraken). Code: `kraken.gd` (behaviour) + `kraken_arm.gd` (pro
   of its eyes (eye_center / gaze_direction on the Kraken match the model's eyes).
 - **Grips the real ship:** it measures her visible meshes once and lays each arm up her side and over
   her rail. Optional exact spots: Marker3D nodes named `KrakenGrip*` on the ship (their height = hook).
+- **Takes a giant fish over the player** (the lure): a giant fish in its waters comes first (it cuts its
+  wake short for one). Too slow to chase it, it lashes and pounces; once an arm lands it coils four
+  arms round the fish, drags it to its rock and feeds there, beak in the fish's flank, munching. The
+  fish thrashes ~20 s, then is still. Fed, it ignores the player for the rest of the day. A player it
+  already holds stays held, but fights free 4x more easily. Idle giant fish keep out of its waters;
+  only a hunt (chasing the player) leads one in.
 - **Gives up** when the player is 200 m from the perch; swims home and wraps round the rock again.
   Hunters stand down while it is awake. A new morning resets it and gives the ship back.
 - Open: the kept ship strands the player at sea until they drown or the day resets — see §8.
