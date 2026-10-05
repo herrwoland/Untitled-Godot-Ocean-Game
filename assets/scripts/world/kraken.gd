@@ -231,6 +231,9 @@ var boat_phase := BoatPhase.REACH
 
 var _skeleton: Skeleton3D
 var _scale := 1.0 # the model's scale in this scene: body-size distances are multiplied by it
+var _breach: BreachSplash # splashes where its body or arms go through the surface
+var _breach_points := PackedVector3Array()
+var _breach_radii := PackedFloat32Array()
 var _attacking := false # reared up and closing on a swimming prey
 var _jet := Jet.GATHER
 var _jet_time := 0.0
@@ -438,7 +441,34 @@ func _physics_process(delta: float) -> void:
 	if _holding:
 		_update_hold(delta)
 	_update_arms(delta)
+	_track_breach(delta)
 	_breathe()
+
+## The water it throws up wherever its head and mantle or an arm goes through
+## the surface: the body, and two points along each arm.
+func _track_breach(delta: float) -> void:
+	if _breach == null:
+		# a BreachSplash child of its own (to tune in the editor), else a default one
+		_breach = get_node_or_null(^'BreachSplash') as BreachSplash
+		if _breach == null:
+			_breach = BreachSplash.new()
+			_breach.name = &'BreachSplash'
+			add_child(_breach)
+	var n := 1 + _arms.size() * 2
+	if _breach_points.size() != n:
+		_breach_points.resize(n)
+		_breach_radii.resize(n)
+	_breach_points[0] = _skeleton.global_transform * body_center
+	_breach_radii[0] = body_radius * _scale
+	var k := 1
+	for arm in _arms:
+		var last := arm.points.size() - 1
+		for f in [0.55, 1.0]:
+			var i := int(round(last * f))
+			_breach_points[k] = arm.points[i]
+			_breach_radii[k] = maxf(arm.radius_at(i), 0.6 * _scale)
+			k += 1
+	_breach.track(_breach_points, _breach_radii, delta)
 
 func _set_state(new_state: State) -> void:
 	state = new_state

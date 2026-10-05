@@ -105,6 +105,8 @@ enum Pass { PEEL, TURN_IN, CHARGE } # the three beats of one attack run
 @export var mouth_area: Area3D # the actual mouth volume; overlap with the player = caught
 ## Snout to tail tip (m), so a kraken knows how much of it there is to grab.
 @export var body_length := 150.0
+## Half its thickness amidships (m): how much water it moves breaking the surface.
+@export var breach_radius := 9.0
 
 @onready var _presence_loop: AudioStreamPlayer3D = get_node_or_null(^'PresenceLoop') # the whole hunt
 @onready var _sneak_loop: AudioStreamPlayer3D = get_node_or_null(^'SneakLoop') # only while stalking
@@ -145,6 +147,10 @@ var _avoid_normal := Vector3.UP # away from the rock it saw
 var _avoid_shape := SphereShape3D.new()
 var _player_in_mouth := false # kept current by the mouth_area overlap signals
 var _spine: FishSpine # bends the skeleton along the swum path; null without a rig
+var _breach: BreachSplash # splashes where the body goes through the surface
+var _breach_points := PackedVector3Array()
+var _breach_radii := PackedFloat32Array()
+const BREACH_POINTS := 7
 var _own_bodies: Array[RID] = [] # its own colliders, which must never hide it from view
 var _sight_points: PackedVector3Array = [] # sample points on sight_volume, in its local space
 var _sight_cursor := 0 # round-robin start, so capped ray checks cover every point over a few frames
@@ -178,6 +184,12 @@ func _ready() -> void:
 		sight_volume = get_node_or_null(^'SightVolume/CollisionShape3D')
 	if sight_volume and sight_volume.shape:
 		_sight_points = _sample_points(sight_volume.shape.get_debug_mesh().get_aabb())
+	# a BreachSplash child of its own (to tune in the editor), else a default one
+	_breach = get_node_or_null(^'BreachSplash') as BreachSplash
+	if _breach == null:
+		_breach = BreachSplash.new()
+		_breach.name = &'BreachSplash'
+		add_child(_breach)
 
 func _on_mouth_body_entered(body: Node3D) -> void:
 	if body.is_in_group(&'player'):
@@ -304,6 +316,7 @@ func cruise_toward(point: Vector3, delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	_update_spine(delta) # idle drifting and scripted passes bend too
+	_track_breach(delta)
 	if state == State.SEIZED:
 		_process_seized(delta)
 		return
@@ -486,6 +499,20 @@ func _process_carry(delta: float) -> void:
 		EventBus.player_died.emit() # the mission controller fades out and restages
 
 ## ---- helpers -----------------------------------------------------------------
+
+## The water it throws up wherever its body goes through the surface: snout
+## to tail, thinner toward the ends.
+func _track_breach(delta: float) -> void:
+	if _breach == null:
+		return
+	if _breach_points.size() != BREACH_POINTS:
+		_breach_points.resize(BREACH_POINTS)
+		_breach_radii.resize(BREACH_POINTS)
+	for i in BREACH_POINTS:
+		var t := i / float(BREACH_POINTS - 1)
+		_breach_points[i] = body_point(t)
+		_breach_radii[i] = breach_radius * lerpf(1.0, 0.35, smoothstep(0.4, 1.0, t)) * lerpf(0.6, 1.0, smoothstep(0.0, 0.2, t))
+	_breach.track(_breach_points, _breach_radii, delta)
 
 ## Keep the body curving along its path. Skipped far from the camera, where
 ## nobody could see it anyway.

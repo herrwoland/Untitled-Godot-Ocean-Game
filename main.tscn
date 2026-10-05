@@ -211,6 +211,10 @@ normal_texture = ExtResource("99_gnorm")
 mesh_list = Array[Terrain3DMeshAsset]([SubResource("Terrain3DMeshAsset_uypp3")])
 texture_list = Array[Terrain3DTextureAsset]([SubResource("Terrain3DTextureAsset_6iyjs")])
 
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_5s6u7"]
+height = 200.0
+radius = 342.64648
+
 [sub_resource type="Resource" id="Resource_adqv5"]
 script = ExtResource("2_pw5n6")
 tile_length = Vector2(88, 88)
@@ -425,7 +429,7 @@ shadow_opacity = 0.8
 shadow_blur = 4.592
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 466.3796, 76.881805, 459.49545)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -155.23784, 28.32185, -724.77527)
 script = ExtResource("60_rain")
 intensity = 0.85
 wind_strength = 9.0
@@ -468,7 +472,7 @@ top_level = true
 metadata/_edit_lock_ = true
 
 [node name="CreatureDirector" type="Node3D" parent="." unique_id=77054325 node_paths=PackedStringArray("player", "water")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 713.01324, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 517.28467, 0, -222.04877)
 script = ExtResource("35_creatures")
 creature_scene = ExtResource("50_hrvbo")
 player = NodePath("../Player")
@@ -476,8 +480,15 @@ water = NodePath("../Water")
 creature_count = 4
 speed_multiplier = 2.5
 
+[node name="Area3D" type="Area3D" parent="CreatureDirector" unique_id=2069015607]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CreatureDirector/Area3D" unique_id=176572470]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -100, 0)
+shape = SubResource("CylinderShape3D_5s6u7")
+debug_color = Color(0.8128558, 0.030233042, 0.97549945, 0.41960785)
+
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 467, 0, 460)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -155, 0, -724)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")

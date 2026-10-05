@@ -1,13 +1,17 @@
 [gd_scene format=3 uid="uid://cvqqmvujpktau"]
 
 [ext_resource type="Script" uid="uid://us7wao1gawyg" path="res://assets/scripts/world/kraken.gd" id="1_kraken"]
-[ext_resource type="PackedScene" uid="uid://dj8a1rkcimwkp" path="res://assets/models/creatures/kraken/kraken_placeholder.glb" id="2_model"]
+[ext_resource type="PackedScene" uid="uid://bau1ph1iuahec" path="res://assets/models/creatures/kraken/kraken_model_0.1.glb" id="2_u0aex"]
 [ext_resource type="Script" uid="uid://csyjpi4nlac4u" path="res://assets/scripts/world/underwater_glow.gd" id="3_u0aex"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_klyyb"]
+radius = 10.053711
+height = 44.009163
 
 [node name="Kraken" type="Node3D" unique_id=2048527563]
 script = ExtResource("1_kraken")
 
-[node name="Model" parent="." unique_id=14561178 instance=ExtResource("2_model")]
+[node name="Model" parent="." unique_id=1550929123 instance=ExtResource("2_u0aex")]
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
 
 [node name="PresenceLoop" type="AudioStreamPlayer3D" parent="." unique_id=1069231408]
@@ -50,3 +54,10 @@ color = Color(0.68547213, 0.8918278, 0.4292391, 1)
 strength = 0.7
 size = 3.0999999999999996
 metadata/_custom_type_script = "uid://csyjpi4nlac4u"
+
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=1062488890]
+collision_layer = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=1823203561]
+transform = Transform3D(1, 0, 0, 0, -0.25881904, 0.9659258, 0, -0.9659258, -0.25881904, 0, -2.949501, -18.740318)
+shape = SubResource("CapsuleShape3D_klyyb")
