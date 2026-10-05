@@ -962,7 +962,12 @@ func _fish_reel(delta: float) -> void:
 	var to_beak := beak - mid
 	to_beak = to_beak.normalized() if to_beak.length() > 0.01 else -away
 	var beat := 0.75 + 0.25 * sin(_time * TAU * 1.6)
-	_fish.global_transform = Transform3D(Basis(rot), _fish.global_position + to_beak * _reel_speed * beat * delta)
+	# held, it turns about the arms that hold it, not about its own middle: the
+	# held parts stay in the arms and the free end swings round
+	var pivot := _grip_pivot()
+	var spin := Basis(rot * _fish.global_basis.get_rotation_quaternion().inverse())
+	var origin: Vector3 = pivot + spin * (_fish.global_position - pivot)
+	_fish.global_transform = Transform3D(Basis(rot), origin + to_beak * _reel_speed * beat * delta)
 	_tether_fish()
 	_keep_fish_under()
 	_clear_fish_of_rock()
@@ -986,6 +991,17 @@ func _tether_fish() -> void:
 			var back := from_root.normalized()
 			_fish.global_position -= back * (from_root.length() - reach)
 			_carry_vel -= back * maxf(_carry_vel.dot(back), 0.0) # the pull kills its speed outward
+
+## Where the arms hold the fish: the middle of the gripped spots on its body
+## (its own origin while nothing grips it).
+func _grip_pivot() -> Vector3:
+	var sum := Vector3.ZERO
+	var n := 0
+	for arm in _arms:
+		if arm.role == KrakenArm.Role.FISH and arm.gripped:
+			sum += _fish.body_point(arm.fish_station)
+			n += 1
+	return sum / n if n > 0 else _fish.global_position
 
 ## Arms toward dir, but kept between nearly level and steeply up
 ## (fish_arms_elevation): beneath a fish, never over it, never on its back.
@@ -1217,9 +1233,13 @@ func _fish_ring(arm: KrakenArm) -> PackedVector3Array:
 	var side := axis.cross(toward)
 	var r := fish_radius + 1.0 * _scale
 	var turn := 1.0 if arm.index % 2 == 0 else -1.0
+	# close, it wraps right round; at full stretch the arm has little left over
+	# for the coil and only hooks on, so the tip can still get there
+	var spare := arm.length * 0.95 - (center.distance_to(arm.root()) - r)
+	var sweep := clampf(spare / r, deg_to_rad(60.0), deg_to_rad(300.0))
 	var ring := PackedVector3Array()
 	for j in range(13, -1, -1): # tip end first
-		var a := turn * deg_to_rad(300.0) * j / 13.0
+		var a := turn * sweep * j / 13.0
 		ring.append(center + (toward * cos(a) + side * sin(a)) * r)
 	return ring
 
@@ -1760,6 +1780,7 @@ func _update_arms(delta: float) -> void:
 			arm.smooth_passes = 0 if arm.gripped else 2
 		# a grip holds on: the tip is kept on its spot on the hull / the fish
 		arm.pin_tip = (arm.role == KrakenArm.Role.BOAT or arm.role == KrakenArm.Role.FISH) and arm.gripped
+		arm.pin_joints = 20 if arm.role == KrakenArm.Role.FISH else 7
 		arm.simulate(delta)
 		if not far:
 			arm.apply_to_skeleton()

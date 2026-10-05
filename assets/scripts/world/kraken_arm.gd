@@ -68,6 +68,9 @@ var smooth_passes := 2
 
 var role := Role.FREE
 var pin_tip := false # BOAT, gripped: the tip is held exactly on tip_target
+var pin_joints := 7 # how many of the last joints turn to keep a pinned tip on
+const PIN_DISTAL := 7 # the light end that holds a pinned tip exactly
+const PIN_BASE_EASE := 0.12 # the heavier joints behind it lean this much of the way each frame
 ## The tip homing in on tip_target with its last joints (1/s, 0 = off): the
 ## fine finish of a reach, done by the light distal arm.
 var seek_tip := 0.0
@@ -364,22 +367,31 @@ func _rebuild() -> void:
 ## Bring the tip onto a world point by turning the last few joints (cyclic
 ## coordinate descent), each within its limit. amount 1 = all the way now;
 ## less = that fraction of the way this frame, for a tip that homes in.
+## With pin_joints past the light distal end, the heavy joints nearer the base
+## first lean a little of the way each frame (PIN_BASE_EASE), so the whole arm
+## drifts after a hold that moves away and the distal end does the exact part.
 func _pin_tip_to(target: Vector3, amount: float) -> void:
 	var t := skeleton.global_transform.affine_inverse() * target
+	var distal := mini(pin_joints, PIN_DISTAL)
+	for k in range(_n - distal - 1, maxi(_n - pin_joints, 0) - 1, -1):
+		_turn_tip_toward(k, t, amount * PIN_BASE_EASE)
 	for _it in (2 if amount >= 1.0 else 1):
-		for k in range(_n - 1, maxi(_n - 7, 0) - 1, -1):
-			var to_tip := _pos[_n] - _pos[k]
-			var to_target := t - _pos[k]
-			if to_tip.length_squared() < 1e-6 or to_target.length_squared() < 1e-6:
-				continue
-			var turn := Quaternion(to_tip.normalized(), to_target.normalized())
-			if amount < 1.0:
-				turn = Quaternion.IDENTITY.slerp(turn, amount)
-			var turned := Basis(turn) * _frames[k]
-			var before := _base if k == 0 else _frames[k - 1] * _rest_local[k]
-			_bend[k] = _swing((before.transposed() * turned.y).normalized()).limit_length(_limit[k])
-			_vel[k] *= 0.5
-			_rebuild()
+		for k in range(_n - 1, maxi(_n - distal, 0) - 1, -1):
+			_turn_tip_toward(k, t, amount)
+
+func _turn_tip_toward(k: int, t: Vector3, amount: float) -> void:
+	var to_tip := _pos[_n] - _pos[k]
+	var to_target := t - _pos[k]
+	if to_tip.length_squared() < 1e-6 or to_target.length_squared() < 1e-6:
+		return
+	var turn := Quaternion(to_tip.normalized(), to_target.normalized())
+	if amount < 1.0:
+		turn = Quaternion.IDENTITY.slerp(turn, amount)
+	var turned := Basis(turn) * _frames[k]
+	var before := _base if k == 0 else _frames[k - 1] * _rest_local[k]
+	_bend[k] = _swing((before.transposed() * turned.y).normalized()).limit_length(_limit[k])
+	_vel[k] *= 0.5
+	_rebuild()
 
 ## Pose the bones from the joints' bends.
 func apply_to_skeleton() -> void:
