@@ -425,7 +425,7 @@ shadow_opacity = 0.8
 shadow_blur = 4.592
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 464.62646, 767.07635, 435.76862)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 466.3796, 76.881805, 459.49545)
 script = ExtResource("60_rain")
 intensity = 0.85
 wind_strength = 9.0
@@ -477,7 +477,7 @@ creature_count = 4
 speed_multiplier = 2.5
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 465, 0, 436)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 467, 0, 460)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -490,10 +490,10 @@ foam_color = Color(0.8520676, 0.8132686, 0.7798851, 1)
 parameters = Array[ExtResource("2_pw5n6")]([SubResource("Resource_adqv5"), SubResource("Resource_luhq0"), SubResource("Resource_83u3u")])
 map_size = 512
 mesh_quality = 0
+depth_darkening = 0.01
 underwater_distortion = 0.001
 underwater_blur = 0.5
 waterline_width = 12.0
-underwater_daylight = 3.67
 light_beam_strength = 0.2
 light_beam_quality = 6
 marine_snow_amount = 8000
