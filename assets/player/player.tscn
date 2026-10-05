@@ -67,7 +67,7 @@ shader_parameter/surface_y = 0.0
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_oxygen"]
 shader = ExtResource("5_oxyshader")
 shader_parameter/intensity = 0.0
-shader_parameter/flash_rate = 0.0
+shader_parameter/flash_phase = 0.0
 shader_parameter/flash_amount = 0.0
 
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_headsplash"]

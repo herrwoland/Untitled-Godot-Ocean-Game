@@ -7,7 +7,7 @@ shader_type canvas_item;
 
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear;
 uniform float intensity : hint_range(0.0, 1.0) = 0.0;
-uniform float flash_rate : hint_range(0.0, 5.0) = 0.0; // red pulses per second
+uniform float flash_phase = 0.0; // red pulses so far (counted up by OxygenController)
 uniform float flash_amount : hint_range(0.0, 1.0) = 0.0; // 0 disables the drowning flash
 
 void fragment() {
@@ -19,18 +19,13 @@ void fragment() {
 	float vignette = smoothstep(0.72, 0.18, length(offset) * (0.8 + intensity * 1.4));
 	col *= mix(1.0, vignette, intensity * 0.5);
 
-	// Drowning warning: a red vignette pulsing faster as air runs out.
+	// Drowning warning: a red vignette pulsing faster as air runs out. The
+	// pulse runs on flash_phase, counted up by the controller: sin(TIME * rate)
+	// would jump about wildly whenever the rate changes, TIME being large.
 	if (flash_amount > 0.0) {
-		float pulse = 0.5 + 0.5 * sin(TIME * 6.2831853 * flash_rate);
-		float ring = smoothstep(0.2, 0.65, length(offset));
-		col = mix(col, vec3(0.55, 0.02, 0.02), ring * pulse * flash_amount * 0.5);
-	}
-
-	// Drowning warning: a red vignette pulsing faster as air runs out.
-	if (flash_amount > 0.0) {
-		float pulse = 0.5 + 0.5 * sin(TIME * 6.2831853 * flash_rate);
-		float ring = smoothstep(0.2, 0.65, length(offset));
-		col = mix(col, vec3(0.55, 0.02, 0.02), ring * pulse * flash_amount);
+		float pulse = 0.5 + 0.5 * sin(flash_phase * 6.2831853);
+		float k = smoothstep(0.2, 0.65, length(offset)) * pulse * flash_amount;
+		col = mix(col, vec3(0.55, 0.02, 0.02), 1.0 - (1.0 - 0.5 * k) * (1.0 - k)); // as strong as before
 	}
 
 	COLOR = vec4(col, 1.0);

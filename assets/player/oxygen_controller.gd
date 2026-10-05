@@ -35,6 +35,7 @@ var _died := false
 var _drown_time := -1.0 # Seconds since drowning began (< 0 = not drowning).
 var _drown_start_pitch := 0.0
 var _drown_start_roll := 0.0
+var _flash_phase := 0.0 # red pulses so far (fractional): the rate may change without the pulse jumping
 
 func _ready() -> void:
 	breath = max_breath
@@ -72,7 +73,8 @@ func _process(delta: float) -> void:
 	# accelerating to 3/s as the last breath approaches.
 	var flash_t := clampf((effect - flash_start_intensity) / (1.0 - flash_start_intensity), 0.0, 1.0)
 	overlay_rect.material.set_shader_parameter(&'flash_amount', flash_t)
-	overlay_rect.material.set_shader_parameter(&'flash_rate', lerpf(1.0, 3.0, flash_t))
+	_flash_phase = fmod(_flash_phase + lerpf(1.0, 3.0, flash_t) * delta, 1.0)
+	overlay_rect.material.set_shader_parameter(&'flash_phase', _flash_phase)
 
 	# Heartbeat fades in past one third spent breath and quickens toward the
 	# end — the sound deliberately forewarns long before the screen reacts.
