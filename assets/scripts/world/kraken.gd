@@ -126,6 +126,7 @@ enum FishPhase { CHASE, REEL, DRAG, SETTLE, FEED } # a giant fish in its waters:
 @export var hold_offset_with_ship := Vector3(20.0, 0.0, 12.0)
 @export var hold_sway := 4.0 # m the arm swings the prey about
 @export var hold_sway_period := 7.0 # s
+@export var hug_spread := 3.0 # m (model units) the hugging arms close round the prey from their own sides, not all on one point
 @export var dive_speed := 3.0 # m/s it sinks with the catch...
 @export var dive_depth := 25.0 # ...until the catch is this deep (m under the waves)...
 @export var dive_time := 10.0 # ...or for this long at most; then it hangs there while the air runs out
@@ -195,6 +196,7 @@ enum FishPhase { CHASE, REEL, DRAG, SETTLE, FEED } # a giant fish in its waters:
 @export var fish_strike_down := -70.0 # degrees: while striking, its arms may point this far down at a fish below it
 @export var fish_hook_time := 4.0 # s at most a fish swims on hooked by one arm before it counts as held
 @export var fish_hook_drag := 1.2 # 1/s how fast a hooked fish is slowed by the arm it drags
+@export var fish_coil_gap := 0.07 # fish lengths between two arms' coils on the body (they never coil in one place)
 @export var fish_drape_tilt := 32.0 # degrees the dead fish's snout tips down from the bite: with its sag it drapes in an arch
 @export var munch_period := 3.0 # s, one slow press of the beak into the fish and back
 @export var munch_depth := 0.8 # m it presses in (grows with the model's scale)
@@ -862,6 +864,7 @@ func _update_lashes(delta: float) -> bool:
 			arm.reach_front = 1.0
 			arm.seek_tip = 0.0
 			arm.fish_station = clampf(touch.y, 0.15, 0.85)
+			_spread_fish_stations(arm)
 			gripped_now = true
 			_play(_grab_sound)
 		elif arm.timer > fish_lash_time * 2.5:
@@ -869,6 +872,27 @@ func _update_lashes(delta: float) -> bool:
 	_lash_wait = maxf(_lash_wait - delta, 0.0)
 	_start_lash(lashing)
 	return gripped_now
+
+## Two coils cannot sit in one place on the body: an arm that takes hold too
+## near another's coil coils on beside it instead (fish_coil_gap apart),
+## toward whichever side has room.
+func _spread_fish_stations(new_arm: KrakenArm) -> void:
+	for _pass in 4:
+		var moved := false
+		for arm in _arms:
+			if arm == new_arm or arm.role != KrakenArm.Role.FISH or not arm.gripped:
+				continue
+			var gap := new_arm.fish_station - arm.fish_station
+			if absf(gap) >= fish_coil_gap:
+				continue
+			var way := signf(gap) if gap != 0.0 else (1.0 if arm.fish_station < 0.5 else -1.0)
+			var to := arm.fish_station + way * fish_coil_gap
+			if to < 0.15 or to > 0.85:
+				to = arm.fish_station - way * fish_coil_gap # no room that way: the other side
+			new_arm.fish_station = clampf(to, 0.15, 0.85)
+			moved = true
+		if not moved:
+			return
 
 ## How far p is from the fish's real skin (x) and where along it (y, 0 snout ..
 ## 1 tail): along its bent spine, minus its thickness.
@@ -1804,8 +1828,14 @@ func _set_arm_goals(_delta: float) -> void:
 			KrakenArm.Role.REACH:
 				arm.goals_reach(arm.tip_target, out)
 			KrakenArm.Role.HOLD:
-				# the carrier swings the prey to the hold point; the others hug the prey
-				var aim := _hold_point if arm == _carrier else _prey_point()
+				# the carrier swings the prey to the hold point; the others hug the
+				# prey, each from its own side (all aimed at one point, they lay
+				# along each other the whole way)
+				var aim := _hold_point
+				if arm != _carrier:
+					var to_prey := (_prey_point() - crown).normalized()
+					var side := out - to_prey * out.dot(to_prey)
+					aim = _prey_point() + (side.normalized() if side.length() > 0.01 else out) * hug_spread * _scale
 				arm.goals_reach(_clamp_reach(arm, aim), out)
 			KrakenArm.Role.BOAT:
 				# its route onto her, carried with her; until the tip has hold, the
