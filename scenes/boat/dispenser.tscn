@@ -243,10 +243,14 @@ texture_filter = 0
 [sub_resource type="BoxShape3D" id="BoxShape3D_5s6u7"]
 size = Vector3(0.9458008, 0.11633301, 1.1905518)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_klyyb"]
+size = Vector3(0.084106445, 1.1922607, 1.1035156)
+
 [node name="dispenser" type="Node3D" unique_id=1913581995]
 script = ExtResource("1_v0lfl")
 
 [node name="dispenser_body" parent="." unique_id=2105385063 instance=ExtResource("1_uawhp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.0018284321)
 
 [node name="handle_hinge" type="Node3D" parent="." unique_id=855388416]
 transform = Transform3D(0.745, 0, 0, 0, 0.745, 0, 0, 0, 0.745, 0.5446349, -0.122972, 0.6849203)
@@ -316,5 +320,20 @@ shape = SubResource("BoxShape3D_5s6u7")
 
 [node name="fuel_spawn_point" type="Marker3D" parent="platform" unique_id=1274108655]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.16670221, 0)
+
+[node name="body_coll" type="StaticBody3D" parent="." unique_id=1119572005]
+collision_layer = 2
+
+[node name="wall_1" type="CollisionShape3D" parent="body_coll" unique_id=668051793]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0017424822, -0.595007, 0)
+shape = SubResource("BoxShape3D_klyyb")
+
+[node name="wall_2" type="CollisionShape3D" parent="body_coll" unique_id=1531438520]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 0.5301616, -0.595007, 0.64725566)
+shape = SubResource("BoxShape3D_klyyb")
+
+[node name="wall_3" type="CollisionShape3D" parent="body_coll" unique_id=42188841]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 0.5301616, -0.595007, -0.6509125)
+shape = SubResource("BoxShape3D_klyyb")
 
 [editable path="handle_hinge/dispenser_handle"]

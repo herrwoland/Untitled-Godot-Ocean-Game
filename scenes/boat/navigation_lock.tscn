@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://c2o2h8yym2eph"]
+
+[ext_resource type="Script" uid="uid://bv6xfyp34pabi" path="res://scenes/boat/navigation_lock.gd" id="1_g4jx6"]
+[ext_resource type="PackedScene" uid="uid://vsd5ua4dkfw4" path="res://assets/models/boat/speed_control.glb" id="1_osmcr"]
+
+[node name="navigation_lock" type="Node3D" unique_id=1226678181]
+script = ExtResource("1_g4jx6")
+
+[node name="speed_control" parent="." unique_id=787396856 instance=ExtResource("1_osmcr")]
+
+[editable path="speed_control"]
