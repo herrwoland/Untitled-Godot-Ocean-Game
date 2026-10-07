@@ -8,4 +8,7 @@ script = ExtResource("1_g4jx6")
 
 [node name="speed_control" parent="." unique_id=787396856 instance=ExtResource("1_osmcr")]
 
+[node name="navigation_handle" parent="speed_control/navigation_shaft" parent_id_path=PackedInt32Array(787396856, 1039177206) index="11" unique_id=457001783]
+transform = Transform3D(2.5199013, -1.4548657, 0, 1.4548657, 2.5199013, 0, 0, 0, 2.9097314, 0, 9.845195, 0.035521235)
+
 [editable path="speed_control"]
