@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://x5fa33wqe1ng"]
+
+[ext_resource type="PackedScene" uid="uid://b0c6nu7e3qjff" path="res://assets/models/boat/compass.glb" id="1_2m26c"]
+[ext_resource type="Script" uid="uid://jq7vywefj25v" path="res://scenes/boat/compass.gd" id="1_ci5km"]
+[ext_resource type="Texture2D" uid="uid://d1x3lsjc8boy4" path="res://assets/models/boat/glass_texture.png" id="2_ci5km"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_n7agb"]
+resource_name = "glass_window"
+transparency = 1
+albedo_color = Color(1, 1, 1, 0.45882353)
+albedo_texture = ExtResource("2_ci5km")
+roughness_texture = ExtResource("2_ci5km")
+metadata/_gltf_primary_texture_coord = 0
+
+[node name="compass" type="Node3D" unique_id=553590637]
+script = ExtResource("1_ci5km")
+
+[node name="compass" parent="." unique_id=1602209663 instance=ExtResource("1_2m26c")]
+
+[node name="compass_glass" parent="compass/compass_body" parent_id_path=PackedInt32Array(1602209663, 467486027) index="0" unique_id=402191361]
+surface_material_override/0 = SubResource("StandardMaterial3D_n7agb")
+
+[editable path="compass"]

@@ -9,6 +9,8 @@
 [ext_resource type="PackedScene" uid="uid://vsd5ua4dkfw4" path="res://assets/models/boat/speed_control.glb" id="3_t2dst"]
 [ext_resource type="PackedScene" uid="uid://c22b4ofl7qojp" path="res://assets/models/boat/steering.glb" id="3_vqk42"]
 [ext_resource type="Script" uid="uid://clj7h2sfw06rd" path="res://assets/scripts/world/dry_volume.gd" id="4_51f5f"]
+[ext_resource type="PackedScene" uid="uid://dac83v6edh3n4" path="res://scenes/boat/fuel_meter.tscn" id="4_tu8nm"]
+[ext_resource type="PackedScene" uid="uid://x5fa33wqe1ng" path="res://scenes/boat/compass.tscn" id="5_2q3ma"]
 [ext_resource type="Script" uid="uid://b3s502b801kf" path="res://assets/scripts/helm_interactable.gd" id="5_helm"]
 [ext_resource type="Texture2D" uid="uid://cnn5ybcxkmryj" path="res://scenes/boat/smoke.png" id="5_ka04m"]
 [ext_resource type="Script" uid="uid://bk8nsucoxvpeh" path="res://assets/scripts/interactables/ladder.gd" id="6_ladder"]
@@ -99,6 +101,9 @@ roughness = 0.5
 emission_enabled = true
 emission = Color(0.89, 0.8306667, 0, 1)
 emission_energy_multiplier = 0.95
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_klyyb"]
+size = Vector3(1.6560059, 4.9916687, 0.20031738)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vqht1"]
 
@@ -252,9 +257,15 @@ debug_color = Color(0.761639, 0.449833, 0.105389, 1)
 
 [node name="lights" type="Node3D" parent="." unique_id=635125895]
 
+[node name="cabin_controls_light_1" type="SpotLight3D" parent="lights" unique_id=1969581804]
+transform = Transform3D(-1.7944059e-08, -0.9118551, 0.41051224, -3.9858453e-08, 0.41051224, 0.9118551, -1, -1.7763568e-15, -4.3711392e-08, -0.38653946, 7.717661, 0)
+light_color = Color(1, 0.909037, 0.7275678, 1)
+light_energy = 5.079
+spot_angle = 38.552494
+
 [node name="cabin_light_1" type="OmniLight3D" parent="lights" unique_id=755157783]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.437637, 7.4419847, 1.640837)
-light_color = Color(1, 0.8286217, 0.43948364, 1)
+light_color = Color(1, 0.827451, 0.4392157, 1)
 light_volumetric_fog_energy = 16.0
 light_specular = 0.0
 omni_range = 6.582
@@ -307,12 +318,18 @@ transform = Transform3D(1, 5.364418e-07, 7.1054274e-15, -1.1920929e-07, 0.999999
 transform = Transform3D(1, -5.9604645e-08, -5.32907e-15, 5.9604645e-08, 1, 3.5527137e-15, 5.3290697e-15, -3.552714e-15, 1, 2.706726, -5.120079, 0.005600974)
 
 [node name="control_steering" parent="lights/steering_hinge/steering" index="0" unique_id=464494156]
-transform = Transform3D(-2.043148e-07, 1.312402e-09, -1.154, 0.6343089, 1.1347476, -8.747832e-08, 1.1347475, -0.63430893, -1.5888205e-07, -2.4070003, 3.2573178, 1.0430146)
+transform = Transform3D(-2.043148e-07, 1.312402e-09, -1.154, 0.6343089, 1.1347476, -8.747832e-08, 1.1347475, -0.63430893, -1.5888205e-07, -2.22453, 3.257318, 1.0430146)
 
 [node name="controls" type="Node3D" parent="." unique_id=1887152825]
 
 [node name="speed_control" parent="controls" unique_id=552548909 instance=ExtResource("3_t2dst")]
 transform = Transform3D(0.3545434, 0, 0.32260963, 0, 0.47935167, 0, -0.32260963, 0, 0.3545434, -2.4512966, 3.95407, -1.4361942)
+
+[node name="fuel_meter" parent="controls" unique_id=905052645 instance=ExtResource("4_tu8nm")]
+transform = Transform3D(0.6440418, 0.39769194, -0.94242984, 4.1640572e-08, 1.1136723, 0.46995378, 1.0229042, -0.25039515, 0.5933734, -2.888975, 5.128104, 0.9756912)
+
+[node name="compass" parent="controls" unique_id=553590637 instance=ExtResource("5_2q3ma")]
+transform = Transform3D(-1.2489495, 0.50109565, 0.11238605, 0.50284004, 1.2532973, 5.6824245e-08, -0.104304224, 0.041848302, -1.345723, -2.7557228, 5.1418047, -0.95483524)
 
 [node name="boat_navigation" type="Node3D" parent="." unique_id=280909978]
 transform = Transform3D(-3.322482e-08, 0.8786351, 0.76009506, 3.840634e-08, 0.7600953, -0.8786347, -1.1617846, 1.276975e-15, -5.078323e-08, -2.8771172, 7.4625273, 0.12755114)
@@ -326,45 +343,49 @@ transform = Transform3D(0.9999999, -3.59e-43, 1.0658141e-14, 3.3881318e-21, 1, -
 [node name="boat" parent="." unique_id=331109473 instance=ExtResource("8_2ib73")]
 transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, 1.508625, -3.5490909, 0)
 
-[node name="StaticBody3D" parent="boat/body" parent_id_path=PackedInt32Array(331109473, 758393477) index="0" unique_id=299113931]
+[node name="StaticBody3D" parent="boat/body" parent_id_path=PackedInt32Array(331109473, 2142883402) index="0" unique_id=1155550181]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/cabin" parent_id_path=PackedInt32Array(331109473, 1157293987) index="0" unique_id=1245383280]
+[node name="StaticBody3D" parent="boat/cabin" parent_id_path=PackedInt32Array(331109473, 835571222) index="0" unique_id=1524838118]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 471000825) index="0" unique_id=1312734624]
+[node name="StaticBody3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 1833442338) index="0" unique_id=1631230509]
 collision_layer = 2
 
-[node name="smoke" type="GPUParticles3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 471000825) index="1" unique_id=2001236800]
+[node name="smoke" type="GPUParticles3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 1833442338) index="1" unique_id=2001236800]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.18878, 0)
 amount = 20
 lifetime = 2.5999999999999996
 process_material = SubResource("ParticleProcessMaterial_60ctv")
 draw_pass_1 = SubResource("PlaneMesh_4mseo")
 
-[node name="StaticBody3D" parent="boat/floor_top" parent_id_path=PackedInt32Array(331109473, 12153058) index="0" unique_id=1570883531]
+[node name="StaticBody3D" parent="boat/floor_top" parent_id_path=PackedInt32Array(331109473, 1420730007) index="0" unique_id=2099080530]
 collision_layer = 2
 
-[node name="lamp_shielded_001" parent="boat" index="22" unique_id=1030643524]
+[node name="lamp_shielded_001" parent="boat" index="21" unique_id=743827724]
 surface_material_override/0 = SubResource("StandardMaterial3D_vlsv3")
 
-[node name="lamp_shielded_002" parent="boat" index="23" unique_id=179529145]
+[node name="lamp_shielded_002" parent="boat" index="22" unique_id=1710604273]
 surface_material_override/0 = SubResource("StandardMaterial3D_kll55")
 
-[node name="lamp_shielded_003" parent="boat" index="24" unique_id=1625021901]
+[node name="lamp_shielded_003" parent="boat" index="23" unique_id=299171053]
 surface_material_override/0 = SubResource("StandardMaterial3D_duxm1")
 
-[node name="StaticBody3D" parent="boat/stairs_control/stair" parent_id_path=PackedInt32Array(331109473, 904559163) index="0" unique_id=300151164]
+[node name="StaticBody3D" type="StaticBody3D" parent="boat/stairs_control/stair" parent_id_path=PackedInt32Array(331109473, 444348885) index="0" unique_id=1719776150]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/top_door" parent_id_path=PackedInt32Array(331109473, 2127691289) index="0" unique_id=665982676]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="boat/stairs_control/stair/StaticBody3D" unique_id=742157758]
+transform = Transform3D(1, -2.4150717e-07, 7.3631156e-08, 2.4150725e-07, 0.8299049, -0.5579044, 7.36312e-08, 0.55790436, 0.82990515, 0.0025644302, -2.12534, -1.1581947)
+shape = SubResource("BoxShape3D_klyyb")
+
+[node name="StaticBody3D" parent="boat/top_door" parent_id_path=PackedInt32Array(331109473, 434315896) index="0" unique_id=767969555]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/top_door_001" parent_id_path=PackedInt32Array(331109473, 587466035) index="0" unique_id=475208887]
+[node name="StaticBody3D" parent="boat/top_door_001" parent_id_path=PackedInt32Array(331109473, 1947671881) index="0" unique_id=322303558]
 collision_layer = 2
 
-[node name="control_panel_001" parent="boat" index="67" unique_id=1507211183]
-transform = Transform3D(0.28504363, 0, -0.5227591, 0, 0.6308226, 0, 0.52567995, 0, 0.28345984, -1.2382531, 4.743573, 1.6434007)
+[node name="control_panel" parent="boat" index="35" unique_id=1675098338]
+transform = Transform3D(0.6308224, 0, -3.5527137e-15, 0, 0.6308224, 0, 0, 0, 0.5597129, -0.014570771, 5.623035, 2.9313788)
 
 [node name="boat_wave_blocker" parent="boat" unique_id=748553163 instance=ExtResource("3_f2dya")]
 visible = false
