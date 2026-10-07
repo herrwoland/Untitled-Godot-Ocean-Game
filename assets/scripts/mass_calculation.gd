@@ -91,7 +91,7 @@ func apply_helm() -> void:
 ## it, so the helm is heavy when the boat is barely moving, firm at cruise, and reversed when
 ## making sternway. The propeller's own wash keeps a little steering alive at a standstill.
 func rudder_bite() -> float:
-	var forward := linear_velocity.dot(global_transform.basis.x)
+	var forward := -linear_velocity.dot(global_transform.basis.x) # her bow is -X (engine thrust, buoyant_cell.gd)
 	var wash := maxf(helm_throttle, 0.0) * rudder_prop_wash * rudder_full_speed
 	return clampf((forward + wash) / maxf(rudder_full_speed, 0.01), -1.0, 1.0)
 
