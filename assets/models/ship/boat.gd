@@ -57,14 +57,14 @@ func _make_cough_puff() -> void:
 		_cough_puff.process_material = pm
 	smoke.get_parent().add_child(_cough_puff)
 
-## The engine only runs while someone is at the helm; throttle drives its
-## volume and pitch so pushing the lever is audible, not just visible.
+## The engine only runs while someone is at the helm or the navigation lock holds her course;
+## throttle drives its volume and pitch so pushing the lever is audible, not just visible.
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
 	_cough = move_toward(_cough, 0.0, delta / 0.35)
 	if _engine_loop == null or _engine_loop.stream == null:
 		return
-	if piloted:
+	if piloted or cruise_throttle != 0.0:
 		if not _engine_loop.playing:
 			_engine_loop.play()
 		var effort := absf(helm_throttle) * engine_fuel_power

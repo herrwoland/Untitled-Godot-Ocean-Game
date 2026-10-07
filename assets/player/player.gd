@@ -184,12 +184,14 @@ func _plunge(crossing_speed: float) -> void:
 	plunge_bubbles.burst(lerpf(0.12, plunge_burst_seconds, hardness),
 			lerpf(plunge_idle_bubbles, 1.0, hardness))
 
-func _update_interact_hover() -> void:
+## At the helm (from_helm) only things marked usable_from_helm can be reached.
+func _update_interact_hover(from_helm := false) -> void:
 	var target: Object = null
 	if interact_ray.is_colliding():
 		var collider_hit := interact_ray.get_collider()
 		if collider_hit and collider_hit.has_method(&'interact'):
-			target = collider_hit
+			if not from_helm or collider_hit.get(&'usable_from_helm') == true:
+				target = collider_hit
 
 	if target == hovered_interactable:
 		return
@@ -241,6 +243,8 @@ func _physics_process(delta: float) -> void:
 	if state == State.WALK or state == State.SWIM:
 		_update_interact_hover()
 		_try_grab_ladder()
+	elif state == State.PILOT:
+		_update_interact_hover(true)
 	match state:
 		State.WALK:
 			_process_walk(delta)
@@ -595,7 +599,11 @@ func _play_splash(surface_y: float) -> void:
 
 func _try_interact() -> void:
 	if state == State.PILOT:
-		return # piloting is only exited via the jump (space) key
+		# Piloting is only exited via the jump (space) key; the only thing in reach is a
+		# control beside the wheel (see _update_interact_hover).
+		if hovered_interactable and hovered_interactable.get(&'usable_from_helm') == true:
+			hovered_interactable.interact(self)
+		return
 	if Time.get_ticks_msec() < interact_cooldown_until_msec:
 		return # eg. the press that just closed an inspection
 	if carry_controller.is_carrying():

@@ -27,6 +27,9 @@ var helm_rudder: float = 0.0
 ## 0..1: how much of the engine's power there is to give, set by the furnace from its fuel.
 ## Empty, the throttle does nothing; she can still be steered while she drifts.
 var engine_fuel_power: float = 1.0
+## Set by the navigation lock: the throttle she holds, rudder centred, with nobody at the helm.
+## 0 = no lock. The helm overrides it while someone is steering.
+var cruise_throttle: float = 0.0
 
 func _ready() -> void:
 	var prospective_mass = 0 # Error if 0
@@ -53,14 +56,27 @@ func _physics_process(delta: float) -> void:
 	apply_drag();
 	if piloted:
 		apply_helm();
+	elif cruise_throttle != 0.0:
+		helm_throttle = cruise_throttle
+		helm_rudder = 0.0
+		apply_helm()
 
 func set_piloted(active: bool) -> void:
 	piloted = active
 	if not active:
-		helm_throttle = 0.0
-		helm_rudder = 0.0
-		for cell in engine_cells:
-			cell.throttle = 0.0 # engines idle when nobody is at the helm
+		_idle_engines()
+
+func set_cruise(throttle: float) -> void:
+	cruise_throttle = throttle
+	if throttle == 0.0 and not piloted:
+		_idle_engines()
+
+## Engines idle when nobody is at the helm and she isn't locked on a course.
+func _idle_engines() -> void:
+	helm_throttle = 0.0
+	helm_rudder = 0.0
+	for cell in engine_cells:
+		cell.throttle = 0.0
 
 func set_helm_input(throttle: float, rudder: float) -> void:
 	helm_throttle = throttle

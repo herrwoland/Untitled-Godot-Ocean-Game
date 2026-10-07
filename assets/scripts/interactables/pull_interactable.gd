@@ -7,6 +7,8 @@ signal pulled(player: Node)
 
 ## Visual to outline when looked at; every mesh under it glows. Defaults to this area's parent.
 @export var highlight_mesh: Node3D
+## Can be reached from the helm too (eg. a lever beside the wheel), not only on foot.
+@export var usable_from_helm: bool = false
 
 func _ready() -> void:
 	if highlight_mesh == null:

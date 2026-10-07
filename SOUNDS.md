@@ -37,6 +37,13 @@ and drag the file into its **Stream**.
 - [ ] **CloseSound**: handle pulled back, shutters closing. *One-shot, 3D.* Plays at the
   start of "close" (0.5 s).
 
+## Navigation lock (`scenes/boat/navigation_lock.tscn`)
+
+- [ ] **LockSound**: the heavy brass lever thrown over and clicking into its notch. *One-shot,
+  3D.* Plays as the lock takes the ship's course (0.45 s throw).
+- [ ] **UnlockSound**: the lever knocked back out of the notch. *One-shot, 3D.* Plays when it is
+  pulled back, when someone takes the wheel, or when the ship stalls and it lets go by itself.
+
 ## The player (`assets/player/player.tscn`)
 
 - [ ] **SplashPlayer**: body hitting the water (jumping or falling in). *One-shot.*
