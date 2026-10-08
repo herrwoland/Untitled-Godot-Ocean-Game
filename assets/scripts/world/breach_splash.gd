@@ -252,6 +252,7 @@ func _make_emitter(count: int, burst: bool) -> GPUParticles3D:
 	mat.albedo_texture = SPRAY_TEXTURE
 	mat.albedo_color = spray_color
 	mat.disable_receive_shadows = true
+	mat.render_priority = 1 # drawn after the water (priority 0), never hidden behind it
 	var quad := QuadMesh.new()
 	quad.size = Vector2(6.0, 6.0) if burst else Vector2(3.0, 3.0)
 	quad.material = mat
