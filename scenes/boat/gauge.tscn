@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://tl3moomarl2x"]
+
+[ext_resource type="PackedScene" uid="uid://bfvs6iyy2fbm7" path="res://assets/models/boat/gauge_furnace.glb" id="1_8x2ka"]
+[ext_resource type="Script" uid="uid://c2sr0g1d5ixiu" path="res://scenes/boat/gauge.gd" id="1_ua8vh"]
+
+[node name="gauge" type="Node3D" unique_id=1743726844]
+script = ExtResource("1_ua8vh")
+
+[node name="gauge_furnace2" parent="." unique_id=222010643 instance=ExtResource("1_8x2ka")]
+
+[node name="gauge_hand" parent="gauge_furnace2" index="1" unique_id=2097508725]
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 0, 0, 0)
+
+[editable path="gauge_furnace2"]

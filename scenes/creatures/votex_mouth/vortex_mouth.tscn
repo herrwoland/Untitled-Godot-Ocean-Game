@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://8ua77g0r4jpl"]
+
+[ext_resource type="PackedScene" uid="uid://bvclspwu0sse" path="res://assets/models/vortex_mouth/vortex_mouth.fbx" id="1_laype"]
+
+[node name="vortex_mouth" type="Node3D" unique_id=2108797480]
+
+[node name="vortex_mouth" parent="." unique_id=827155423 instance=ExtResource("1_laype")]
+
+[node name="Skeleton3D" parent="vortex_mouth/Armature" parent_id_path=PackedInt32Array(827155423, 2126758393) index="0" unique_id=1248782205]
+bones/0/position = Vector3(0, 0, -0.009230571)
+bones/1/position = Vector3(1.7511416e-11, 0.017134074, 0.008048866)
+bones/1/rotation = Quaternion(-0.38970697, -0.013529459, -0.0057258913, 0.9208217)
+bones/3/position = Vector3(-1.4767637e-11, 0.016891709, -0.0076425876)
+bones/3/rotation = Quaternion(0.3854104, -0.011431689, 0.0047751945, 0.9226621)
+bones/5/position = Vector3(0.008780762, 0.007858499, 4.0323328e-05)
+bones/5/rotation = Quaternion(-0.00053772895, -0.014688416, 0.113667324, 0.9934102)
+bones/7/position = Vector3(-0.008630194, 0.00778108, 4.032334e-05)
+bones/7/rotation = Quaternion(-0.0021429362, 0.013376833, -0.10442856, 0.99444014)
+bones/9/position = Vector3(0, 0, -0.009890756)
+
+[editable path="vortex_mouth"]

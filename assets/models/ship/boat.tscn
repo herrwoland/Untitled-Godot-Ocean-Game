@@ -14,6 +14,7 @@
 [ext_resource type="Script" uid="uid://b3s502b801kf" path="res://assets/scripts/helm_interactable.gd" id="5_helm"]
 [ext_resource type="Texture2D" uid="uid://cnn5ybcxkmryj" path="res://scenes/boat/smoke.png" id="5_ka04m"]
 [ext_resource type="Script" uid="uid://bk8nsucoxvpeh" path="res://assets/scripts/interactables/ladder.gd" id="6_ladder"]
+[ext_resource type="PackedScene" uid="uid://tl3moomarl2x" path="res://scenes/boat/gauge.tscn" id="6_rf6rj"]
 [ext_resource type="PackedScene" uid="uid://ws3qh2fav0ah" path="res://assets/models/boat/front_light.glb" id="7_vlsv3"]
 [ext_resource type="PackedScene" uid="uid://bs7x4dgp16lr5" path="res://assets/models/boat/boat_0.1.glb" id="8_2ib73"]
 [ext_resource type="PackedScene" uid="uid://d327mym4cwyr7" path="res://assets/models/boat/ladder.glb" id="9_4dvsp"]
@@ -332,6 +333,9 @@ transform = Transform3D(0.6440418, 0.39769194, -0.94242984, 4.1640572e-08, 1.113
 
 [node name="compass" parent="controls" unique_id=553590637 instance=ExtResource("5_2q3ma")]
 transform = Transform3D(-1.2489495, 0.50109565, 0.11238605, 0.50284004, 1.2532973, 5.6824245e-08, -0.104304224, 0.041848302, -1.345723, -2.7557228, 5.1418047, -0.95483524)
+
+[node name="gauge" parent="controls" unique_id=1743726844 instance=ExtResource("6_rf6rj")]
+transform = Transform3D(1.8757025e-07, 0, -1.4303691, 0, 1.4303691, 0, 1.4303691, 0, 1.8757025e-07, 6.2099357, 1.9767427, -0.09118989)
 
 [node name="boat_navigation" type="Node3D" parent="." unique_id=280909978]
 transform = Transform3D(-2.7089227e-08, -0.36981598, 0.61972916, -1.6165162e-08, 0.6197296, 0.36981574, -0.7216841, 0, -3.154581e-08, -3.222597, 5.49919, 0.09899557)
