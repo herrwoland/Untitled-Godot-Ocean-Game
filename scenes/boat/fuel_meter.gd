@@ -1,6 +1,6 @@
 extends Node3D
 ## The boat's fuel gauge: the arrow follows the furnace's fuel, shivering a little like the needle
-## of an old barometer, and the low-fuel light and the body's red glow come on when it runs low.
+## of an old barometer, and the low-fuel light and the body's red glow flash when it runs low.
 
 ## Warning comes on at or below this share of the tank, in percent.
 @export_range(0.0, 100.0, 1.0) var warning_value: float = 15.0
@@ -12,6 +12,8 @@ extends Node3D
 @export_range(0.1, 30.0, 0.1) var jitter_speed: float = 9.0
 ## How quickly the needle settles on a new reading (higher = snappier).
 @export_range(0.5, 20.0, 0.5) var settle_speed: float = 4.0
+## Seconds the warning light stays on, then off, while it flashes.
+@export_range(0.05, 3.0, 0.05) var flash_time: float = 0.5
 
 @onready var low_fuel_light: SpotLight3D = $low_fuel_light
 @onready var fuel_meter_body: MeshInstance3D = $fuel_meter/fuel_meter_body
@@ -23,8 +25,12 @@ const arrow_high_pos_x = -0.266
 var _level := 1.0 # fuel as 0..1 of the tank
 var _shown := 1.0 # where the needle rests now, 0..1
 var _t := randf() * 100.0
+var _warning := false # fuel is low: the light flashes
+var _flash := 0.0 # s into the current on+off flash
+var _lit := false # what the light shows right now
 
 func _ready() -> void:
+	fuel_light(false) # dark until a reading says otherwise
 	if furnace == null:
 		var root := owner if owner else get_tree().current_scene
 		furnace = root.find_child("furnace_fire", true, false)
@@ -33,6 +39,7 @@ func _ready() -> void:
 		update_fuel_meter(furnace.get(&'fuel'), furnace.get(&'max_fuel'))
 
 func fuel_light(light_on := false):
+	_lit = light_on
 	low_fuel_light.visible = light_on
 	var mat := fuel_meter_body.get_surface_override_material(0) as StandardMaterial3D
 	if mat:
@@ -40,9 +47,19 @@ func fuel_light(light_on := false):
 
 func update_fuel_meter(fuel: float, max_fuel: float = 100.0):
 	_level = clampf(fuel / maxf(max_fuel, 0.001), 0.0, 1.0)
-	fuel_light(_level * 100.0 <= warning_value)
+	var warning := _level * 100.0 <= warning_value
+	if warning == _warning:
+		return
+	_warning = warning
+	_flash = 0.0 # a warning starts with the light coming on
+	fuel_light(warning)
 
 func _process(delta: float) -> void:
+	if _warning:
+		_flash = fmod(_flash + delta, flash_time * 2.0)
+		var on := _flash < flash_time
+		if on != _lit:
+			fuel_light(on)
 	_t += delta * jitter_speed
 	_shown = lerpf(_shown, _level, 1.0 - exp(-settle_speed * delta))
 	# Two unrelated sines make an uneven tremble rather than a steady buzz.
