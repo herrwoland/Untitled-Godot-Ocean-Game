@@ -2,7 +2,8 @@ extends Node3D
 ## The navigation lock beside the wheel. Pulled (from the helm or on foot), it holds the ship's
 ## course full ahead with nobody steering, and lets the helmsman go. It lets go by itself when
 ## the furnace runs out, once she has stopped making way for stall_time seconds (aground, held
-## fast), and when someone takes the wheel again or the lever is pulled back.
+## fast), when she is leash_distance from the player, and when someone takes the wheel again or
+## the lever is pulled back.
 
 signal locked_changed(locked: bool)
 
@@ -14,6 +15,8 @@ signal locked_changed(locked: bool)
 @export var stall_speed: float = 0.3
 ## Stopped this long (s) while locked, the lock lets go.
 @export var stall_time: float = 5.0
+## Farther than this (m) from the player, the lock lets go: she won't sail off without them.
+@export var leash_distance: float = 300.0
 ## How long the lever takes to throw (s).
 @export var throw_time: float = 0.45
 ## The ship it drives. Left empty, the boat this lock is part of.
@@ -27,6 +30,7 @@ signal locked_changed(locked: bool)
 var locked := false
 var _stalled_for := 0.0
 var _tween: Tween
+var _player: Node3D
 
 func _ready() -> void:
 	if ship == null:
@@ -66,6 +70,11 @@ func _physics_process(delta: float) -> void:
 		return
 	if ship.get(&'engine_fuel_power') == 0.0:
 		lock_navigation(false) # the furnace is out: nothing left to hold her course with
+		return
+	if not is_instance_valid(_player):
+		_player = get_tree().get_first_node_in_group(&'player') as Node3D
+	if _player and _player.global_position.distance_to(ship.global_position) > leash_distance:
+		lock_navigation(false) # the player went overboard or swam off: she stops for them
 		return
 	var forward := -ship.linear_velocity.dot(ship.global_basis.x) # her bow is -X (engine thrust, buoyant_cell.gd)
 	_stalled_for = _stalled_for + delta if forward < stall_speed else 0.0
