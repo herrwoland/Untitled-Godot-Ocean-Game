@@ -322,8 +322,10 @@ transform = Transform3D(-2.043148e-07, 1.312402e-09, -1.154, 0.6343089, 1.134747
 
 [node name="controls" type="Node3D" parent="." unique_id=1887152825]
 
-[node name="navigation_lock" parent="controls" unique_id=1226678181 instance=ExtResource("3_2q3ma")]
+[node name="navigation_lock" parent="controls" unique_id=1226678181 node_paths=PackedStringArray("ship") instance=ExtResource("3_2q3ma")]
 transform = Transform3D(1.2725166, 0, 1.1579009, 0, 1.7204747, 0, -1.1579009, 0, 1.2725166, -2.3068979, 3.966258, -1.5127219)
+leash_distance = 250.0
+ship = NodePath("../..")
 
 [node name="fuel_meter" parent="controls" unique_id=905052645 instance=ExtResource("4_tu8nm")]
 transform = Transform3D(0.6440418, 0.39769194, -0.94242984, 4.1640572e-08, 1.1136723, 0.46995378, 1.0229042, -0.25039515, 0.5933734, -2.888975, 5.128104, 0.9756912)
