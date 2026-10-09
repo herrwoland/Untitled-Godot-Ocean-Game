@@ -430,7 +430,7 @@ shadow_opacity = 0.8
 shadow_blur = 4.592
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1434.3442, 200.49538, 98.94935)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1522.7837, 103.204346, 136.37775)
 script = ExtResource("60_rain")
 intensity = 0.85
 wind_strength = 9.0
@@ -489,7 +489,7 @@ shape = SubResource("CylinderShape3D_5s6u7")
 debug_color = Color(0.8128558, 0.030233042, 0.97549945, 0.41960785)
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1435, 0, 99)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1523, 0, 137)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -506,6 +506,7 @@ depth_darkening = 0.01
 underwater_distortion = 0.001
 underwater_blur = 0.5
 waterline_width = 12.0
+underwater_daylight = 4.0
 light_beam_strength = 0.2
 light_beam_quality = 6
 marine_snow_amount = 8000
