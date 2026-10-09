@@ -239,6 +239,11 @@ const MAX_WATER_SHAPES := 16 # Matches the water shader and effect arrays.
 const MAX_GLOWS := 16 # UnderwaterGlow nodes; matches the water shader and effect arrays.
 const MAX_BEAMS := 8 # Lamps in the underwater_beam group; matches the underwater effect.
 const MAX_DRY_VOLUMES := 4 # DryVolume nodes; matches the water shader arrays.
+const MAX_CONTACT_BODIES := 16 # Things touching the water that get contact foam; matches the water shader.
+const CONTACT_RANGE := 500.0 # (m) around the camera. Further out the foam band is a pixel or two.
+const CONTACT_BAND := 15.0 # (m) above/below the rest surface a mesh must reach to count as touching it.
+const CONTACT_LAND_SIZE := 80.0 # (m) radius. Anything bigger is land, which the shader finds on its own.
+const CONTACT_REFRESH := 0.25 # (s) between looking for new things; the ones found move every frame.
 var _dry_volumes : Array = []
 var _dry_signature := []
 var _dry_maps := Texture2DArray.new()
@@ -255,6 +260,9 @@ var _water_shape_count := 0
 var _wave_blockers: Array[Node] = []
 var _blocker_a := PackedVector4Array()
 var _blocker_b := PackedVector4Array()
+var _contact_nodes := [] # See _contact_body.
+var _contact_bodies := PackedVector4Array()
+var _contact_refresh := 0.0
 
 # ------ Public Interface ----- #
 ## `masked = false` ignores wave blockers (eg. buoyancy keeps rocking the ship
@@ -369,6 +377,7 @@ func _process(delta : float) -> void:
 	_update_glows()
 	_update_beams()
 	_update_dry_volumes()
+	_update_contact_bodies(delta)
 	_update_underwater_effect()
 	_update_wakes(delta)
 	_update_marine_snow()
@@ -658,6 +667,86 @@ func _update_water_shapes(delta : float) -> void:
 	WATER_MAT.set_shader_parameter(&'water_shape_count', count)
 	WATER_MAT.set_shader_parameter(&'water_shape_a', _water_shapes_a)
 	WATER_MAT.set_shader_parameter(&'water_shape_b', _water_shapes_b)
+
+## Uploads bounding spheres of the meshes reaching into the water around the camera: the water
+## shader only searches for nearby objects (contact foam) inside them, which spares the open sea
+## the costliest part of the water. Land (terrain, islands) is found by the shader on its own.
+func _update_contact_bodies(delta: float) -> void:
+	_contact_refresh -= delta
+	if _contact_refresh <= 0.0:
+		_contact_refresh = CONTACT_REFRESH
+		_find_contact_nodes()
+	_contact_bodies.resize(MAX_CONTACT_BODIES)
+	var count := 0
+	for body in _contact_nodes:
+		if is_instance_valid(body[0]) and is_instance_valid(body[1]) and body[0].is_visible_in_tree():
+			_contact_bodies[count] = _world_sphere(body)
+			count += 1
+	WATER_MAT.set_shader_parameter(&'contact_body_count', count)
+	WATER_MAT.set_shader_parameter(&'contact_bodies', _contact_bodies)
+
+func _find_contact_nodes() -> void:
+	_contact_nodes.clear()
+	var cam := _view_camera()
+	if cam == null or not is_inside_tree(): return
+	var eye := cam.global_position
+	var box := AABB(Vector3(eye.x - CONTACT_RANGE, global_position.y - CONTACT_BAND, eye.z - CONTACT_RANGE),
+			Vector3(CONTACT_RANGE * 2.0, CONTACT_BAND * 2.0, CONTACT_RANGE * 2.0))
+	var found := [] # [mesh or its body (skinned), world sphere]
+	for id in RenderingServer.instances_cull_aabb(box, get_world_3d().scenario):
+		var node := instance_from_id(id) as MeshInstance3D
+		if node == null or node == self or node.layers & WATER_LAYER_BIT or not node.is_visible_in_tree(): continue
+		var body := _contact_body(node) if node.skin else []
+		# The renderer's bounds can be far bigger than the mesh (cull margins); check the mesh's own.
+		var reach: AABB = body[1].global_transform * body[3] if node.skin else node.global_transform * node.get_aabb()
+		if reach.position.y > global_position.y + CONTACT_BAND or reach.end.y < global_position.y - CONTACT_BAND: continue
+		if reach.size.length() * 0.5 > CONTACT_LAND_SIZE: continue # Land: the shader finds it like terrain.
+		var c := reach.get_center()
+		found.append([node if body.is_empty() else body, Vector4(c.x, c.y, c.z, reach.size.length() * 0.5)])
+	# Drop whatever sits inside another (props on a deck, hull parts): only the outermost are kept.
+	var kept := []
+	for f in found:
+		var s: Vector4 = f[1]
+		var inside := false
+		for k in range(kept.size() - 1, -1, -1):
+			var o: Vector4 = kept[k][1]
+			var apart := Vector3(s.x, s.y, s.z).distance_to(Vector3(o.x, o.y, o.z))
+			if apart + s.w <= o.w:
+				inside = true
+				break
+			if apart + o.w <= s.w: kept.remove_at(k)
+		if not inside: kept.append(f)
+	# Nearest first, so if there are too many it is the far ones that lose their foam.
+	var near_edge := func(f: Array) -> float: return Vector3(f[1].x, f[1].y, f[1].z).distance_to(eye) - f[1].w
+	kept.sort_custom(func(a, b): return near_edge.call(a) < near_edge.call(b))
+	for i in mini(kept.size(), MAX_CONTACT_BODIES):
+		_contact_nodes.append(kept[i][0] if kept[i][0] is Array else _contact_body(kept[i][0]))
+
+## [mesh, the node it moves with, (centre, radius) and box in that node's space]. A skinned mesh (kraken, fish) is placed by its bones, not by its own node, which
+## may carry any scale the skin undoes: its bounds are its bones, worked out every CONTACT_REFRESH
+## and padded for the flesh around them and the arms moving in between.
+func _contact_body(node: MeshInstance3D) -> Array:
+	var box := node.get_aabb()
+	var anchor: Node3D = node
+	var skeleton := node.get_node_or_null(node.skeleton) as Skeleton3D if node.skin else null
+	if skeleton and skeleton.get_bone_count() > 0:
+		anchor = skeleton
+		box = AABB(skeleton.get_bone_global_pose(0).origin, Vector3.ZERO)
+		for bone in range(1, skeleton.get_bone_count()):
+			box = box.expand(skeleton.get_bone_global_pose(bone).origin)
+		var s := skeleton.global_transform.basis.get_scale()
+		var pad := 1.5 + box.size.length() * maxf(s.x, maxf(s.y, s.z)) * 0.15
+		box = box.grow(pad / maxf(s.x, maxf(s.y, s.z)))
+	var c := box.get_center()
+	return [node, anchor, Vector4(c.x, c.y, c.z, box.size.length() * 0.5), box]
+
+func _world_sphere(body: Array) -> Vector4:
+	var anchor: Node3D = body[1]
+	var local: Vector4 = body[2]
+	var t := anchor.global_transform
+	var centre := t * Vector3(local.x, local.y, local.z)
+	var s := t.basis.get_scale()
+	return Vector4(centre.x, centre.y, centre.z, local.w * maxf(s.x, maxf(s.y, s.z)))
 
 ## Uploads all WaveBlocker nodes to the water shader (they can move each frame,
 ## eg. a calm zone parented to the ship) and caches them for CPU sampling.

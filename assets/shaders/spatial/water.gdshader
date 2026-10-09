@@ -234,6 +234,13 @@ uniform vec3 contact_tint_color : source_color = vec3(0.22, 0.45, 0.42);
 uniform float contact_tint_width : hint_range(0.1, 10.0, 0.01) = 1.6;
 /** Strength of the lighter band. */
 uniform float contact_tint_strength : hint_range(0.0, 1.0, 0.01) = 0.5;
+/** The search for nearby objects is the costliest part of the water, so it only runs near the
+ * things water.gd lists (anything reaching into the water around the camera), where a quick look
+ * finds terrain close by, or where the sea floor behind the water is closer than this (m).
+ * Out on the open sea it is skipped. */
+uniform float contact_shore_depth : hint_range(0.0, 100.0, 0.1) = 20.0;
+uniform int contact_body_count = 0;
+uniform vec4 contact_bodies[16]; // (centre, radius), set every frame by water.gd.
 group_uniforms;
 
 // Light shafts are drawn by underwater_effect.gd, not by this shader. Like the caustics below,
@@ -560,7 +567,12 @@ void fragment() {
 		float ppm = map_size * min(scales.x, scales.y); // Pixels per meter
 		// Mix between bicubic and bilinear filtering depending on the world space pixels per meter.
 		// This is dependent on the tile size as well as displacement/normal map resolution.
-		gradient += mix(texture_bicubic(normals, coords), texture(normals, coords), min(1.0, ppm*0.1)).xyw * vec3(scales.ww, 1.0);
+		// Bicubic is four extra reads, so it is skipped where the mix would throw it away anyway
+		// (every cascade at 1024, the smallest one at 512). Same for the whole cascade, so no seams.
+		float bilinear = min(1.0, ppm*0.1);
+		vec4 normal_sample = texture(normals, coords);
+		if (bilinear < 1.0) normal_sample = mix(texture_bicubic(normals, coords), normal_sample, bilinear);
+		gradient += normal_sample.xyw * vec3(scales.ww, 1.0);
 		foam_alpha += texture(foam_noise_tex, UV * scales.xy * 1.0).r;
 	}
 	gradient *= blocker_mask; // calm zones lose their wave normals and foam too
@@ -591,19 +603,35 @@ void fragment() {
 		vec3 behind = scene_world_at(depth_texture, SCREEN_UV, INV_PROJECTION_MATRIX, INV_VIEW_MATRIX, sky);
 		if (!sky) contact_gap = length(behind - world_frag);
 		float reach = max(contact_foam_width * 2.0, contact_tint_width);
+		// Only search where there can be something to find (see contact_shore_depth).
+		bool search = !sky && world_frag.y - behind.y < contact_shore_depth; // Depth, not the slanted view ray.
+		for (int i = 0; i < contact_body_count && !search; i++) {
+			vec3 d = world_frag - contact_bodies[i].xyz;
+			float r = contact_bodies[i].w + reach;
+			search = dot(d, d) < r * r;
+		}
 		vec2 radius_uv = 0.5 * reach * vec2(PROJECTION_MATRIX[0][0], PROJECTION_MATRIX[1][1]) / max(-VERTEX.z, 0.1);
 		radius_uv = min(radius_uv, vec2(0.08));
 		float spin = hash12(FRAGCOORD.xy) * 6.2832;
-		for (int i = 0; i < contact_foam_samples; i++) {
-			float k = (float(i) + 0.5) / float(contact_foam_samples);
-			float angle = float(i) * 2.39996 + spin; // Golden angle spiral.
-			// Linear radius packs samples near the centre, where the foam edge needs precision.
-			vec2 uv = SCREEN_UV + vec2(cos(angle), sin(angle)) * k * radius_uv;
-			vec3 q = scene_world_at(depth_texture, uv, INV_PROJECTION_MATRIX, INV_VIEW_MATRIX, sky);
-			if (sky) continue;
-			vec3 rel = q - world_frag;
-			rel.y *= rel.y > 0.0 ? 0.5 : 1.0; // Above-water parts count for less: hulls flare, waves bob.
-			contact_gap = min(contact_gap, length(rel));
+		// Terrain is not listed: four reads at the edge of the search catch a cliff or a headland,
+		// which is all a coastline can be at this size. Small things are listed, so never missed.
+		for (int i = 0; i < 4 && !search; i++) {
+			float angle = float(i) * 1.5708 + spin;
+			vec3 q = scene_world_at(depth_texture, SCREEN_UV + vec2(cos(angle), sin(angle)) * radius_uv, INV_PROJECTION_MATRIX, INV_VIEW_MATRIX, sky);
+			search = !sky && distance(q, world_frag) < reach * 2.0;
+		}
+		if (search) {
+			for (int i = 0; i < contact_foam_samples; i++) {
+				float k = (float(i) + 0.5) / float(contact_foam_samples);
+				float angle = float(i) * 2.39996 + spin; // Golden angle spiral.
+				// Linear radius packs samples near the centre, where the foam edge needs precision.
+				vec2 uv = SCREEN_UV + vec2(cos(angle), sin(angle)) * k * radius_uv;
+				vec3 q = scene_world_at(depth_texture, uv, INV_PROJECTION_MATRIX, INV_VIEW_MATRIX, sky);
+				if (sky) continue;
+				vec3 rel = q - world_frag;
+				rel.y *= rel.y > 0.0 ? 0.5 : 1.0; // Above-water parts count for less: hulls flare, waves bob.
+				contact_gap = min(contact_gap, length(rel));
+			}
 		}
 	}
 	vec2 contact = contact_foam_eval(contact_gap, world_frag.xz, TIME);
