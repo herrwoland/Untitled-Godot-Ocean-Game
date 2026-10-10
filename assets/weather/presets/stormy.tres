@@ -115,7 +115,7 @@ sky_material = {
 &"cloud_scale": 0.12,
 &"cloud_size": 14.0,
 &"cloud_thickness": 2.5,
-&"coverage": 0.9,
+&"coverage": 1.0,
 &"density": 9.0,
 &"exposure": 1.0,
 &"ground_color": Color(0.02, 0.03, 0.04, 1),

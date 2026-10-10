@@ -123,7 +123,10 @@ float cloud_cover(vec2 uv, float lod, float cov) {
 	float n = textureLod(noise_texture, uv, lod).r;
 	// The noise sits mostly within 0.3..0.7; spread it so coverage reads as a sky fraction.
 	n = (n - 0.5) * 2.4 + 0.5;
-	return smoothstep(1.0 - cov, 1.0 - cov + 0.45, n);
+	// Above 0.8 coverage the threshold drops fast, so 1 closes the sky completely
+	// (an overcast deck) rather than leaving the noise's lowest dips as clear holes.
+	float lo = 1.0 - cov - max(cov - 0.8, 0.0) * 3.0;
+	return smoothstep(lo, lo + 0.45, n);
 }
 
 // The clouds along `dir` from the cloud map: their light (over black) in rgb, how much of the

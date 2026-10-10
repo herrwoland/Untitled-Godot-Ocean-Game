@@ -69,7 +69,10 @@ float altitude_of(vec3 pos) {
 float cloud_cover(vec2 uv, float lod, float cov) {
 	float n = textureLod(weather_noise, uv, lod).r;
 	n = (n - 0.5) * 2.4 + 0.5; // the noise sits mostly within 0.3..0.7
-	return smoothstep(1.0 - cov, 1.0 - cov + 0.45, n);
+	// Above 0.8 coverage the threshold drops fast, so 1 closes the sky completely
+	// (an overcast deck) rather than leaving the noise's lowest dips as clear holes.
+	float lo = 1.0 - cov - max(cov - 0.8, 0.0) * 3.0;
+	return smoothstep(lo, lo + 0.45, n);
 }
 
 // Fractal 3D noise stretched to 0..1, at `q` (km) with `size` km per tile.
@@ -142,7 +145,10 @@ vec4 march_clouds(vec3 dir, float jitter) {
 
 	vec3 to_light = p.light.xyz;
 	vec3 light_color = p.light_c.rgb * p.light.w;
-	float silver = p.lit.w;
+	// Under a closed sky the sunlight reaching any cloud has come through the deck around it:
+	// dim and scattered, no bright rims. Fades in as coverage closes the sky.
+	float overcast = smoothstep(0.75, 1.0, p.shape.x);
+	float silver = p.lit.w * (1.0 - overcast);
 	float cos_light = dot(dir, to_light);
 	// Phases for the three scattering octaves. Toward the sun the deep, many-times-scattered
 	// glow fades (backlit cores go dark) and the direct light through thin rims brightens.
@@ -153,7 +159,7 @@ vec4 march_clouds(vec3 dir, float jitter) {
 	}
 	phase.yz *= mix(0.1, 1.0, smoothstep(0.96, 0.3, cos_light));
 	phase.x *= 1.0 + 1.5 * silver * pow(max(cos_light, 0.0), 4.0);
-	vec3 sun_light = p.lit.rgb * light_color;
+	vec3 sun_light = p.lit.rgb * light_color * mix(1.0, 0.25, overcast);
 	vec3 sky_light = mix(p.horizon.rgb, p.zenith.rgb, 0.3) * 1.3;
 	vec3 haze_color = p.horizon.rgb + light_color * p.dark.w * 0.5 * pow(max(cos_light, 0.0), 8.0);
 	float light_reach = cloud_thickness * 0.7;
@@ -174,7 +180,9 @@ vec4 march_clouds(vec3 dir, float jitter) {
 			if (t > t_base) break;
 			vec3 pos = vec3(flat_dir.x, dir.y, flat_dir.y) * t;
 			vec2 above = (pos.xz - wind_dir * (cloud_base - pos.y) * 0.03) / cloud_size + drift;
-			float heavy = smoothstep(0.5, 1.0, cloud_cover(above, 3.0, coverage));
+			// Rain falls in patches under the heaviest parts, even when the sky is closed.
+			float heavy = smoothstep(0.55, 0.7, textureLod(weather_noise, above * 0.7 + vec2(0.31, 0.83), 3.0).r)
+					* smoothstep(0.5, 1.0, cloud_cover(above, 3.0, min(coverage, 0.95)));
 			float streaks = textureLod(weather_noise, above * 16.0 + vec2(0.0, boil / cloud_size), float(i)).r;
 			float sigma = rain_shafts * heavy * smoothstep(0.38, 0.62, streaks) * 0.3;
 			sigma *= smoothstep(0.0, 0.6, (cloud_base - pos.y) / cloud_base);
@@ -241,7 +249,8 @@ vec4 march_clouds(vec3 dir, float jitter) {
 			}
 			float sky_reach = exp(-above * density * 0.5);
 			// More sky light higher up; a grey bounce off the sea low down.
-			vec3 ambient = sky_light * (0.45 + 0.6 * h) * mix(0.25, 1.0, sky_reach) + p.dark.rgb * max(0.0, 1.0 - 2.0 * h);
+			vec3 ambient = sky_light * (0.45 + 0.6 * h) * mix(0.25, 1.0, sky_reach) * mix(1.0, 0.6, overcast)
+					+ p.dark.rgb * max(0.0, 1.0 - 2.0 * h);
 			vec3 c = ambient + sun_light * scatter;
 			float haze = 1.0 - exp(-pow(t / haze_distance, 1.3));
 			c = mix(c, haze_color, haze);
