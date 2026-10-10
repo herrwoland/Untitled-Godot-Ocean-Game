@@ -22,6 +22,14 @@ const NEAR_SURFACE := 25.0 # m: a point farther than this (plus its radius) from
 @export var full_speed := 12.0
 ## How much bigger (or smaller) every splash is.
 @export_range(0.0, 3.0, 0.05) var strength := 1.0
+## The size of the water thrown, for the size of the body: a fast breach
+## flings it this many times the part's radius high (a 150 m fish, radius 9:
+## ~110 m), even a slow one half that; the puffs are a few radii across.
+## Turn it up or down to taste (the height follows real gravity, so a taller
+## splash also hangs in the air longer).
+@export_range(0.1, 5.0, 0.05) var splash_scale := 1.0
+const HEIGHT_PER_RADIUS := 12.0
+const PUFF_PER_RADIUS := 2.4 # puff size (m) per m of radius as it leaves the water; it grows ~2x as it falls
 ## Seconds a point must wait before it can splash again (waves bobbing it
 ## through the surface must not set off a splash every beat).
 @export var point_cooldown := 1.2
@@ -53,7 +61,7 @@ const MERGE_TIME := 0.25 # s: one body sliding out (or in) along its length make
 func _ready() -> void:
 	add_to_group(&'water_deformer') # water.gd advances us and takes our shapes
 	for i in BURSTS:
-		var p := _make_emitter(260, true)
+		var p := _make_emitter(160, true) # few, big puffs: overdraw is the cost here
 		_bursts.append(p)
 	_stream = _make_emitter(400, false)
 	_stream.amount_ratio = 0.0
@@ -139,11 +147,13 @@ func _splash(at: Vector3, radius: float, size: float, out: bool) -> void:
 	var p := _bursts[_next_burst]
 	_next_burst = (_next_burst + 1) % _bursts.size()
 	var pm := p.process_material as ParticleProcessMaterial
-	# the higher it is flung, the longer it hangs: sqrt(2 g h) up, 2 v / g in the air
-	var up := lerpf(8.0, 30.0, minf(size, 1.0)) * sqrt(maxf(radius, 1.0) / 8.0)
-	pm.emission_ring_radius = radius * (0.8 if out else 1.1)
-	pm.emission_ring_inner_radius = 0.0 if out else radius * 0.75
-	pm.emission_ring_height = radius * 0.2
+	# as high as the body is thick, many times over: sqrt(2 g h) up, 2 v / g in the air
+	var height := HEIGHT_PER_RADIUS * radius * splash_scale * lerpf(0.5, 1.0, minf(size, 1.0))
+	var up := sqrt(2.0 * 9.8 * height)
+	var wide := radius * sqrt(splash_scale)
+	pm.emission_ring_radius = wide * (1.2 if out else 1.6)
+	pm.emission_ring_inner_radius = 0.0 if out else wide * 1.0
+	pm.emission_ring_height = wide * 0.3
 	pm.direction = Vector3.UP
 	pm.spread = 14.0 if out else 30.0
 	pm.initial_velocity_min = up * 0.45
@@ -151,10 +161,15 @@ func _splash(at: Vector3, radius: float, size: float, out: bool) -> void:
 	# bursting out, the water rises with the body; plunging in, it is thrown out round it
 	pm.radial_velocity_min = 0.0 if out else up * 0.15
 	pm.radial_velocity_max = up * (0.08 if out else 0.35)
-	pm.scale_min = 0.6 * maxf(radius / 8.0, 0.4)
-	pm.scale_max = 1.5 * maxf(radius / 8.0, 0.4)
-	p.lifetime = clampf(2.0 * up / 9.8 + 0.6, 1.0, 6.0)
-	p.amount_ratio = clampf(0.35 + 0.65 * size, 0.0, 1.0)
+	# the quad is 1 m: these scale it to PUFF_PER_RADIUS radii
+	var puff := PUFF_PER_RADIUS * radius * splash_scale
+	pm.scale_min = puff * 0.6
+	pm.scale_max = puff * 1.4
+	p.lifetime = clampf(2.0 * up / 9.8 + 0.8, 1.0, 12.0)
+	p.amount_ratio = clampf(0.45 + 0.55 * size, 0.0, 1.0)
+	# its bounds, so the whole plume is drawn (top_level: local space = round `at`)
+	var reach := wide * 2.0 + up * 0.5 + puff * 3.0
+	p.visibility_aabb = AABB(Vector3(-reach, -puff * 2.0, -reach), Vector3(reach * 2.0, height * 1.2 + puff * 4.0, reach * 2.0))
 	p.global_position = at
 	p.restart()
 	_events.push_back([at.x, at.z, 0.0, minf(size, 1.5), radius])
@@ -168,7 +183,9 @@ func _update_stream(on: bool, mid: Vector3, lo: Vector3, hi: Vector3, pour: floa
 		return
 	_stream.global_position = mid
 	var pm := _stream.process_material as ParticleProcessMaterial
-	pm.emission_box_extents = ((hi - lo) * 0.5).max(Vector3.ONE * 2.0)
+	var half := ((hi - lo) * 0.5).max(Vector3.ONE * 2.0)
+	pm.emission_box_extents = half
+	_stream.visibility_aabb = AABB(-half - Vector3(30, 60, 30), half * 2.0 + Vector3(60, 90, 60))
 	_stream.amount_ratio = clampf(pour / 10.0, 0.0, 1.0) * clampf(strength, 0.0, 1.0)
 
 ## ---- the sea's side (called by water.gd, like a WaterDeformer) ------------------
@@ -193,7 +210,7 @@ func pack_shapes() -> Array:
 			shapes.append([Vector4(e[0], e[1], ring_r, amp), Vector4(r * 0.6 + 0.3 * age, 0.0, 1.0, 0.8 * foam)])
 		var white: float = foam * minf(e[3], 1.0) * exp(-age / foam_time)
 		if white > 0.02:
-			shapes.append([Vector4(e[0], e[1], r * (1.6 + 0.08 * age), 0.0), Vector4(0.0, 0.0, 2.0, white)])
+			shapes.append([Vector4(e[0], e[1], r * sqrt(splash_scale) * (2.4 + 0.1 * age), 0.0), Vector4(0.0, 0.0, 2.0, white)])
 	return shapes
 
 ## ---- particles -----------------------------------------------------------------
@@ -226,8 +243,8 @@ func _make_emitter(count: int, burst: bool) -> GPUParticles3D:
 		pm.spread = 25.0
 		pm.initial_velocity_min = 0.0
 		pm.initial_velocity_max = 2.0
-		pm.scale_min = 0.3
-		pm.scale_max = 0.8
+		pm.scale_min = 4.0
+		pm.scale_max = 10.0
 	var curve := Curve.new()
 	curve.add_point(Vector2(0.0, 0.4))
 	curve.add_point(Vector2(0.3, 1.0))
@@ -246,15 +263,19 @@ func _make_emitter(count: int, burst: bool) -> GPUParticles3D:
 	p.process_material = pm
 	var mat := StandardMaterial3D.new()
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	# lit like the rest of the world: bright by day, dim under the moon
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_VERTEX
+	mat.roughness = 1.0
+	mat.metallic_specular = 0.0
 	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.billboard_keep_scale = true # else each puff's own size (its particle scale) is thrown away
 	mat.vertex_color_use_as_albedo = true
 	mat.albedo_texture = SPRAY_TEXTURE
 	mat.albedo_color = spray_color
 	mat.disable_receive_shadows = true
 	mat.render_priority = 1 # drawn after the water (priority 0), never hidden behind it
 	var quad := QuadMesh.new()
-	quad.size = Vector2(6.0, 6.0) if burst else Vector2(3.0, 3.0)
+	quad.size = Vector2.ONE # sized by the scale of each particle
 	quad.material = mat
 	p.draw_pass_1 = quad
 	add_child(p)
