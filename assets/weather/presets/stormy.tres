@@ -131,6 +131,7 @@ sky_material = {
 &"sunset_color": Color(0, 0, 0, 1),
 &"sunset_spread": 0.0,
 &"sunset_strength": 0.0,
+&"underside_contrast": 0.6,
 &"warp_strength": 0.3,
 &"wind_direction": Vector2(1, 0.35),
 &"wind_speed": 0.015,
@@ -164,7 +165,7 @@ environment = {
 &"volumetric_fog_emission_energy": 1.0,
 &"volumetric_fog_enabled": true,
 &"volumetric_fog_length": 500.0,
-&"volumetric_fog_sky_affect": 0.3
+&"volumetric_fog_sky_affect": 0.95
 }
 sun = {
 &"light_color": Color(1, 1, 1, 1),

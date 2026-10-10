@@ -40,6 +40,7 @@ layout(set = 0, binding = 3, std140) uniform Params {
 	vec4 light_c;  // light colour (linear), frame number
 	vec4 update;   // map width, map height, blend (0..1), cos of the view cone's half angle
 	vec4 view;     // camera forward (xyz), 1 = refresh off-view texels this round
+	vec4 extra;    // underside_contrast, unused x3
 } p;
 
 const int CLOUD_STEPS = 24;
@@ -94,7 +95,12 @@ float cloud_density(vec3 pos, float h, vec2 warp, vec3 drift3, float lod, bool f
 	// Decks hang lumpy undersides (heaps keep flat bases): big soft bulges sagging below the
 	// layer's base and pockets reaching up into it, which is what gives a storm sky its
 	// light and dark mottling seen from below.
-	float sag = (textureLod(weather_noise, uv * 2.3 + drift3.xz * 0.05 / p.layer.w, lod).r - 0.5) * 2.2 * (1.0 - billow);
+	// underside_contrast deepens the bulges and adds a finer layer of lumps on them.
+	float contrast = p.extra.x;
+	vec2 sag_uv = uv * 2.3 + drift3.xz * 0.05 / p.layer.w;
+	float sag = textureLod(weather_noise, sag_uv, lod).r - 0.5;
+	sag += (textureLod(weather_noise, sag_uv * 2.9 + vec2(0.37, 0.11), lod).r - 0.5) * 0.6 * contrast;
+	sag *= 2.2 * (1.0 + 0.8 * contrast) * (1.0 - billow);
 	float hb = h + sag * 0.25;
 	if (hb < 0.0 && h < 0.0) return 0.0;
 	weather *= smoothstep(0.0, 0.07, hb) * smoothstep(1.0, 0.65, hc); // crisp bases, crowns fade
@@ -247,9 +253,12 @@ vec4 march_clouds(vec3 dir, float jitter) {
 			} else {
 				above = (1.0 - h) * cloud_thickness * 0.4;
 			}
-			float sky_reach = exp(-above * density * 0.5);
+			float contrast = p.extra.x;
+			float sky_reach = exp(-above * density * 0.5 * (1.0 + 2.0 * contrast));
 			// More sky light higher up; a grey bounce off the sea low down.
-			vec3 ambient = sky_light * (0.45 + 0.6 * h) * mix(0.25, 1.0, sky_reach) * mix(1.0, 0.6, overcast)
+			// underside_contrast stretches it: low-hanging bulges darker, high pockets lighter.
+			float lift = max(0.45 - 0.35 * contrast + (0.6 + 0.9 * contrast) * h, 0.03);
+			vec3 ambient = sky_light * lift * mix(0.25 * (1.0 - contrast), 1.0 + 0.4 * contrast, sky_reach) * mix(1.0, 0.6, overcast)
 					+ p.dark.rgb * max(0.0, 1.0 - 2.0 * h);
 			vec3 c = ambient + sun_light * scatter;
 			float haze = 1.0 - exp(-pow(t / haze_distance, 1.3));

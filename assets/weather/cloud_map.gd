@@ -16,7 +16,7 @@ const PARAMS : Array[StringName] = [&'coverage', &'density', &'billow', &'cloud_
 		&'warp_strength', &'wind_speed', &'scud_speed_mult', &'rain_shafts',
 		&'wind_direction', &'haze_distance', &'planet_radius',
 		&'cloud_lit_color', &'silver_lining', &'cloud_dark_color', &'sun_glow',
-		&'zenith_color', &'horizon_color', &'detail_size']
+		&'zenith_color', &'horizon_color', &'detail_size', &'underside_contrast']
 
 var sky_material : ShaderMaterial
 var sun : DirectionalLight3D
@@ -59,7 +59,7 @@ func _ready() -> void:
 	s.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
 	s.repeat_w = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
 	_sampler = _rd.sampler_create(s)
-	_params = _rd.uniform_buffer_create(12 * 16)
+	_params = _rd.uniform_buffer_create(13 * 16)
 
 ## Fills the whole map afresh over the next few frames instead of blending into the old clouds
 ## (for sudden changes, like a preset switch).
@@ -129,7 +129,8 @@ func _process(delta : float) -> void:
 		to_light.x, to_light.y, to_light.z, light_on,
 		light_color.r, light_color.g, light_color.b, float(_frame % 1000000),
 		MAP_SIZE.x, MAP_SIZE.y, blend, cone,
-		forward.x, forward.y, forward.z, all_round])
+		forward.x, forward.y, forward.z, all_round,
+		v[&'underside_contrast'], 0.0, 0.0, 0.0])
 	var bytes := data.to_byte_array()
 	_rd.buffer_update(_params, 0, bytes.size(), bytes)
 

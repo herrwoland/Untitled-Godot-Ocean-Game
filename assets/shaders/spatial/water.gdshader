@@ -75,6 +75,10 @@ group_uniforms;
 
 
 uniform float roughness : hint_range(0.0, 1.0) = 0.4;
+/** How little the bare water is lit like paint. Water hardly scatters light off its surface: what
+ * you see is the sky mirrored in it and the deep colour coming up from below, so at 0 it reads
+ * milky and pale. Higher values darken it and leave the reflections; foam is left out, it stays matte. */
+uniform float metallic : hint_range(0.0, 1.0, 0.01) = 0.0;
 uniform float normal_strength : hint_range(0.0, 1.0) = 1.0; // Global normal strength
 /** Brightness of the glints lights leave on the waves: the sun or moon path, lamps on the
  * water. Each glint already follows its light's colour and energy; this scales them all. */
@@ -717,6 +721,7 @@ void fragment() {
 	float blocking = exp(-through_water / max(submerged_shadow_range, 1.0))
 			* clamp(1.0 - dot(screen_albedo, vec3(0.3333)), 0.0, 1.0);
 	ALBEDO *= 1.0 - blocking * submerged_shadow;
+	METALLIC = metallic * (1.0 - clamp(max(foam_factor * foam_alpha * foam_alpha, contact.x), 0.0, 1.0));
 	foam_factor = max(foam_factor, contact.x); // Contact foam is matte and lit like foam too.
 	float wet_roughness = mix(roughness, max(roughness, 0.85), rain_wet); // Rain: matte, hazy surface.
 	fresnel = mix(pow(1.0 - dot(VIEW, NORMAL), 5.0*exp(-2.69*wet_roughness)) / (1.0 + 22.7*pow(wet_roughness, 1.5)), 1.0, REFLECTANCE);

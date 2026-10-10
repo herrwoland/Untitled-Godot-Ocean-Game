@@ -22,6 +22,7 @@ uniform float billow : hint_range(0.0, 1.0) = 0.8; // 0 = flat deck, 1 = heaped 
 uniform float cloud_detail : hint_range(0.0, 1.0) = 0.5; // how deeply big 3D noise carves the clouds
 uniform float cloud_erosion : hint_range(0.0, 1.0) = 0.5; // finer noise fraying the edges into wisps
 uniform float detail_size : hint_range(0.2, 10.0) = 2.0; // km across one tile of the 3D detail noise
+uniform float underside_contrast : hint_range(0.0, 1.0) = 0.0; // decks: deeper bulges, darker lows and lighter pockets underneath
 uniform float cloud_base : hint_range(0.2, 6.0) = 1.2; // km above the sea
 uniform float cloud_thickness : hint_range(0.1, 8.0) = 1.6; // km
 uniform float cloud_size : hint_range(1.0, 60.0) = 10.0; // km across one noise tile (bigger = bigger clouds)
