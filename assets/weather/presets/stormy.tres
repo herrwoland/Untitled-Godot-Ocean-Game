@@ -107,11 +107,11 @@ water_material = {
 }
 sky_material = {
 &"moon_amount": 0.0,
-&"cloud_dark_color": Color(0.035, 0.04, 0.055, 1),
-&"cloud_lit_color": Color(0.5816137, 0.4793473, 0.537673, 1),
+&"cloud_dark_color": Color(0.05, 0.06, 0.08, 1),
+&"cloud_lit_color": Color(0.5, 0.52, 0.56, 1),
 &"cloud_scale": 0.12,
-&"coverage": 0.8290000393775,
-&"density": 8.9230004000925,
+&"coverage": 0.85,
+&"density": 9.0,
 &"exposure": 1.0,
 &"ground_color": Color(0.02, 0.03, 0.04, 1),
 &"horizon_color": Color(0.3, 0.31, 0.32, 1),
@@ -124,7 +124,16 @@ sky_material = {
 &"warp_strength": 0.3,
 &"wind_direction": Vector2(1, 0.35),
 &"wind_speed": 0.015,
-&"zenith_color": Color(0.05, 0.06, 0.08, 1)
+&"zenith_color": Color(0.05, 0.06, 0.08, 1),
+&"billow": 0.3,
+&"cloud_detail": 0.7,
+&"cloud_base": 0.7,
+&"cloud_thickness": 2.5,
+&"cloud_size": 14.0,
+&"rain_shafts": 0.6,
+&"haze_distance": 30.0,
+&"planet_radius": 2000.0,
+&"silver_lining": 1.0
 }
 environment = {
 &"ambient_light_color": Color(0, 0, 0, 1),
@@ -154,7 +163,7 @@ environment = {
 &"volumetric_fog_emission_energy": 1.0,
 &"volumetric_fog_enabled": true,
 &"volumetric_fog_length": 500.0,
-&"volumetric_fog_sky_affect": 1.0
+&"volumetric_fog_sky_affect": 0.3
 }
 sun = {
 &"light_color": Color(1, 1, 1, 1),

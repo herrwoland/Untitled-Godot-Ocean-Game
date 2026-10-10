@@ -108,11 +108,11 @@ water_material = {
 &"window_refraction_strength": 0.6
 }
 sky_material = {
-&"cloud_dark_color": Color(0.01, 0.012, 0.018, 1),
-&"cloud_lit_color": Color(0.09, 0.1, 0.13, 1),
+&"cloud_dark_color": Color(0.03, 0.035, 0.05, 1),
+&"cloud_lit_color": Color(0.8, 0.85, 0.95, 1),
 &"cloud_scale": 0.12,
-&"coverage": 0.7070000335825,
-&"density": 6.7800002983,
+&"coverage": 0.6,
+&"density": 6.0,
 &"exposure": 1.0,
 &"ground_color": Color(0.005, 0.007, 0.01, 1),
 &"horizon_color": Color(0.03, 0.035, 0.05, 1),
@@ -134,7 +134,16 @@ sky_material = {
 &"warp_strength": 0.3,
 &"wind_direction": Vector2(1, 0.35),
 &"wind_speed": 0.005,
-&"zenith_color": Color(0.008, 0.01, 0.02, 1)
+&"zenith_color": Color(0.008, 0.01, 0.02, 1),
+&"billow": 0.8,
+&"cloud_detail": 0.6,
+&"cloud_base": 1.1,
+&"cloud_thickness": 1.6,
+&"cloud_size": 10.0,
+&"rain_shafts": 0.0,
+&"haze_distance": 40.0,
+&"planet_radius": 2000.0,
+&"silver_lining": 1.5
 }
 environment = {
 &"ambient_light_color": Color(0, 0, 0, 1),
