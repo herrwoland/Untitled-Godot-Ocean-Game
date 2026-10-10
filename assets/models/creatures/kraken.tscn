@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://us7wao1gawyg" path="res://assets/scripts/world/kraken.gd" id="1_kraken"]
 [ext_resource type="PackedScene" uid="uid://bau1ph1iuahec" path="res://assets/models/creatures/kraken/kraken_model_0.1.glb" id="2_u0aex"]
 [ext_resource type="Script" uid="uid://csyjpi4nlac4u" path="res://assets/scripts/world/underwater_glow.gd" id="3_u0aex"]
+[ext_resource type="Script" uid="uid://ddm71i1yfjrbw" path="res://assets/scripts/world/water_deformer.gd" id="4_5rysc"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_klyyb"]
 radius = 10.053711
@@ -61,3 +62,11 @@ collision_layer = 2
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=1823203561]
 transform = Transform3D(1, 0, 0, 0, -0.25881904, 0.9659258, 0, -0.9659258, -0.25881904, 0, -2.949501, -18.740318)
 shape = SubResource("CapsuleShape3D_klyyb")
+
+[node name="WaterDeformer" type="Node3D" parent="." unique_id=1109162037]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.7349558, -17.965206)
+script = ExtResource("4_5rysc")
+radius = 25.7
+strength = 1.48
+ring_amplitude = 4.55
+metadata/_custom_type_script = "uid://ddm71i1yfjrbw"

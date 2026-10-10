@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://d3mcmqhx6fjll" path="res://assets/scripts/world/hunter_fish.gd" id="1_hunter"]
 [ext_resource type="PackedScene" uid="uid://cb1ws7c3cvath" path="res://assets/models/fish/fish01/fish_01.glb" id="2_kb4ww"]
+[ext_resource type="Script" uid="uid://ddm71i1yfjrbw" path="res://assets/scripts/world/water_deformer.gd" id="3_xd4r0"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_kb4ww"]
 size = Vector3(20, 150, 20)
@@ -85,13 +86,22 @@ max_distance = 250.0
 bus = &"SFX"
 
 [node name="SightVolume" type="Area3D" parent="." unique_id=452302590]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 24.43753)
 collision_layer = 0
 collision_mask = 0
 monitoring = false
 monitorable = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="SightVolume" unique_id=2133969801]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 17, 8)
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, -0.47348022, 8)
 shape = SubResource("CapsuleShape3D_sight")
+
+[node name="WaterDeformer" type="Node3D" parent="." unique_id=872447723]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.8990993, -30.157246)
+script = ExtResource("3_xd4r0")
+radius = 10.1
+strength = 1.5
+ring_amplitude = 3.5
+metadata/_custom_type_script = "uid://ddm71i1yfjrbw"
 
 [editable path="fish_01"]

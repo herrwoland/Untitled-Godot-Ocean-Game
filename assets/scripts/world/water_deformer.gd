@@ -92,8 +92,121 @@ var _last_y := NAN
 var _velocity_y := 0.0 # Smoothed vertical speed (m/s), tells rising from sinking.
 var _time_sunk := -1.0 # Seconds since the top went under while sinking (< 0 = not active).
 
+@export_group('Editor')
+## Draw, in the editor only, how far the effect reaches on the water: the body at the
+## waterline, the dome, the funnel, how far the ring swells roll, and the depth the dome
+## starts lifting from.
+@export var show_reach := true
+
+var _gizmo : MeshInstance3D
+var _gizmo_labels : Array[Label3D] = []
+var _gizmo_key := []
+
 func _ready() -> void:
 	add_to_group(&'water_deformer')
+	set_process(Engine.is_editor_hint()) # the reach rings are an editor view only
+
+func _process(_delta : float) -> void:
+	if Engine.is_editor_hint():
+		_update_gizmo()
+
+## ---- editor view of the reach ------------------------------------------------------------
+
+const GIZMO_COLORS := {
+	'body': Color(1.0, 1.0, 1.0),
+	'dome': Color(0.3, 0.9, 1.0),
+	'funnel': Color(1.0, 0.55, 0.15),
+	'swell reach': Color(0.35, 0.5, 1.0),
+	'lift starts': Color(0.4, 1.0, 0.4),
+}
+
+## Rebuilds the rings when something they show has changed (cheap otherwise).
+func _update_gizmo() -> void:
+	var water := get_tree().get_first_node_in_group(&'water') as Node3D
+	var sea := water.global_position.y if water else 0.0
+	var key := [show_reach, global_position, sea, radius, spread, drawdown_width, ring_speed,
+			ring_lifetime, influence_depth]
+	if key == _gizmo_key:
+		return
+	_gizmo_key = key
+	if not show_reach:
+		_clear_gizmo()
+		return
+	if _gizmo == null:
+		_gizmo = MeshInstance3D.new()
+		_gizmo.top_level = true # drawn in world meters, like the water shapes
+		_gizmo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.vertex_color_use_as_albedo = true
+		mat.no_depth_test = true # seen through the water and the model
+		mat.render_priority = 10
+		_gizmo.material_override = mat
+		_gizmo.mesh = ImmediateMesh.new()
+		add_child(_gizmo, false, Node.INTERNAL_MODE_BACK) # editor-only: never saved in the scene
+	_gizmo.global_transform = Transform3D.IDENTITY
+	var mesh := _gizmo.mesh as ImmediateMesh
+	mesh.clear_surfaces()
+	mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	var c := Vector3(global_position.x, sea, global_position.z)
+	var rings := {
+		'body': radius,
+		'dome': radius * spread,
+		'funnel': radius * drawdown_width,
+		'swell reach': radius + ring_speed * ring_lifetime,
+	}
+	for name in rings:
+		_circle(mesh, c, rings[name], GIZMO_COLORS[name])
+	# down from the surface to where the dome starts lifting (its top within influence_depth)
+	var lift_y := sea - influence_depth - radius
+	mesh.surface_set_color(GIZMO_COLORS['lift starts'])
+	mesh.surface_add_vertex(c)
+	mesh.surface_add_vertex(Vector3(c.x, lift_y, c.z))
+	_circle(mesh, Vector3(c.x, lift_y, c.z), radius * 0.5, GIZMO_COLORS['lift starts'])
+	mesh.surface_end()
+	# labels on the rings, so it is clear which is which
+	var spots := {}
+	var angle := -0.6 # each label at its own place round its ring, so they do not pile up
+	for name in rings:
+		spots[name] = c + Vector3(cos(angle) * rings[name], 1.0, sin(angle) * rings[name])
+		angle += 1.3
+	spots['lift starts'] = Vector3(c.x, lift_y, c.z) + Vector3(radius * 0.5, 0.0, 0.0)
+	var i := 0
+	for name in spots:
+		if i >= _gizmo_labels.size():
+			var label := Label3D.new()
+			label.top_level = true
+			label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			label.no_depth_test = true
+			label.fixed_size = true
+			label.pixel_size = 0.0015
+			label.font_size = 28
+			label.outline_size = 8
+			label.render_priority = 11
+			add_child(label, false, Node.INTERNAL_MODE_BACK)
+			_gizmo_labels.append(label)
+		var l := _gizmo_labels[i]
+		l.text = '%s  %.0f m' % [name, rings[name] if rings.has(name) else influence_depth + radius]
+		l.modulate = GIZMO_COLORS[name]
+		l.global_position = spots[name]
+		i += 1
+
+func _circle(mesh : ImmediateMesh, centre : Vector3, r : float, color : Color) -> void:
+	mesh.surface_set_color(color)
+	var steps := 64
+	for k in steps:
+		var a0 := TAU * k / steps
+		var a1 := TAU * (k + 1) / steps
+		mesh.surface_add_vertex(centre + Vector3(cos(a0), 0.0, sin(a0)) * r)
+		mesh.surface_add_vertex(centre + Vector3(cos(a1), 0.0, sin(a1)) * r)
+
+func _clear_gizmo() -> void:
+	if _gizmo:
+		_gizmo.queue_free()
+		_gizmo = null
+	for l in _gizmo_labels:
+		l.queue_free()
+	_gizmo_labels.clear()
 
 ## Sends out an extra ring swell from the body. `scale` multiplies ring_amplitude; `delay` is
 ## seconds before it starts (negative = use ring_delay).
