@@ -67,12 +67,24 @@ var _wave_timer := 0.0
 
 func _ready() -> void:
 	add_to_group(&'weather')
+	_add_cloud_map()
 	# In the editor the scene already holds the look (tweaks made after picking a preset
 	# included), so it's only applied when a preset is picked.
 	if Engine.is_editor_hint(): return
 	if preset: apply(preset)
 	var bus := get_node_or_null(^'/root/EventBus')
 	if bus: bus.day_started.connect(_on_day_started)
+
+## The sky's clouds are rendered into a map on the GPU (see cloud_map.gd), in the editor too.
+## An internal child, so it's never saved with the scene.
+func _add_cloud_map() -> void:
+	var env := _environment()
+	var mat := env.sky.sky_material as ShaderMaterial if env and env.sky else null
+	if not mat: return
+	var map := CloudMap.new()
+	map.sky_material = mat
+	map.sun = sun
+	add_child(map, false, Node.INTERNAL_MODE_BACK)
 
 ## The weather set for `day` (1 = first), or null.
 func day_weather(day : int) -> SeaState:
@@ -86,6 +98,8 @@ func _on_day_started(day : int) -> void:
 func apply(state : SeaState) -> void:
 	_to = null
 	_apply(null, state, 1.0, true)
+	for child in get_children(true):
+		if child is CloudMap: child.restart() # Redraw the clouds at once rather than blend over.
 	_mark_scene_unsaved()
 
 ## Blends everything from how it looks now to `state` over `seconds` (0 = at once).

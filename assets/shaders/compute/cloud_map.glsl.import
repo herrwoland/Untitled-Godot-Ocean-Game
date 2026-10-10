@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://dgll2ldh8rx06"
+path="res://.godot/imported/cloud_map.glsl-9e7f7e7763af4dce3e9546ec69e9446e.res"
+
+[deps]
+
+source_file="res://assets/shaders/compute/cloud_map.glsl"
+dest_files=["res://.godot/imported/cloud_map.glsl-9e7f7e7763af4dce3e9546ec69e9446e.res"]
+
+[params]
+

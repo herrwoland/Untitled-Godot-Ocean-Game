@@ -126,14 +126,15 @@ sky_material = {
 &"wind_speed": 0.025,
 &"zenith_color": Color(0.05, 0.06, 0.08, 1),
 &"billow": 0.15,
-&"cloud_detail": 0.6,
+&"cloud_detail": 0.3,
 &"cloud_base": 0.5,
 &"cloud_thickness": 2.0,
 &"cloud_size": 16.0,
 &"rain_shafts": 0.9,
 &"haze_distance": 25.0,
 &"planet_radius": 2000.0,
-&"silver_lining": 0.8
+&"silver_lining": 0.8,
+&"cloud_erosion": 0.4
 }
 environment = {
 &"ambient_light_color": Color(0, 0, 0, 1),

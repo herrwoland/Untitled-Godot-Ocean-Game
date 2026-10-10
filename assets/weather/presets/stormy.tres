@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="SeaState" format=3]
+[gd_resource type="Resource" script_class="SeaState" format=3 uid="uid://wshqohn8epq6"]
 
-[ext_resource type="Script" path="res://assets/weather/sea_state.gd" id="1_btfn0"]
+[ext_resource type="Script" uid="uid://hjyad5ro2bdy" path="res://assets/weather/sea_state.gd" id="1_btfn0"]
 
 [resource]
 script = ExtResource("1_btfn0")
@@ -106,34 +106,35 @@ water_material = {
 &"window_refraction_strength": 0.6
 }
 sky_material = {
-&"moon_amount": 0.0,
+&"billow": 0.3,
+&"cloud_base": 0.7,
 &"cloud_dark_color": Color(0.05, 0.06, 0.08, 1),
+&"cloud_detail": 0.35,
+&"cloud_erosion": 0.45,
 &"cloud_lit_color": Color(0.5, 0.52, 0.56, 1),
 &"cloud_scale": 0.12,
-&"coverage": 0.85,
+&"cloud_size": 14.0,
+&"cloud_thickness": 2.5,
+&"coverage": 0.9,
 &"density": 9.0,
 &"exposure": 1.0,
 &"ground_color": Color(0.02, 0.03, 0.04, 1),
+&"haze_distance": 30.0,
 &"horizon_color": Color(0.3, 0.31, 0.32, 1),
 &"lightning_strength": 0.4310000204725,
+&"moon_amount": 0.0,
+&"planet_radius": 2000.0,
+&"rain_shafts": 0.6,
 &"scud_speed_mult": 2.2,
+&"silver_lining": 1.0,
 &"sun_glow": 0.35,
-&"sunset_color": Color(0.9, 0.45, 0.2, 1),
-&"sunset_spread": 2.5,
-&"sunset_strength": 1.0,
+&"sunset_color": Color(0, 0, 0, 1),
+&"sunset_spread": 0.0,
+&"sunset_strength": 0.0,
 &"warp_strength": 0.3,
 &"wind_direction": Vector2(1, 0.35),
 &"wind_speed": 0.015,
-&"zenith_color": Color(0.05, 0.06, 0.08, 1),
-&"billow": 0.3,
-&"cloud_detail": 0.7,
-&"cloud_base": 0.7,
-&"cloud_thickness": 2.5,
-&"cloud_size": 14.0,
-&"rain_shafts": 0.6,
-&"haze_distance": 30.0,
-&"planet_radius": 2000.0,
-&"silver_lining": 1.0
+&"zenith_color": Color(0.05, 0.06, 0.08, 1)
 }
 environment = {
 &"ambient_light_color": Color(0, 0, 0, 1),
