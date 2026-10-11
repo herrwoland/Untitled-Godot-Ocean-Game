@@ -441,9 +441,9 @@ shadow_opacity = 0.8
 shadow_blur = 4.592
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2828.5232, 3.116949, 64.01998)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2809.4797, -5.3612976, 44.523453)
 script = ExtResource("60_rain")
-intensity = 0.01
+intensity = 0.31
 lens_drops_enabled = false
 
 [node name="Weather" type="Node" parent="." unique_id=1337985377 node_paths=PackedStringArray("water", "sun", "world_environment", "world_fog", "rain")]
@@ -498,7 +498,7 @@ shape = SubResource("CylinderShape3D_5s6u7")
 debug_color = Color(0.8128558, 0.030233042, 0.97549945, 0.41960785)
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2829, 0, 65)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2810, 0, 45)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")

@@ -184,7 +184,7 @@ world_fog = {
 }
 rain = {
 &"gustiness": 0.4,
-&"intensity": 0.01,
+&"intensity": 0.7,
 &"streak_opacity": 0.45,
 &"wind_direction": 30.0,
 &"wind_strength": 6.0
