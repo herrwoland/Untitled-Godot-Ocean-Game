@@ -69,4 +69,5 @@ script = ExtResource("4_5rysc")
 radius = 25.7
 strength = 1.48
 ring_amplitude = 4.55
+show_reach = false
 metadata/_custom_type_script = "uid://ddm71i1yfjrbw"
