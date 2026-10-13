@@ -1,0 +1,408 @@
+[gd_scene format=3 uid="uid://bluq008n0ueup"]
+
+[ext_resource type="PackedScene" uid="uid://b64ssqx3vl67e" path="res://assets/models/boat/power_panel.glb" id="1_0drgh"]
+[ext_resource type="Script" uid="uid://cqqk3njiehp1o" path="res://scenes/boat/power_panel.gd" id="1_rqivs"]
+[ext_resource type="Script" uid="uid://bu5ui6qwq1aas" path="res://assets/scripts/interactables/pull_interactable.gd" id="4_pull"]
+[ext_resource type="Texture2D" uid="uid://cgjc7qk1llwne" path="res://assets/models/boat/power_panel_office_rosewood_veneer1_diff_1k.jpg" id="3_6dels"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rqivs"]
+resource_name = "Material.003"
+cull_mode = 2
+albedo_color = Color(0.3515684, 0.297217, 0.16656795, 1)
+emission_enabled = true
+emission = Color(1, 0.6666667, 0, 1)
+emission_energy_multiplier = 0.57244897
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0drgh"]
+resource_name = "Material.003"
+cull_mode = 2
+albedo_color = Color(0.3515684, 0.297217, 0.16656795, 1)
+emission_enabled = true
+emission = Color(1, 0.6666667, 0, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6dels"]
+resource_name = "Material.003"
+cull_mode = 2
+albedo_color = Color(0.3515684, 0.297217, 0.16656795, 1)
+emission_enabled = true
+emission = Color(1, 0.6666667, 0, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_11nsy"]
+resource_name = "Material.003"
+cull_mode = 2
+albedo_color = Color(0.3515684, 0.297217, 0.16656795, 1)
+emission_enabled = true
+emission = Color(1, 0.6666667, 0, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4whjn"]
+resource_name = "wooden_object"
+cull_mode = 2
+albedo_texture = ExtResource("3_6dels")
+emission = Color(1, 0.7666667, 0, 1)
+texture_filter = 2
+metadata/_gltf_primary_texture_coord = 0
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_5s6u7"]
+height = 0.22253418
+radius = 0.064453125
+
+[sub_resource type="Animation" id="Animation_6dels"]
+length = 0.001
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("power_panel/power_board/switch_board/switch_handle:rotation:z")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("power_panel/power_board/Circle:surface_material_override/0:emission_energy_multiplier")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [0.57244897]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("power_panel/power_board/Circle_001:surface_material_override/0:emission_energy_multiplier")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("power_panel/power_board/Circle_002:surface_material_override/0:emission_energy_multiplier")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("power_panel/power_board/Circle_003:surface_material_override/0:emission_energy_multiplier")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("GPUParticles3D:emitting")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [false]
+}
+
+[sub_resource type="Animation" id="Animation_11nsy"]
+resource_name = "power_down"
+length = 2.5000000000000004
+step = 0.1
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("power_panel/power_board/switch_board/switch_handle:rotation:z")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(2, 3, 0, 0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0.033333335, 0, 0.01, -0.1, -0.0045689195, 0.1, 0.0045689195, 0, 0, 0, 0.6, -0.34106982, 3.1374762, -0.16666667, 0, 0, 0, 3.08, -0.033333343, 0, 0.033333324, 0, 3.1374762, -0.033333324, 0, 0, 0),
+"times": PackedFloat32Array(0, 0.1, 0.2, 0.7, 0.8, 0.9)
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("power_panel/power_board/Circle:surface_material_override/0:emission_energy_multiplier")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.7, 0.90000004, 2.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [1.0, 1.0, 0.0, 0.0]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("power_panel/power_board/Circle_001:surface_material_override/0:emission_energy_multiplier")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 1, 1.1, 2.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [1.0, 1.0, 0.0, 0.0]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("power_panel/power_board/Circle_002:surface_material_override/0:emission_energy_multiplier")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 1.3000001, 1.4, 2.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [1.0, 1.0, 0.0, 0.0]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("power_panel/power_board/Circle_003:surface_material_override/0:emission_energy_multiplier")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 1.5, 1.6, 2.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [1.0, 1.0, 0.0, 0.0]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("GPUParticles3D:emitting")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0.5),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+tracks/6/type = "method"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath(".")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0.5),
+"transitions": PackedFloat32Array(1),
+"values": [{
+"args": [],
+"method": &"switch_off"
+}]
+}
+
+[sub_resource type="Animation" id="Animation_0drgh"]
+resource_name = "power_up"
+length = 2.5000000000000004
+step = 0.1
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("power_panel/power_board/switch_board/switch_handle:rotation:z")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0, 0, 2, 2, 0, 0),
+"points": PackedFloat32Array(3.1374762, -0.033333324, 0, 0, 0, 3.08, -0.033333343, 0, 0.033333324, 0, 3.1374762, -0.032762673, 0.00074286765, 0.39999998, -0.009069681, 0, -0.19999999, 0, 0.033333343, 0, 0.01, -0.1, -0.0045689195, 0.1, 0.0045689195, 0, 0, 0, 0.033333335, 0),
+"times": PackedFloat32Array(0, 0.100000024, 0.20000005, 0.8, 0.90000004, 1)
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("power_panel/power_board/Circle:surface_material_override/0:emission_energy_multiplier")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.90000004, 1, 2.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [0.0, 0.0, 1.0, 1.0]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("power_panel/power_board/Circle_001:surface_material_override/0:emission_energy_multiplier")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 1.1, 1.2, 2.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [0.0, 0.0, 1.0, 1.0]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("power_panel/power_board/Circle_002:surface_material_override/0:emission_energy_multiplier")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 1.3, 1.4, 2.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [0.0, 0.0, 1.0, 1.0]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("power_panel/power_board/Circle_003:surface_material_override/0:emission_energy_multiplier")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 1.7, 1.8000001, 2.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [0.0, 0.0, 1.0, 1.0]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("GPUParticles3D:emitting")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0.8),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+tracks/6/type = "method"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath(".")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0.8),
+"transitions": PackedFloat32Array(1),
+"values": [{
+"args": [],
+"method": &"switch_on"
+}]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_twpsy"]
+_data = {
+&"RESET": SubResource("Animation_6dels"),
+&"power_down": SubResource("Animation_11nsy"),
+&"power_up": SubResource("Animation_0drgh")
+}
+
+[sub_resource type="Gradient" id="Gradient_0drgh"]
+colors = PackedColorArray(1, 0.9166666, 0, 1, 1, 0, 0, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_4whjn"]
+gradient = SubResource("Gradient_0drgh")
+
+[sub_resource type="Curve" id="Curve_gpkie"]
+_data = [Vector2(0, 0.996337), 0.0, -0.027695633, 0, 0, Vector2(1, 0), -3.9115548, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_dndif"]
+curve = SubResource("Curve_gpkie")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_5s6u7"]
+emission_shape_scale = Vector3(0.055, 0.115, 0.155)
+emission_shape = 3
+emission_box_extents = Vector3(1, 1, 1)
+direction = Vector3(5, -5, 1)
+spread = 180.0
+initial_velocity_min = 1.0
+initial_velocity_max = 2.0
+use_rotation_velocity_3d = true
+rotation_velocity_3d_min = Vector3(0, 0, 0)
+rotation_velocity_3d_max = Vector3(180, 180, 180)
+gravity = Vector3(0, -5, 0)
+scale_min = 0.01
+scale_max = 0.39999998
+color_ramp = SubResource("GradientTexture1D_4whjn")
+emission_curve = SubResource("CurveTexture_dndif")
+hue_variation_min = -0.21000002
+hue_variation_max = 0.33999997
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_twpsy"]
+emission_enabled = true
+emission = Color(1, 0.6333333, 0, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_klyyb"]
+material = SubResource("StandardMaterial3D_twpsy")
+size = Vector3(0.005, 0.1, 0.005)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_4snje"]
+size = Vector2(0.01, 0.01)
+orientation = 0
+
+[node name="power_panel" type="Node3D" unique_id=1000709516]
+script = ExtResource("1_rqivs")
+
+[node name="power_panel" parent="." unique_id=328058151 instance=ExtResource("1_0drgh")]
+
+[node name="Circle" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 583203980) index="0" unique_id=1910816152]
+surface_material_override/0 = SubResource("StandardMaterial3D_rqivs")
+
+[node name="Circle_001" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 583203980) index="1" unique_id=1299322185]
+surface_material_override/0 = SubResource("StandardMaterial3D_0drgh")
+
+[node name="Circle_002" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 583203980) index="2" unique_id=1503672114]
+surface_material_override/0 = SubResource("StandardMaterial3D_6dels")
+
+[node name="Circle_003" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 583203980) index="3" unique_id=1320853610]
+surface_material_override/0 = SubResource("StandardMaterial3D_11nsy")
+
+[node name="switch_handle" parent="power_panel/power_board/switch_board" parent_id_path=PackedInt32Array(328058151, 1701931878) index="2" unique_id=1632629266]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.007975578, 0.029454947, 0)
+surface_material_override/0 = SubResource("StandardMaterial3D_4whjn")
+
+[node name="Area3D" type="Area3D" parent="power_panel/power_board/switch_board/switch_handle" index="0" unique_id=517083164]
+collision_layer = 4
+collision_mask = 0
+script = ExtResource("4_pull")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="power_panel/power_board/switch_board/switch_handle/Area3D" unique_id=1930512694]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0.4319458, 2.9802322e-08, 0)
+shape = SubResource("CylinderShape3D_5s6u7")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=621644925]
+libraries/ = SubResource("AnimationLibrary_twpsy")
+
+[node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=719054504]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1486373, 0.09783847, -0.14023507)
+emitting = false
+amount = 50
+one_shot = true
+explosiveness = 1.0
+randomness = 1.0
+process_material = SubResource("ParticleProcessMaterial_5s6u7")
+draw_passes = 2
+draw_pass_1 = SubResource("BoxMesh_klyyb")
+draw_pass_2 = SubResource("PlaneMesh_4snje")
+
+[node name="sparkles" type="AudioStreamPlayer3D" parent="." unique_id=1141835373]
+bus = &"SFX"
+
+[node name="switch" type="AudioStreamPlayer3D" parent="." unique_id=285442883]
+bus = &"SFX"
+
+[node name="engine" type="AudioStreamPlayer3D" parent="." unique_id=1142479538]
+bus = &"SFX"
+
+[editable path="power_panel"]

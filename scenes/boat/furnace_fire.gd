@@ -81,7 +81,10 @@ func _ready() -> void:
 	var root := owner if owner else get_parent()
 	if light == null and root:
 		light = root.find_child("furnace_light", true, false) as Light3D
+	# Fire, not wiring: the ship's power panel leaves the flames and their light alone.
+	add_to_group(&'off_grid')
 	if light:
+		light.add_to_group(&'off_grid')
 		_base_energy = light.light_energy
 		_base_position = light.position
 	_ship = _find_ship()

@@ -1,7 +1,7 @@
 extends Node3D
 ## The navigation lock beside the wheel. Pulled (from the helm or on foot), it holds the ship's
 ## course full ahead with nobody steering, and lets the helmsman go. It lets go by itself when
-## the furnace runs out, once she has stopped making way for stall_time seconds (aground, held
+## the furnace runs out or the power is cut, once she has stopped making way for stall_time seconds (aground, held
 ## fast), when she is leash_distance from the player, and when someone takes the wheel again or
 ## the lever is pulled back.
 
@@ -70,6 +70,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if ship.get(&'engine_fuel_power') == 0.0:
 		lock_navigation(false) # the furnace is out: nothing left to hold her course with
+		return
+	if ship.get(&'powered') == false:
+		lock_navigation(false) # the power panel is off: the engine is dead
 		return
 	if not is_instance_valid(_player):
 		_player = get_tree().get_first_node_in_group(&'player') as Node3D

@@ -30,6 +30,9 @@ var engine_fuel_power: float = 1.0
 ## Set by the navigation lock: the throttle she holds, rudder centred, with nobody at the helm.
 ## 0 = no lock. The helm overrides it while someone is steering.
 var cruise_throttle: float = 0.0
+## False while the power panel has the ship's power cut: the engine is dead, whatever the fuel.
+## She can still be steered while she drifts.
+var powered: bool = true
 
 func _ready() -> void:
 	var prospective_mass = 0 # Error if 0
@@ -84,7 +87,7 @@ func set_helm_input(throttle: float, rudder: float) -> void:
 
 func apply_helm() -> void:
 	for cell in engine_cells:
-		cell.throttle = helm_throttle * engine_fuel_power
+		cell.throttle = helm_throttle * engine_fuel_power if powered else 0.0
 	apply_torque(basis.y * helm_rudder * rudder_torque_strength * rudder_bite())
 
 ## How much grip the rudder has right now, -1..1. A rudder only steers while water flows past

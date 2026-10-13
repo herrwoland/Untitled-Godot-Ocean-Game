@@ -1,6 +1,7 @@
 extends Node3D
 ## The boat's fuel gauge: the arrow follows the furnace's fuel, shivering a little like the needle
 ## of an old barometer, and the low-fuel light and the body's red glow flash when it runs low.
+## The warning runs on the ship's power: with the power cut at the panel it stays dark.
 
 ## Warning comes on at or below this share of the tank, in percent.
 @export_range(0.0, 100.0, 1.0) var warning_value: float = 15.0
@@ -28,8 +29,16 @@ var _t := randf() * 100.0
 var _warning := false # fuel is low: the light flashes
 var _flash := 0.0 # s into the current on+off flash
 var _lit := false # what the light shows right now
+var _powered := true
 
 func _ready() -> void:
+	add_to_group(&'off_grid') # the ship leaves our light to us (Boat.set_powered)
+	var ship := get_parent()
+	while ship and not ship.has_signal(&'power_changed'):
+		ship = ship.get_parent()
+	if ship:
+		_powered = ship.get(&'powered') != false
+		ship.power_changed.connect(_on_power_changed)
 	fuel_light(false) # dark until a reading says otherwise
 	if furnace == null:
 		var root := owner if owner else get_tree().current_scene
@@ -40,10 +49,15 @@ func _ready() -> void:
 
 func fuel_light(light_on := false):
 	_lit = light_on
-	low_fuel_light.visible = light_on
+	var shown := light_on and _powered
+	low_fuel_light.visible = shown
 	var mat := fuel_meter_body.get_surface_override_material(0) as StandardMaterial3D
 	if mat:
-		mat.emission_energy_multiplier = 1.0 if light_on else 0.0
+		mat.emission_energy_multiplier = 1.0 if shown else 0.0
+
+func _on_power_changed(on: bool) -> void:
+	_powered = on
+	fuel_light(_lit)
 
 func update_fuel_meter(fuel: float, max_fuel: float = 100.0):
 	_level = clampf(fuel / maxf(max_fuel, 0.001), 0.0, 1.0)

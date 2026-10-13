@@ -3,7 +3,8 @@ extends Area3D
 ## the view moves to `view_camera` and looking around swings `hinge`, within narrow
 ## limits since it is bolted to the deck. Jump or interact (key) lets go again, and
 ## clicking switches the lamp on and off. Where it was left pointing is where it stays.
-## Switching affects every light, UnderwaterGlow and glowing material under the hinge.
+## Switching affects every light, UnderwaterGlow and glowing material under the hinge. It runs on
+## the ship's power: with the power cut at the panel it stays dark whatever the switch says.
 
 ## The node that turns. Defaults to this area's parent (front_light_hinge).
 @export var hinge: Node3D
@@ -34,7 +35,8 @@ extends Area3D
 var _rest: Basis
 var _yaw := 0.0 # radians, positive = left
 var _pitch := 0.0 # radians, positive = up
-var lit := true
+var lit := true # where the switch is; the lamp only shines with the ship's power on too
+var _powered := true
 var _glowing: Array[BaseMaterial3D] = [] # per-instance copies of the lamp's emissive materials
 var _emission_energy: Array[float] = []
 var _turned := 0.0 # radians moved since the last frame
@@ -53,6 +55,12 @@ func _ready() -> void:
 	_collect_glowing_materials()
 	if turn_sound:
 		_turn_full_db = turn_sound.volume_db
+	# It runs on the ship's power: with the power cut the switch still clicks, the lamp stays dark.
+	hinge.add_to_group(&'off_grid') # the ship leaves this lamp to us (Boat.set_powered)
+	var ship := _find_ship()
+	if ship:
+		_powered = ship.get(&'powered') != false
+		ship.power_changed.connect(_on_power_changed)
 	set_lit(start_on, false)
 
 func interact(player: Node) -> void:
@@ -85,14 +93,30 @@ func toggle() -> void:
 
 func set_lit(on: bool, with_sound: bool = true) -> void:
 	lit = on
+	_show_light(lit and _powered)
+	var sound := switch_on_sound if on else switch_off_sound
+	if with_sound and sound and sound.stream:
+		sound.play()
+
+func _show_light(on: bool) -> void:
 	for node in hinge.find_children("*", "", true, false):
 		if node is Light3D or node is UnderwaterGlow:
 			node.visible = on
 	for i in _glowing.size():
 		_glowing[i].emission_energy_multiplier = _emission_energy[i] if on else 0.0
-	var sound := switch_on_sound if on else switch_off_sound
-	if with_sound and sound and sound.stream:
-		sound.play()
+
+func _on_power_changed(on: bool) -> void:
+	_powered = on
+	_show_light(lit and _powered)
+
+## The ship whose power this lamp runs on: the nearest ancestor with a power switch.
+func _find_ship() -> Node:
+	var node := get_parent()
+	while node:
+		if node.has_signal(&'power_changed'):
+			return node
+		node = node.get_parent()
+	return null
 
 ## Gives every emissive surface under the hinge (the lamp glass) its own material copy, so
 ## switching this lamp off doesn't darken every other lamp sharing the imported material.

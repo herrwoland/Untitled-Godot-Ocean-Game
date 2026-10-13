@@ -16,4 +16,7 @@ signal camera_shake_requested(trauma: float)
 ## The player sent a sonar pulse from `origin` (SonarPulse). Anything that should hear it --
 ## a creature drawn to the sound -- can listen here.
 signal sonar_pulsed(origin: Vector3, reach: float)
+## The ship's power was cut or restored at the power panel (Boat.set_powered). Creatures drawn
+## to a lit ship listen here; `ship.powered` tells the current state at any time.
+signal ship_power_changed(ship: Node3D, on: bool)
 @warning_ignore_restore("unused_signal")
