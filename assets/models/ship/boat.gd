@@ -10,6 +10,9 @@ extends "res://assets/scripts/mass_calculation.gd"
 ## node (group "water", see water.gd) is used.
 
 @export var water: Node
+## Exhaust smoke at an empty furnace, as a share of a full one's. It still thins away to nothing
+## once the fuel is gone and the engine dies.
+@export_range(0.0, 1.0, 0.05) var smoke_when_low: float = 0.15
 
 ## The power was cut or restored (set_powered).
 signal power_changed(on: bool)
@@ -19,7 +22,8 @@ signal power_changed(on: bool)
 
 var _cough := 0.0 # 1 right at an engine cough, recovering to 0
 var _cough_puff: GPUParticles3D # a burst of the exhaust smoke, thrown out on a cough
-var _smoke: GPUParticles3D # the exhaust: it stops with the engine
+var _smoke: GPUParticles3D # the exhaust: thick with a full furnace, gone with the engine
+var _furnace: Node # read for the smoke: fuel_level() 0..1
 var _electric_lights: Array[Node3D] = [] # Light3D and UnderwaterGlow nodes on the ship's power
 var _electric_glow: Array[BaseMaterial3D] = [] # per-instance copies of lamp emissive materials
 var _electric_glow_energy: Array[float] = []
@@ -35,6 +39,7 @@ func _ready() -> void:
 	super._ready()
 	_make_cough_puff.call_deferred()
 	_collect_electrics.call_deferred()
+	_furnace = find_child("furnace_fire", true, false)
 
 ## Called by the furnace when it is running low (severity 0..1). The engine stumbles: its
 ## sound drops out for a moment and a dirty puff comes out of the exhaust. Power is untouched.
@@ -67,11 +72,23 @@ func _make_cough_puff() -> void:
 		_cough_puff.process_material = pm
 	smoke.get_parent().add_child(_cough_puff)
 
+## The exhaust follows the furnace: thick when it's full, thinning as the fuel runs down, and
+## none at all with the furnace out or the power cut (the engine is dead either way).
+func _update_smoke() -> void:
+	if _smoke == null:
+		return
+	var level: float = _furnace.fuel_level() if _furnace and _furnace.has_method(&'fuel_level') else 1.0
+	var running := powered and level > 0.0
+	if _smoke.emitting != running:
+		_smoke.emitting = running
+	_smoke.amount_ratio = lerpf(smoke_when_low, 1.0, level)
+
 ## The engine only runs while someone is at the helm or the navigation lock holds her course;
 ## throttle drives its volume and pitch so pushing the lever is audible, not just visible.
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
 	_cough = move_toward(_cough, 0.0, delta / 0.35)
+	_update_smoke()
 	if _engine_loop == null or _engine_loop.stream == null:
 		return
 	if powered and (piloted or cruise_throttle != 0.0):
@@ -93,8 +110,6 @@ func set_powered(on: bool) -> void:
 	if on == powered:
 		return
 	powered = on
-	if _smoke:
-		_smoke.emitting = on
 	if _power_tween:
 		_power_tween.kill()
 	if on:

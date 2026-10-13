@@ -1,7 +1,8 @@
 extends Node3D
 ## The fuel dispenser. Pull the handle: it plays "open" and a fuel cell appears on the platform,
 ## riding up with it. It stays open until the handle is pulled again, then plays "close" and
-## waits on stand-by. Pulls while it is still opening or closing are ignored.
+## waits on stand-by. Pulls while it is still opening or closing are ignored, and so are all pulls
+## while the ship's power is cut at the power panel: it's an electric machine.
 ##
 ## The new cell sits on the platform (frozen, moving with the boat) until the player takes it;
 ## from then on it belongs to the world. If the last one is still sitting there untouched, no
@@ -21,12 +22,18 @@ const CARRYABLE_WAITING_LAYER := 0b100 # interact only
 
 var state := State.STANDBY
 var _cell: Node3D = null # the cell waiting on the platform, until someone takes it
+var _ship: Node = null # whose power it runs on (Boat.set_powered)
 
 func _ready() -> void:
+	_ship = get_parent()
+	while _ship and not _ship.has_signal(&'power_changed'):
+		_ship = _ship.get_parent()
 	_handle.pulled.connect(_on_handle_pulled)
 	_anim.animation_finished.connect(_on_animation_finished)
 
 func _on_handle_pulled(_player: Node) -> void:
+	if _ship and _ship.get(&'powered') == false:
+		return # no power: the handle gives nothing
 	match state:
 		State.STANDBY:
 			state = State.OPENING
