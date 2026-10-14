@@ -84,7 +84,15 @@ uniform float normal_strength : hint_range(0.0, 1.0) = 1.0; // Global normal str
 /** Brightness of the glints lights leave on the waves: the sun or moon path, lamps on the
  * water. Each glint already follows its light's colour and energy; this scales them all. */
 uniform float light_reflection : hint_range(0.0, 4.0, 0.01) = 1.0;
-uniform sampler2D foam_noise_tex : repeat_enable, filter_linear_mipmap;
+group_uniforms wave_foam;
+/** Texture laid over the wave foam: bright = foam, dark = gaps. White (or none) leaves the foam
+ * as the simulation makes it. */
+uniform sampler2D foam_noise_tex : hint_default_white, repeat_enable, filter_linear_mipmap;
+/** World size (m) of one tile of foam_noise_tex. */
+uniform float foam_texture_tile_size : hint_range(0.5, 64.0, 0.1) = 6.0;
+/** How much foam_noise_tex shapes the foam (0 = not at all). */
+uniform float foam_texture_strength : hint_range(0.0, 1.0, 0.01) = 1.0;
+group_uniforms;
 
 uniform sampler2D depth_texture : hint_depth_texture, filter_linear_mipmap;
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
@@ -587,8 +595,10 @@ void fragment() {
 		vec4 normal_sample = texture(normals, coords);
 		if (bilinear < 1.0) normal_sample = mix(texture_bicubic(normals, coords), normal_sample, bilinear);
 		gradient += normal_sample.xyw * vec3(scales.ww, 1.0);
-		foam_alpha += texture(foam_noise_tex, UV * scales.xy * 1.0).r;
 	}
+	// Foam texture. The 3.0 keeps the foam exactly as strong as before for a white texture (this
+	// used to be one stretched read per cascade, summed).
+	foam_alpha = 3.0 * mix(1.0, texture(foam_noise_tex, UV / foam_texture_tile_size).r, foam_texture_strength);
 	gradient *= blocker_mask; // calm zones lose their wave normals and foam too
 	float shape_foam;
 	vec4 shape = water_shapes_eval(UV, shape_foam);
