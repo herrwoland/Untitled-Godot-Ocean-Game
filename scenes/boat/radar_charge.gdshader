@@ -5,8 +5,11 @@ render_mode unshaded, cull_back, shadows_disabled;
 
 uniform float fill = 1.0;
 uniform float powered = 1.0;
-uniform vec3 tint : source_color = vec3(0.35, 1.0, 0.55);
-uniform float energy = 1.6;
+uniform vec3 empty_color : source_color = vec3(0.0168, 0.048, 0.0264);
+uniform vec3 charging_color : source_color = vec3(0.252, 0.72, 0.396);
+uniform vec3 ready_color : source_color = vec3(0.56, 1.6, 0.88);
+uniform float pulse = 0.25;
+uniform float pulse_speed = 3.0;
 uniform float now = 0.0;
 uniform vec3 bar_from = vec3(-0.5, 0.0, 0.0);
 uniform vec3 bar_to = vec3(0.5, 0.0, 0.0);
@@ -19,8 +22,11 @@ void vertex() {
 }
 
 void fragment() {
-	float lit = step(along, fill);
-	float ready = step(1.0, fill) * (0.75 + 0.25 * sin(now * 3.0));
-	float light = mix(0.03, mix(0.45, 1.0, ready), lit);
-	ALBEDO = tint * light * energy * powered;
+	vec3 col = empty_color;
+	if (fill >= 1.0) {
+		col = ready_color * (1.0 - pulse + pulse * sin(now * pulse_speed));
+	} else if (along <= fill) {
+		col = charging_color;
+	}
+	ALBEDO = col * powered;
 }

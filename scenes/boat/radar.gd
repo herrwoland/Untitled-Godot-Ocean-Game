@@ -19,16 +19,17 @@ const NEVER := -100000.0 # hit time of a texel nothing has touched
 ## Which surface (material slot) of `screen` is the glass. -1 = the flattest one.
 @export var screen_surface := -1
 ## The strip that fills while the radar charges. Optional. It fills along its longest side,
-## from the end where its U is smallest.
+## from the end where its U is largest (see charge_bar_flip).
 @export var charge_bar: MeshInstance3D
 ## Which surface (material slot) of `charge_bar` lights up.
 @export var charge_bar_surface := 0
+## Fills the bar the other way.
+@export var charge_bar_flip := false
 ## Glows when the radar is charged and ready. Left empty, a child named "radar_light".
 @export var ready_light: MeshInstance3D
-## Which surface of `ready_light` glows; its own material's emission is switched.
+## Which surface of `ready_light` glows; its own material's emission is switched (colour and
+## strength: GameSettings radar_ready_light_*).
 @export var ready_light_surface := 0
-## Emission energy of the ready light while it is lit.
-@export_range(0.0, 16.0, 0.1) var ready_light_energy := 1.0
 ## Clicked to ping. Left empty, the first clickable thing (PullInteractable) under the radar.
 @export var interactable: Area3D
 ## Turns the picture on the plate if it comes out the wrong way round (degrees, about the up axis).
@@ -134,7 +135,12 @@ func _process(delta: float) -> void:
 	_screen_mat.set_shader_parameter(&'ring', _front)
 	_screen_mat.set_shader_parameter(&'powered', 1.0 if _powered else 0.0)
 	_screen_mat.set_shader_parameter(&'bow', _bow_on_screen())
-	_screen_mat.set_shader_parameter(&'tint', s.radar_color)
+	_screen_mat.set_shader_parameter(&'creature_color', s.radar_creature_color)
+	_screen_mat.set_shader_parameter(&'land_color', s.radar_land_color)
+	_screen_mat.set_shader_parameter(&'ring_color', s.radar_ring_color)
+	_screen_mat.set_shader_parameter(&'marks_color', s.radar_marks_color)
+	_screen_mat.set_shader_parameter(&'background', s.radar_background_color)
+	_screen_mat.set_shader_parameter(&'wake', s.radar_wake)
 	_screen_mat.set_shader_parameter(&'energy', s.radar_energy)
 	_screen_mat.set_shader_parameter(&'afterglow', s.radar_afterglow)
 	_screen_mat.set_shader_parameter(&'flare', s.radar_flare)
@@ -144,11 +150,15 @@ func _process(delta: float) -> void:
 	_screen_mat.set_shader_parameter(&'texels', float(_size))
 	_charge_mat.set_shader_parameter(&'fill', _charge)
 	_charge_mat.set_shader_parameter(&'powered', 1.0 if _powered else 0.0)
-	_charge_mat.set_shader_parameter(&'tint', s.radar_color)
-	_charge_mat.set_shader_parameter(&'energy', s.radar_energy)
+	_charge_mat.set_shader_parameter(&'empty_color', s.radar_bar_empty_color)
+	_charge_mat.set_shader_parameter(&'charging_color', s.radar_bar_charging_color)
+	_charge_mat.set_shader_parameter(&'ready_color', s.radar_bar_ready_color)
+	_charge_mat.set_shader_parameter(&'pulse', s.radar_bar_pulse)
+	_charge_mat.set_shader_parameter(&'pulse_speed', s.radar_bar_pulse_speed)
 	_charge_mat.set_shader_parameter(&'now', _clock)
 	if _ready_mat:
-		_ready_mat.emission_energy_multiplier = ready_light_energy if _powered and _charge >= 1.0 else 0.0
+		_ready_mat.emission = s.radar_ready_light_color
+		_ready_mat.emission_energy_multiplier = s.radar_ready_light_energy if _powered and _charge >= 1.0 else 0.0
 
 ## The ring moves (and looks around) in physics time: it casts rays for rock.
 func _physics_process(delta: float) -> void:
@@ -177,16 +187,15 @@ func _sweep(reach: float, s: GameSettings) -> void:
 		var y := index / _size
 		var offset := (Vector2(x + 0.5, y + 0.5) / _size - Vector2(0.5, 0.5)) * 2.0 * s.radar_range
 		var world := _origin + _axis_u * offset.x + _axis_v * offset.y
-		var strength := 0.0
+		var creature := 0.0
 		var flat := Vector2(world.x, world.z)
 		for body: Array in bodies:
 			if Geometry2D.get_closest_point_to_segment(flat, body[0], body[1]).distance_to(flat) <= body[2] + texel * 0.5:
-				strength = 1.0
+				creature = 1.0
 				break
-		if strength == 0.0 and _is_land(world, space, s):
-			strength = s.radar_land_strength
-		if strength > 0.0:
-			_image.set_pixel(x, y, Color(_clock, strength, 0.0))
+		var land := 1.0 if creature == 0.0 and _is_land(world, space, s) else 0.0
+		if creature > 0.0 or land > 0.0:
+			_image.set_pixel(x, y, Color(_clock, creature, land))
 			_dirty = true
 
 ## Every creature as a flat capsule [from, to, radius] in world XZ.
@@ -296,7 +305,8 @@ func _fit_screen(mesh: Mesh, surface: int) -> void:
 	_screen_mat.set_shader_parameter(&'uv_center', (uv_min + uv_max) * 0.5)
 	_screen_mat.set_shader_parameter(&'uv_half', ((uv_max - uv_min) * 0.5).max(Vector2(1e-4, 1e-4)))
 
-## The bar fills along its longest side, starting from the end where its U is smallest.
+## The bar fills along its longest side, starting from the end where its U is largest
+## (or smallest, flipped).
 func _fit_bar(mesh: Mesh, surface: int) -> void:
 	var arrays := mesh.surface_get_arrays(surface)
 	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -313,7 +323,7 @@ func _fit_bar(mesh: Mesh, surface: int) -> void:
 		for i in uvs.size():
 			if uvs[i].x < uvs[lo].x: lo = i
 			if uvs[i].x > uvs[hi].x: hi = i
-		if (verts[hi] - verts[lo]).dot(axis) < 0.0:
+		if ((verts[hi] - verts[lo]).dot(axis) > 0.0) != charge_bar_flip:
 			var swap := from
 			from = to
 			to = swap
@@ -328,7 +338,7 @@ func _on_power_changed(on: bool) -> void:
 
 func _build(size: int) -> void:
 	_size = size
-	_image = Image.create_empty(size, size, false, Image.FORMAT_RGF)
+	_image = Image.create_empty(size, size, false, Image.FORMAT_RGBF)
 	_texture = ImageTexture.create_from_image(_image)
 	_order.clear()
 	var half := size * 0.5

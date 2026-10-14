@@ -111,16 +111,12 @@ static func current() -> GameSettings:
 @export_range(0.5, 60.0, 0.5) var radar_afterglow := 8.0
 ## How bright the flash is the moment the ring touches something, on top of the glow.
 @export_range(0.0, 6.0, 0.05) var radar_flare := 1.5
-## Colour of the screen's light. Above 1 it blooms.
-@export var radar_color := Color(0.35, 1.0, 0.55)
-## Overall brightness of the screen.
+## Overall brightness of everything that lights up on the screen (not the background).
 @export_range(0.0, 8.0, 0.05) var radar_energy := 1.6
 ## Texels across the screen: lower is coarser, more PS1. A blip is at least one texel.
 @export_range(32, 256, 8) var radar_resolution := 128
 ## Ground at or above this height (m) shows as land: rock, islands, shallows.
 @export_range(-50.0, 5.0, 0.5) var radar_land_level := -2.0
-## How bright land answers next to a creature (1).
-@export_range(0.0, 1.0, 0.01) var radar_land_strength := 0.45
 ## How much bigger than its body a creature's blip is painted (the echo smears).
 @export_range(0.5, 3.0, 0.05) var radar_blip_scale := 1.2
 ## Width of the travelling ring, as a share of the screen's radius.
@@ -129,6 +125,33 @@ static func current() -> GameSettings:
 @export_range(0.0, 1.0, 0.01) var radar_grain := 0.35
 ## Faint range circles on the screen, evenly spaced to the rim (0 = none).
 @export_range(0, 8, 1) var radar_range_rings := 4
+## Screen colours. All but the background are scaled by radar_energy; above 1 they bloom.
+## A creature the ring touches.
+@export var radar_creature_color := Color(0.35, 1.0, 0.55)
+## Land and rock the ring touches.
+@export var radar_land_color := Color(0.1575, 0.45, 0.2475)
+## The travelling ring and the faint wake behind it.
+@export var radar_ring_color := Color(0.35, 1.0, 0.55)
+## Fixed markings: range circles, the rim, the ship at the centre.
+@export var radar_marks_color := Color(0.35, 1.0, 0.55)
+## The dark glass where nothing is lit (as it shows, not scaled by energy).
+@export var radar_background_color := Color(0.0034, 0.0096, 0.0053)
+## Brightness of the wake left inside the ring (0 = only the thin front).
+@export_range(0.0, 1.0, 0.01) var radar_wake := 0.2
+## Charge bar colours, as they show (above 1 they bloom).
+## The part not filled yet.
+@export var radar_bar_empty_color := Color(0.0168, 0.048, 0.0264)
+## The filled part while it is still charging.
+@export var radar_bar_charging_color := Color(0.252, 0.72, 0.396)
+## The whole bar once it is full and a ping is ready.
+@export var radar_bar_ready_color := Color(0.56, 1.6, 0.88)
+## How much the full bar breathes (0 = steady).
+@export_range(0.0, 1.0, 0.01) var radar_bar_pulse := 0.25
+## How fast it breathes (radians a second).
+@export_range(0.0, 20.0, 0.1) var radar_bar_pulse_speed := 3.0
+## The ready light (button lamp): its glow colour and strength while a ping is ready.
+@export var radar_ready_light_color := Color(0.377, 0.613, 0.0)
+@export_range(0.0, 16.0, 0.1) var radar_ready_light_energy := 1.0
 
 func _apply_highlight() -> void:
 	var m := HIGHLIGHT_MATERIAL
