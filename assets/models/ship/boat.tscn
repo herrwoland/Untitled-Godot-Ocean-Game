@@ -23,9 +23,12 @@
 [ext_resource type="Script" uid="uid://c31olmyjgo1bk" path="res://assets/scripts/interactables/searchlight_interactable.gd" id="9_searchlight"]
 [ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="11_w61sw"]
 [ext_resource type="PackedScene" uid="uid://dj8t1o61d618s" path="res://scenes/boat/dispenser.tscn" id="17_duxm1"]
+[ext_resource type="AudioStream" uid="uid://bgy5gqiked7ux" path="res://assets/SFX/547515__carlos-as15__light-switch.mp3" id="18_g26kg"]
+[ext_resource type="AudioStream" uid="uid://x684u8qcrapm" path="res://assets/SFX/Rusty-door-hinge.ogg" id="19_se4o6"]
 [ext_resource type="Script" uid="uid://cxunwhxll1nib" path="res://assets/scripts/world/wake_emitter.gd" id="20_wake"]
 [ext_resource type="Script" uid="uid://k1t7w7sw8jih" path="res://assets/scripts/world/bow_spray.gd" id="21_spray"]
 [ext_resource type="PackedScene" uid="uid://llkihp2ykkjx" path="res://scenes/boat/furnace_fire.tscn" id="22_fire"]
+[ext_resource type="AudioStream" uid="uid://bc4wbp8p8ucln" path="res://assets/SFX/Ambient_engine.wav" id="23_mnqxs"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_82xsv"]
 size = Vector3(44, 8.062927, 13.075356)
@@ -336,7 +339,7 @@ transform = Transform3D(0.89174783, 4.783708e-07, 6.3362494e-15, -1.06304626e-07
 [node name="steering" parent="lights/steering_hinge" unique_id=650738388 instance=ExtResource("3_vqk42")]
 transform = Transform3D(1, -5.9604645e-08, -5.32907e-15, 5.9604645e-08, 1, 3.5527137e-15, 5.3290697e-15, -3.552714e-15, 1, 2.706726, -5.120079, 0.005600974)
 
-[node name="control_steering" parent="lights/steering_hinge/steering" index="0" unique_id=464494156]
+[node name="control_steering" parent="lights/steering_hinge/steering" index="0" unique_id=201268684]
 transform = Transform3D(-2.043148e-07, 1.312402e-09, -1.154, 0.6343089, 1.1347476, -8.747832e-08, 1.1347475, -0.63430893, -1.5888205e-07, -2.22453, 3.257318, 1.0430146)
 
 [node name="controls" type="Node3D" parent="." unique_id=1887152825]
@@ -350,7 +353,7 @@ ship = NodePath("../..")
 transform = Transform3D(0.6440418, 0.39769194, -0.94242984, 4.1640572e-08, 1.1136723, 0.46995378, 1.0229042, -0.25039515, 0.5933734, -2.888975, 5.128104, 0.9756912)
 
 [node name="compass" parent="controls" unique_id=553590637 instance=ExtResource("5_2q3ma")]
-transform = Transform3D(-1.2489495, 0.50109565, 0.11238605, 0.50284004, 1.2532973, 5.6824245e-08, -0.104304224, 0.041848302, -1.345723, -2.7557228, 5.3277783, -1.0504282)
+transform = Transform3D(-1.2489495, 0.50109565, 0.11238605, 0.50284004, 1.2532973, 5.6824245e-08, -0.104304224, 0.041848302, -1.345723, -2.7557228, 5.2548327, -1.0504282)
 north_offset_deg = 180.0
 
 [node name="gauge" parent="controls" unique_id=1743726844 instance=ExtResource("6_rf6rj")]
@@ -374,57 +377,57 @@ transform = Transform3D(0.9999999, 0, 7.1054274e-15, 3.3881316e-21, 0.99999994, 
 [node name="boat" parent="." unique_id=331109473 instance=ExtResource("8_2ib73")]
 transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, 1.508625, -3.5490909, 0)
 
-[node name="StaticBody3D" parent="boat/body" parent_id_path=PackedInt32Array(331109473, 208328285) index="0" unique_id=616271160]
+[node name="StaticBody3D" parent="boat/body" parent_id_path=PackedInt32Array(331109473, 1191377655) index="0" unique_id=41049027]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/cabin" parent_id_path=PackedInt32Array(331109473, 1164943899) index="0" unique_id=2137992362]
+[node name="StaticBody3D" parent="boat/cabin" parent_id_path=PackedInt32Array(331109473, 1114056600) index="0" unique_id=2055500557]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 1085236443) index="0" unique_id=115864151]
+[node name="StaticBody3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 487127544) index="0" unique_id=1359671001]
 collision_layer = 2
 
-[node name="smoke" type="GPUParticles3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 1085236443) index="1" unique_id=2001236800]
+[node name="smoke" type="GPUParticles3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 487127544) index="1" unique_id=2001236800]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.18878, 0)
 amount = 20
 lifetime = 2.5999999999999996
 process_material = SubResource("ParticleProcessMaterial_60ctv")
 draw_pass_1 = SubResource("PlaneMesh_4mseo")
 
-[node name="StaticBody3D" parent="boat/floor_top" parent_id_path=PackedInt32Array(331109473, 1475940734) index="0" unique_id=1221937122]
+[node name="StaticBody3D" parent="boat/floor_top" parent_id_path=PackedInt32Array(331109473, 491775061) index="0" unique_id=2048464301]
 collision_layer = 2
 
-[node name="lamp_shielded_001" parent="boat" index="25" unique_id=495410787]
+[node name="lamp_shielded_001" parent="boat" index="25" unique_id=1275449902]
 surface_material_override/0 = SubResource("StandardMaterial3D_vlsv3")
 
-[node name="lamp_shielded_002" parent="boat" index="26" unique_id=743690262]
+[node name="lamp_shielded_002" parent="boat" index="26" unique_id=279342896]
 surface_material_override/0 = SubResource("StandardMaterial3D_kll55")
 
-[node name="lamp_shielded_003" parent="boat" index="27" unique_id=1728989806]
+[node name="lamp_shielded_003" parent="boat" index="27" unique_id=1769691421]
 surface_material_override/0 = SubResource("StandardMaterial3D_duxm1")
 
-[node name="lamp_vertical" parent="boat" index="28" unique_id=1978203254]
+[node name="lamp_vertical" parent="boat" index="28" unique_id=1603188720]
 surface_material_override/0 = SubResource("StandardMaterial3D_duxm1")
 
-[node name="StaticBody3D" type="StaticBody3D" parent="boat/stairs_control/stair" parent_id_path=PackedInt32Array(331109473, 1173419155) index="0" unique_id=1719776150]
+[node name="StaticBody3D" type="StaticBody3D" parent="boat/stairs_control/stair" parent_id_path=PackedInt32Array(331109473, 618462683) index="0" unique_id=1719776150]
 collision_layer = 2
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="boat/stairs_control/stair/StaticBody3D" unique_id=742157758]
 transform = Transform3D(1, -2.4150717e-07, 7.3631156e-08, 2.4150725e-07, 0.8299049, -0.5579044, 7.36312e-08, 0.55790436, 0.82990515, 0.0025644302, -2.12534, -1.1581947)
 shape = SubResource("BoxShape3D_klyyb")
 
-[node name="StaticBody3D" parent="boat/top_door" parent_id_path=PackedInt32Array(331109473, 1319133690) index="0" unique_id=70353774]
+[node name="StaticBody3D" parent="boat/top_door" parent_id_path=PackedInt32Array(331109473, 46659896) index="0" unique_id=1321015992]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/top_door_001" parent_id_path=PackedInt32Array(331109473, 1198235415) index="0" unique_id=207407687]
+[node name="StaticBody3D" parent="boat/top_door_001" parent_id_path=PackedInt32Array(331109473, 1895280662) index="0" unique_id=1925825094]
 collision_layer = 2
 
-[node name="control_panel" parent="boat" index="70" unique_id=206157226]
+[node name="control_panel" parent="boat" index="70" unique_id=1858427498]
 transform = Transform3D(0.6308224, 0, -3.5527137e-15, 0, 0.6308224, 0, 0, 0, 0.5597129, -0.014570771, 5.5032043, 2.9313788)
 
 [node name="boat_wave_blocker" parent="boat" unique_id=748553163 instance=ExtResource("3_f2dya")]
 visible = false
 
-[node name="wave_blocker" parent="boat/boat_wave_blocker" index="0" unique_id=1604891722]
+[node name="wave_blocker" parent="boat/boat_wave_blocker" index="0" unique_id=931607737]
 cast_shadow = 0
 surface_material_override/0 = SubResource("StandardMaterial3D_vqht1")
 script = ExtResource("4_51f5f")
@@ -485,14 +488,20 @@ shape = SubResource("CylinderShape3D_5s6u7")
 
 [node name="SwitchOnSound" type="AudioStreamPlayer3D" parent="front_light_hinge" unique_id=1310422801]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22510886, -0.4)
+stream = ExtResource("18_g26kg")
+volume_db = 15.0
+pitch_scale = 0.8
 bus = &"SFX"
 
 [node name="SwitchOffSound" type="AudioStreamPlayer3D" parent="front_light_hinge" unique_id=1310422802]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22510886, -0.4)
+stream = ExtResource("18_g26kg")
+volume_db = 15.0
 bus = &"SFX"
 
 [node name="TurnSound" type="AudioStreamPlayer3D" parent="front_light_hinge" unique_id=1310422803]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22510886, -0.4)
+stream = ExtResource("19_se4o6")
 bus = &"SFX"
 
 [node name="CameraLightView" type="Camera3D" parent="front_light_hinge" unique_id=1650251009]
@@ -651,6 +660,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8624725, -0.49571723, -5.92
 
 [node name="EngineLoop" type="AudioStreamPlayer3D" parent="." unique_id=1949703198]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.5, -1, 0)
+stream = ExtResource("23_mnqxs")
+volume_db = 10.0
 max_distance = 80.0
 bus = &"SFX"
 

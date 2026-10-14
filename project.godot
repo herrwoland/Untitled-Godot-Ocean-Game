@@ -61,6 +61,10 @@ movie_writer/mjpeg_quality=1.0
 
 enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg", "res://addons/imgui-godot/plugin.cfg", "res://addons/terrain_3d/plugin.cfg")
 
+[filesystem]
+
+import/blender/enabled=false
+
 [gui]
 
 theme/custom="res://assets/ui/theme.tres"

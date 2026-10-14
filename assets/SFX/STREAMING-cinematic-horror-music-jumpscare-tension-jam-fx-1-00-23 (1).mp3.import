@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dkt8w1cvo8wm3"
+path="res://.godot/imported/STREAMING-cinematic-horror-music-jumpscare-tension-jam-fx-1-00-23 (1).mp3-add27881f09528e43ddad9f9ae4a70a7.mp3str"
+
+[deps]
+
+source_file="res://assets/SFX/STREAMING-cinematic-horror-music-jumpscare-tension-jam-fx-1-00-23 (1).mp3"
+dest_files=["res://.godot/imported/STREAMING-cinematic-horror-music-jumpscare-tension-jam-fx-1-00-23 (1).mp3-add27881f09528e43ddad9f9ae4a70a7.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

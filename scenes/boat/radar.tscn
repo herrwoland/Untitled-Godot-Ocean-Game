@@ -1,9 +1,12 @@
 [gd_scene format=3 uid="uid://cguat1jf2frql"]
 
 [ext_resource type="Script" uid="uid://d27lsaujwpfg" path="res://scenes/boat/radar.gd" id="1_radar"]
+[ext_resource type="AudioStream" uid="uid://dt0bcwrv74tp1" path="res://assets/SFX/Ping.wav" id="2_afqe8"]
 [ext_resource type="Script" uid="uid://bu5ui6qwq1aas" path="res://assets/scripts/interactables/pull_interactable.gd" id="2_pull"]
 [ext_resource type="PackedScene" uid="uid://dno7cg7l3pfw1" path="res://assets/models/boat/radar.glb" id="3_0xa0n"]
 [ext_resource type="Texture2D" uid="uid://d1x3lsjc8boy4" path="res://assets/models/boat/glass_texture.png" id="3_sy1je"]
+[ext_resource type="AudioStream" uid="uid://cf5chy6nd0ldk" path="res://assets/SFX/Water Pluck.adg.ogg" id="3_tpgjm"]
+[ext_resource type="AudioStream" uid="uid://dirjuwwaq68ge" path="res://assets/SFX/Switch1.ogg" id="7_tpgjm"]
 
 [sub_resource type="StandardMaterial3D" id="Mat_body"]
 albedo_color = Color(0.13, 0.12, 0.11, 1)
@@ -75,6 +78,18 @@ tracks/2/keys = {
 "points": PackedFloat32Array(0.025111675, -0.25, 0, 0.25, 0),
 "times": PackedFloat32Array(0)
 }
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("AnimationPlayer/switch:playing")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [false]
+}
 
 [sub_resource type="Animation" id="Animation_bw12s"]
 resource_name = "button_click"
@@ -112,6 +127,18 @@ tracks/2/keys = {
 "points": PackedFloat32Array(0.025111675, -0.25, 0, 0.25, 0, 0.025111675, -0.033333335, 0, 0, 0, 0.025111675, -0.25, 0, 0.25, 0),
 "times": PackedFloat32Array(0, 0.2, 1)
 }
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("AnimationPlayer/switch:playing")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_afqe8"]
 _data = {
@@ -143,20 +170,25 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0305, 0.26)
 mesh = SubResource("Mesh_bar")
 
 [node name="ping" type="AudioStreamPlayer3D" parent="." unique_id=1830926657]
+stream = ExtResource("3_tpgjm")
+pitch_scale = 0.2
 bus = &"SFX"
 
 [node name="ready" type="AudioStreamPlayer3D" parent="." unique_id=752624096]
+stream = ExtResource("2_afqe8")
+volume_db = 5.0
+pitch_scale = 0.1
 bus = &"SFX"
 
 [node name="radar" parent="." unique_id=672426391 instance=ExtResource("3_0xa0n")]
 
-[node name="radar_bar_glass" parent="radar/radar_top" parent_id_path=PackedInt32Array(672426391, 507666583) index="1" unique_id=1193740537]
+[node name="radar_bar_glass" parent="radar/radar_top" parent_id_path=PackedInt32Array(672426391, 1714410453) index="1" unique_id=2069639747]
 surface_material_override/0 = SubResource("StandardMaterial3D_bw12s")
 
-[node name="radar_body" parent="radar/radar_top" parent_id_path=PackedInt32Array(672426391, 507666583) index="2" unique_id=1286945801]
+[node name="radar_body" parent="radar/radar_top" parent_id_path=PackedInt32Array(672426391, 1714410453) index="2" unique_id=1091238383]
 surface_material_override/1 = SubResource("Mat_body")
 
-[node name="interactable" type="Area3D" parent="radar/radar_top/radar_button" parent_id_path=PackedInt32Array(672426391, 2099419639) index="0" unique_id=1601982345 node_paths=PackedStringArray("highlight_mesh")]
+[node name="interactable" type="Area3D" parent="radar/radar_top/radar_button" parent_id_path=PackedInt32Array(672426391, 1307110148) index="0" unique_id=1601982345 node_paths=PackedStringArray("highlight_mesh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3656187, -0.023058414, -0.025111675)
 collision_layer = 4
 collision_mask = 0
@@ -168,11 +200,16 @@ usable_from_helm = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.37808836, 0.031861566, 0.009864267)
 shape = SubResource("Shape_click")
 
-[node name="radar_light" parent="radar/radar_top" parent_id_path=PackedInt32Array(672426391, 507666583) index="4" unique_id=1577213787]
+[node name="radar_light" parent="radar/radar_top" parent_id_path=PackedInt32Array(672426391, 1714410453) index="4" unique_id=1735536407]
 surface_material_override/0 = SubResource("StandardMaterial3D_sy1je")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1882205455]
 libraries/ = SubResource("AnimationLibrary_afqe8")
+
+[node name="switch" type="AudioStreamPlayer3D" parent="AnimationPlayer" unique_id=992994908]
+stream = ExtResource("7_tpgjm")
+pitch_scale = 0.2
+bus = &"SFX"
 
 [node name="light_omni" type="OmniLight3D" parent="." unique_id=1727143242]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.38824221, 0.02351427, -0.13288301)

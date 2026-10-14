@@ -2,8 +2,12 @@
 
 [ext_resource type="PackedScene" uid="uid://b64ssqx3vl67e" path="res://assets/models/boat/power_panel.glb" id="1_0drgh"]
 [ext_resource type="Script" uid="uid://cqqk3njiehp1o" path="res://scenes/boat/power_panel.gd" id="1_rqivs"]
-[ext_resource type="Script" uid="uid://bu5ui6qwq1aas" path="res://assets/scripts/interactables/pull_interactable.gd" id="4_pull"]
 [ext_resource type="Texture2D" uid="uid://cgjc7qk1llwne" path="res://assets/models/boat/power_panel_office_rosewood_veneer1_diff_1k.jpg" id="3_6dels"]
+[ext_resource type="Script" uid="uid://bu5ui6qwq1aas" path="res://assets/scripts/interactables/pull_interactable.gd" id="4_pull"]
+[ext_resource type="AudioStream" uid="uid://bm4tqcxyh0s0n" path="res://assets/SFX/sfx_Electricity_10.wav" id="5_4whjn"]
+[ext_resource type="AudioStream" uid="uid://hy7lugxsu3s3" path="res://assets/SFX/Ping Hi.wav" id="5_gpkie"]
+[ext_resource type="AudioStream" uid="uid://dt0bcwrv74tp1" path="res://assets/SFX/Ping.wav" id="6_271se"]
+[ext_resource type="AudioStream" uid="uid://cesdwrjo7js0u" path="res://assets/SFX/Switch3.ogg" id="6_dndif"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rqivs"]
 resource_name = "Material.003"
@@ -119,6 +123,18 @@ tracks/5/keys = {
 "update": 1,
 "values": [false]
 }
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("AnimationPlayer/light:pitch_scale")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [0.1]
+}
 
 [sub_resource type="Animation" id="Animation_11nsy"]
 resource_name = "power_down"
@@ -208,6 +224,45 @@ tracks/6/keys = {
 "args": [],
 "method": &"switch_off"
 }]
+}
+tracks/7/type = "audio"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("AnimationPlayer/light")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"clips": [{
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("5_gpkie")
+}, {
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("5_gpkie")
+}, {
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("5_gpkie")
+}, {
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("5_gpkie")
+}],
+"times": PackedFloat32Array(0.8, 1, 1.3, 1.5)
+}
+tracks/7/use_blend = true
+tracks/8/type = "value"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("AnimationPlayer/light:pitch_scale")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [0.2]
 }
 
 [sub_resource type="Animation" id="Animation_0drgh"]
@@ -299,6 +354,45 @@ tracks/6/keys = {
 "method": &"switch_on"
 }]
 }
+tracks/7/type = "audio"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("AnimationPlayer/light")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"clips": [{
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("6_271se")
+}, {
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("6_271se")
+}, {
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("6_271se")
+}, {
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("6_271se")
+}],
+"times": PackedFloat32Array(0.9, 1.1, 1.3, 1.7)
+}
+tracks/7/use_blend = true
+tracks/8/type = "value"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("AnimationPlayer/light:pitch_scale")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [0.1]
+}
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_twpsy"]
 _data = {
@@ -356,19 +450,19 @@ script = ExtResource("1_rqivs")
 
 [node name="power_panel" parent="." unique_id=328058151 instance=ExtResource("1_0drgh")]
 
-[node name="Circle" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 583203980) index="0" unique_id=1910816152]
+[node name="Circle" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 1104820633) index="0" unique_id=704312187]
 surface_material_override/0 = SubResource("StandardMaterial3D_rqivs")
 
-[node name="Circle_001" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 583203980) index="1" unique_id=1299322185]
+[node name="Circle_001" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 1104820633) index="1" unique_id=573556214]
 surface_material_override/0 = SubResource("StandardMaterial3D_0drgh")
 
-[node name="Circle_002" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 583203980) index="2" unique_id=1503672114]
+[node name="Circle_002" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 1104820633) index="2" unique_id=75773143]
 surface_material_override/0 = SubResource("StandardMaterial3D_6dels")
 
-[node name="Circle_003" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 583203980) index="3" unique_id=1320853610]
+[node name="Circle_003" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 1104820633) index="3" unique_id=221943954]
 surface_material_override/0 = SubResource("StandardMaterial3D_11nsy")
 
-[node name="switch_handle" parent="power_panel/power_board/switch_board" parent_id_path=PackedInt32Array(328058151, 1701931878) index="2" unique_id=1632629266]
+[node name="switch_handle" parent="power_panel/power_board/switch_board" parent_id_path=PackedInt32Array(328058151, 1245462107) index="2" unique_id=1460972011]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.007975578, 0.029454947, 0)
 surface_material_override/0 = SubResource("StandardMaterial3D_4whjn")
 
@@ -384,6 +478,10 @@ shape = SubResource("CylinderShape3D_5s6u7")
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=621644925]
 libraries/ = SubResource("AnimationLibrary_twpsy")
 
+[node name="light" type="AudioStreamPlayer3D" parent="AnimationPlayer" unique_id=236011091]
+pitch_scale = 0.1
+bus = &"SFX"
+
 [node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=719054504]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1486373, 0.09783847, -0.14023507)
 emitting = false
@@ -397,9 +495,11 @@ draw_pass_1 = SubResource("BoxMesh_klyyb")
 draw_pass_2 = SubResource("PlaneMesh_4snje")
 
 [node name="sparkles" type="AudioStreamPlayer3D" parent="." unique_id=1141835373]
+stream = ExtResource("5_4whjn")
 bus = &"SFX"
 
 [node name="switch" type="AudioStreamPlayer3D" parent="." unique_id=285442883]
+stream = ExtResource("6_dndif")
 bus = &"SFX"
 
 [node name="engine" type="AudioStreamPlayer3D" parent="." unique_id=1142479538]

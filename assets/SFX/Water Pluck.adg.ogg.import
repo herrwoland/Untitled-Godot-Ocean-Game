@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cf5chy6nd0ldk"
+path="res://.godot/imported/Water Pluck.adg.ogg-b796183f511c66b84e11f74b67a70ffa.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/SFX/Water Pluck.adg.ogg"
+dest_files=["res://.godot/imported/Water Pluck.adg.ogg-b796183f511c66b84e11f74b67a70ffa.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

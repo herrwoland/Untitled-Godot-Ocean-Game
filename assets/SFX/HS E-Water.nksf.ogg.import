@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://bh1v7ktwe1ds2"
+path="res://.godot/imported/HS E-Water.nksf.ogg-0eb79ed4482727891001be9e61b48640.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/SFX/HS E-Water.nksf.ogg"
+dest_files=["res://.godot/imported/HS E-Water.nksf.ogg-0eb79ed4482727891001be9e61b48640.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

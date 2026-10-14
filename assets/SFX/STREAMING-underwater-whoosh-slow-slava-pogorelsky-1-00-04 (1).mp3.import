@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://btlece1l07w4p"
+path="res://.godot/imported/STREAMING-underwater-whoosh-slow-slava-pogorelsky-1-00-04 (1).mp3-24efff237f4c1f34e5f3a749e8a72eaf.mp3str"
+
+[deps]
+
+source_file="res://assets/SFX/STREAMING-underwater-whoosh-slow-slava-pogorelsky-1-00-04 (1).mp3"
+dest_files=["res://.godot/imported/STREAMING-underwater-whoosh-slow-slava-pogorelsky-1-00-04 (1).mp3-24efff237f4c1f34e5f3a749e8a72eaf.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

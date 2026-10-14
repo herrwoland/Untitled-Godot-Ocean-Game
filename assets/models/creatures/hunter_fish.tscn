@@ -2,7 +2,11 @@
 
 [ext_resource type="Script" uid="uid://d3mcmqhx6fjll" path="res://assets/scripts/world/hunter_fish.gd" id="1_hunter"]
 [ext_resource type="PackedScene" uid="uid://cb1ws7c3cvath" path="res://assets/models/fish/fish01/fish_01.glb" id="2_kb4ww"]
+[ext_resource type="AudioStream" uid="uid://cvmgq50d26lm7" path="res://assets/SFX/STREAMING-sea-monster-growling-under-water-epic-stock-media-2-2-00-03.mp3" id="3_725o5"]
 [ext_resource type="Script" uid="uid://ddm71i1yfjrbw" path="res://assets/scripts/world/water_deformer.gd" id="3_xd4r0"]
+[ext_resource type="AudioStream" uid="uid://b0xejr6ko14e0" path="res://assets/SFX/STREAMING-cinematic-horror-wire-screech-slava-pogorelsky-1-00-02.mp3" id="4_abpgw"]
+[ext_resource type="AudioStream" uid="uid://bcb1uhhradei3" path="res://assets/SFX/STREAMING-cinematic-horror-scraping-string-impact-slava-pogorelsky-1-00-04.mp3" id="5_olbfp"]
+[ext_resource type="AudioStream" uid="uid://c8qlvxjaieg8g" path="res://assets/SFX/STREAMING-cinematic-horror-bass-scrape-slava-pogorelsky-1-00-02.mp3" id="6_nnprl"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_kb4ww"]
 size = Vector3(20, 150, 20)
@@ -32,10 +36,10 @@ mesh = SubResource("BoxMesh_kb4ww")
 [node name="fish_01" parent="." unique_id=1251501196 instance=ExtResource("2_kb4ww")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
 
-[node name="CollisionShape3D" parent="fish_01/Armature/Skeleton3D/body/StaticBody3D" parent_id_path=PackedInt32Array(1251501196, 1578191906) index="0" unique_id=1452379843]
+[node name="CollisionShape3D" parent="fish_01/Armature/Skeleton3D/body/StaticBody3D" parent_id_path=PackedInt32Array(1251501196, 460617662) index="0" unique_id=122937608]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1883131, -12.812396, -27.958656)
 
-[node name="jaw" parent="fish_01" index="1" unique_id=30888285]
+[node name="jaw" parent="fish_01" index="1" unique_id=382319807]
 transform = Transform3D(1, 4.2787747e-09, -2.7015123e-08, 2.7015123e-08, -0.30901697, 0.95105654, -4.2787747e-09, -0.95105654, -0.30901697, 0, -9.262006, 34.452488)
 
 [node name="Marker3D_mouth" type="Marker3D" parent="." unique_id=567968181]
@@ -67,21 +71,25 @@ bus = &"SFX"
 
 [node name="SneakLoop" type="AudioStreamPlayer3D" parent="." unique_id=1402369338]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.35, -40.93)
+stream = ExtResource("3_725o5")
 max_distance = 80.0
 bus = &"SFX"
 
 [node name="DetectSound" type="AudioStreamPlayer3D" parent="." unique_id=1203330357]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.35, -40.93)
+stream = ExtResource("4_abpgw")
 max_distance = 250.0
 bus = &"SFX"
 
 [node name="ChargeSound" type="AudioStreamPlayer3D" parent="." unique_id=645423366]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.35, -40.93)
+stream = ExtResource("5_olbfp")
 max_distance = 250.0
 bus = &"SFX"
 
 [node name="BiteSound" type="AudioStreamPlayer3D" parent="." unique_id=548788637]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.35, -40.93)
+stream = ExtResource("6_nnprl")
 max_distance = 250.0
 bus = &"SFX"
 

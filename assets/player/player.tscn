@@ -10,6 +10,8 @@
 [ext_resource type="Shader" uid="uid://b2rcikvib8wn8" path="res://assets/shaders/post/oxygen_overlay.gdshader" id="5_oxyshader"]
 [ext_resource type="Script" uid="uid://dbs8itod2p6jf" path="res://assets/player/carry_controller.gd" id="6_carry"]
 [ext_resource type="QuadMesh" uid="uid://cjtvpvkk5ps3a" path="res://assets/player/air_bubbles_2d.tres" id="9_vlpqo"]
+[ext_resource type="AudioStream" uid="uid://bqna1awhgx7lx" path="res://assets/SFX/water_whoosh.ogg" id="12_0eov8"]
+[ext_resource type="AudioStream" uid="uid://irhowonj638h" path="res://assets/SFX/gasp1.ogg" id="13_g7aau"]
 [ext_resource type="Script" uid="uid://f1i0c0keg8l6" path="res://assets/scripts/world/bubble_emitter.gd" id="30_bubbles"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
@@ -293,7 +295,10 @@ grow_vertical = 2
 script = ExtResource("2_crosshair")
 
 [node name="SplashPlayer" type="AudioStreamPlayer" parent="." unique_id=347770916]
+stream = ExtResource("12_0eov8")
 bus = &"SFX"
 
 [node name="GaspPlayer" type="AudioStreamPlayer" parent="." unique_id=1124802907]
+stream = ExtResource("13_g7aau")
+pitch_scale = 0.8
 bus = &"SFX"
