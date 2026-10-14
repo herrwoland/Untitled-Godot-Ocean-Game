@@ -58,6 +58,11 @@ var _deck_xform: Transform3D
 var _deck_coyote: float = 0.0
 var _deck_velocity := Vector3.ZERO # measured from the deck's movement, so it is right no
 								   # matter what moves her: engine, waves or a creature
+## The deck's sideways speed we left with (a jump, a step off her side), kept on top of walking
+## input until we land: jump on a ship under way and you come down on the same plank. Taken once,
+## at the moment we leave, so a creature yanking her about while we're in the air can't throw us.
+var _air_momentum := Vector3.ZERO
+const MAX_AIR_MOMENTUM := 10.0 # m/s: a violent jerk of the hull as we leave doesn't launch us
 const DECK_COYOTE := 0.35 # keep carrying this long after the deck drops away, so a heaving
 						  # sea doesn't shake us loose every time contact is lost
 var ladder: Node = null # the Ladder we are on (see ladder.gd)
@@ -315,6 +320,7 @@ func _start_climb(target: Node, t: float) -> void:
 	_grab_offset = target.global_basis.inverse() * (global_position - target.point(t))
 	_grab_blend = 1.0
 	_deck = null # the ladder carries us now
+	_air_momentum = Vector3.ZERO
 	velocity = Vector3.ZERO
 	collider.disabled = true # the hull and rungs are right in front of us
 	surface_ripples.emitting = false
@@ -388,10 +394,12 @@ func _process_walk(delta: float) -> void:
 	).normalized()
 	var move_dir := (head.global_transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 
-	velocity.x = move_dir.x * speed
-	velocity.z = move_dir.z * speed
+	velocity.x = move_dir.x * speed + _air_momentum.x
+	velocity.z = move_dir.z * speed + _air_momentum.z
 
 	move_and_slide()
+	if is_on_floor():
+		_air_momentum = Vector3.ZERO # landed: the deck or the ground carries us from here
 	_update_deck()
 
 ## Moves us by however much the deck moved since the last frame and turns us with it, so
@@ -439,6 +447,7 @@ func _update_deck() -> void:
 ## forward the way it should instead of dropping us straight down.
 func _release_deck() -> void:
 	velocity += _deck_velocity
+	_air_momentum = Vector3(_deck_velocity.x, 0.0, _deck_velocity.z).limit_length(MAX_AIR_MOMENTUM)
 	_deck = null
 	_deck_coyote = 0.0
 	_deck_velocity = Vector3.ZERO
@@ -574,6 +583,7 @@ func _check_enter_swim() -> void:
 	if surface_y - global_position.y > swim_enter_depth:
 		state = State.SWIM
 		_release_deck()
+		_air_momentum = Vector3.ZERO # the water takes it
 		collider.disabled = false
 		_play_splash(surface_y)
 		surface_ripples.emitting = true
