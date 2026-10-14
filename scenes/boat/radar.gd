@@ -42,6 +42,7 @@ const NEVER := -100000.0 # hit time of a texel nothing has touched
 @onready var _ping_sound: AudioStreamPlayer3D = get_node_or_null(^'ping')
 @onready var _ready_sound: AudioStreamPlayer3D = get_node_or_null(^'ready')
 @onready var _anim: AnimationPlayer = get_node_or_null(^'AnimationPlayer')
+@onready var _ready_glow: OmniLight3D = get_node_or_null(^'OmniLight3D') # lit with the ready light
 
 ## Played on the AnimationPlayer (child) when the button is pressed and a ping goes out.
 @export var press_animation := &'button_click'
@@ -169,6 +170,8 @@ func _process(delta: float) -> void:
 	if _ready_mat:
 		_ready_mat.emission = s.radar_ready_light_color
 		_ready_mat.emission_energy_multiplier = s.radar_ready_light_energy if ready else 0.0
+	if _ready_glow:
+		_ready_glow.visible = ready
 	if interactable and interactable.get(&'enabled') != ready:
 		interactable.set(&'enabled', ready) # the button only glows (and works) when it can ping
 

@@ -8,3 +8,7 @@ highlight_energy = 0.4
 item_glow_energy = 0.1
 camera_shake_strength = 1.5
 sonar_echo_color = Color(0.7840764, 1.2999998, 1.2188836, 1)
+radar_cooldown = 5.0
+radar_bar_charging_color = Color(0.39531448, 0.5101748, 0.04052815, 1)
+radar_bar_ready_color = Color(0.13807724, 0.5527276, 2.5859538e-06, 1)
+radar_ready_light_color = Color(0.48100004, 0.74, 0.11840002, 1)
