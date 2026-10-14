@@ -40,6 +40,85 @@ emission_enabled = true
 emission = Color(0.37737197, 0.6129472, 0, 1)
 emission_energy_multiplier = 0.0
 
+[sub_resource type="Animation" id="Animation_sy1je"]
+length = 0.001
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("radar/radar_top/radar_button:position:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-0.3656187, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("radar/radar_top/radar_button:position:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0.023058414, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("radar/radar_top/radar_button:position:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0.025111675, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+
+[sub_resource type="Animation" id="Animation_bw12s"]
+resource_name = "button_click"
+step = 0.1
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("radar/radar_top/radar_button:position:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0, 2, 0),
+"points": PackedFloat32Array(-0.3656187, -0.25, 0, 0.25, 0, -0.353961, -0.033333335, -0.0019429526, 0, 0, -0.3656187, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0, 0.2, 1)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("radar/radar_top/radar_button:position:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0, 2, 0),
+"points": PackedFloat32Array(0.023058414, -0.25, 0, 0.25, 0, 0.014696598, -0.033333335, 0.0013936361, 0, 0, 0.023058414, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0, 0.2, 1)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("radar/radar_top/radar_button:position:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0, 2, 0),
+"points": PackedFloat32Array(0.025111675, -0.25, 0, 0.25, 0, 0.025111675, -0.033333335, 0, 0, 0, 0.025111675, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0, 0.2, 1)
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_afqe8"]
+_data = {
+&"RESET": SubResource("Animation_sy1je"),
+&"button_click": SubResource("Animation_bw12s")
+}
+
 [node name="radar" type="Node3D" unique_id=1828085955 node_paths=PackedStringArray("screen", "charge_bar")]
 script = ExtResource("1_radar")
 screen = NodePath("radar/radar_top/radar_body")
@@ -87,5 +166,8 @@ shape = SubResource("Shape_click")
 
 [node name="radar_light" parent="radar/radar_top" parent_id_path=PackedInt32Array(672426391, 507666583) index="4" unique_id=1577213787]
 surface_material_override/0 = SubResource("StandardMaterial3D_sy1je")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1882205455]
+libraries/ = SubResource("AnimationLibrary_afqe8")
 
 [editable path="radar"]

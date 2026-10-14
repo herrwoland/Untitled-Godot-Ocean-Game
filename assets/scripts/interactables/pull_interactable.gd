@@ -9,13 +9,16 @@ signal pulled(player: Node)
 @export var highlight_mesh: Node3D
 ## Can be reached from the helm too (eg. a lever beside the wheel), not only on foot.
 @export var usable_from_helm: bool = false
+## Off, the player's aim passes it by: no glow, no use (eg. a button that is not ready yet).
+@export var enabled: bool = true
 
 func _ready() -> void:
 	if highlight_mesh == null:
 		highlight_mesh = get_parent() as Node3D
 
 func interact(player: Node) -> void:
-	pulled.emit(player)
+	if enabled:
+		pulled.emit(player)
 
 ## Look and feel: the "Interact highlight" group in res://assets/settings/game_settings.tres.
 func set_highlighted(on: bool) -> void:

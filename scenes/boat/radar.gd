@@ -1,8 +1,10 @@
 extends Node3D
-## The ship's radar: a round screen lying on the table beside the wheel. Click it and a ring
-## crawls out from the ship; whatever it passes -- a creature, land -- lights up on the screen
-## and glows on like old phosphor, fading slowly. It is a snapshot: what moves after the ring has
-## passed keeps glowing where it was. Then the charge bar has to fill before the next ping.
+## The ship's radar: a round screen lying on the table beside the wheel. While the ship has power
+## its charge bar fills by itself; once full, the ready light comes on and the button can be
+## pressed (not before). A press sends a ring crawling out from the ship at once, puts the light
+## out and starts the next charge. Whatever the ring passes -- a creature, land -- lights up on the
+## screen and glows on like old phosphor, fading slowly. It is a snapshot: what moves after the
+## ring has passed keeps glowing where it was.
 ## The screen is a map lying under the plate: a blip sits in the same direction from the screen's
 ## centre as the real thing lies from the ship. It runs on the ship's power (Boat.set_powered):
 ## cut it and the screen dies with the rest of the ship.
@@ -39,6 +41,10 @@ const NEVER := -100000.0 # hit time of a texel nothing has touched
 
 @onready var _ping_sound: AudioStreamPlayer3D = get_node_or_null(^'ping')
 @onready var _ready_sound: AudioStreamPlayer3D = get_node_or_null(^'ready')
+@onready var _anim: AnimationPlayer = get_node_or_null(^'AnimationPlayer')
+
+## Played on the AnimationPlayer (child) when the button is pressed and a ping goes out.
+@export var press_animation := &'button_click'
 
 var _screen_mat := ShaderMaterial.new()
 var _ready_mat: StandardMaterial3D # the ready light's own material, switched on and off
@@ -60,7 +66,7 @@ var _front := -1.0 # how far out the ring is, 0..1 of the range; -1 = no ring
 var _origin := Vector3.ZERO # where the ship was at the ping
 var _axis_u := Vector3.RIGHT # world directions of the screen's U and V, flat
 var _axis_v := Vector3.BACK
-var _charge := 1.0 # 0..1, the bar; a ping needs it full
+var _charge := 0.0 # 0..1, the bar: fills by itself while powered; a ping needs it full
 var _powered := true
 var _terrain: Node # Terrain3D: its heights reach farther than its collision does
 var _ray := PhysicsRayQueryParameters3D.new()
@@ -116,6 +122,9 @@ func ping() -> bool:
 	_origin = ship.global_position if ship else global_position
 	if _ping_sound and _ping_sound.stream:
 		_ping_sound.play()
+	if _anim and _anim.has_animation(press_animation):
+		_anim.stop()
+		_anim.play(press_animation)
 	EventBus.radar_pinged.emit(_origin, s.radar_range)
 	return true
 
@@ -156,9 +165,12 @@ func _process(delta: float) -> void:
 	_charge_mat.set_shader_parameter(&'pulse', s.radar_bar_pulse)
 	_charge_mat.set_shader_parameter(&'pulse_speed', s.radar_bar_pulse_speed)
 	_charge_mat.set_shader_parameter(&'now', _clock)
+	var ready := _powered and _charge >= 1.0
 	if _ready_mat:
 		_ready_mat.emission = s.radar_ready_light_color
-		_ready_mat.emission_energy_multiplier = s.radar_ready_light_energy if _powered and _charge >= 1.0 else 0.0
+		_ready_mat.emission_energy_multiplier = s.radar_ready_light_energy if ready else 0.0
+	if interactable and interactable.get(&'enabled') != ready:
+		interactable.set(&'enabled', ready) # the button only glows (and works) when it can ping
 
 ## The ring moves (and looks around) in physics time: it casts rays for rock.
 func _physics_process(delta: float) -> void:

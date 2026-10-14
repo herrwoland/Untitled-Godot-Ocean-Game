@@ -194,7 +194,7 @@ func _update_interact_hover(from_helm := false) -> void:
 	var target: Object = null
 	if interact_ray.is_colliding():
 		var collider_hit := interact_ray.get_collider()
-		if collider_hit and collider_hit.has_method(&'interact'):
+		if collider_hit and collider_hit.has_method(&'interact') and collider_hit.get(&'enabled') != false:
 			if not from_helm or collider_hit.get(&'usable_from_helm') == true:
 				target = collider_hit
 
