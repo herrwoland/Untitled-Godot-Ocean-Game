@@ -98,6 +98,38 @@ static func current() -> GameSettings:
 ## How much the echo replaces the normal view (1 = completely).
 @export_range(0.0, 1.0, 0.01) var sonar_opacity := 1.0
 
+@export_group("Radar", "radar_")
+## The round screen in the cabin (scenes/boat/radar.gd): click it and a slow ring spreads from
+## the ship; whatever it passes -- creatures, land -- lights up and glows on like old phosphor.
+## How far it sees (m), centre to rim of the screen.
+@export_range(20.0, 1000.0, 5.0) var radar_range := 200.0
+## How fast the ring travels out (m/s). range / speed is how long a sweep takes.
+@export_range(1.0, 500.0, 1.0) var radar_speed := 25.0
+## Seconds the charge bar takes to fill again before the next ping. (Short for testing: aim 10-20.)
+@export_range(0.0, 60.0, 0.5) var radar_cooldown := 1.0
+## How long a blip glows on after the ring has passed it (s, the slow phosphor tail).
+@export_range(0.5, 60.0, 0.5) var radar_afterglow := 8.0
+## How bright the flash is the moment the ring touches something, on top of the glow.
+@export_range(0.0, 6.0, 0.05) var radar_flare := 1.5
+## Colour of the screen's light. Above 1 it blooms.
+@export var radar_color := Color(0.35, 1.0, 0.55)
+## Overall brightness of the screen.
+@export_range(0.0, 8.0, 0.05) var radar_energy := 1.6
+## Texels across the screen: lower is coarser, more PS1. A blip is at least one texel.
+@export_range(32, 256, 8) var radar_resolution := 128
+## Ground at or above this height (m) shows as land: rock, islands, shallows.
+@export_range(-50.0, 5.0, 0.5) var radar_land_level := -2.0
+## How bright land answers next to a creature (1).
+@export_range(0.0, 1.0, 0.01) var radar_land_strength := 0.45
+## How much bigger than its body a creature's blip is painted (the echo smears).
+@export_range(0.5, 3.0, 0.05) var radar_blip_scale := 1.2
+## Width of the travelling ring, as a share of the screen's radius.
+@export_range(0.002, 0.1, 0.001) var radar_ring_width := 0.012
+## How strongly the screen crawls with speckle (0 = clean).
+@export_range(0.0, 1.0, 0.01) var radar_grain := 0.35
+## Faint range circles on the screen, evenly spaced to the rim (0 = none).
+@export_range(0, 8, 1) var radar_range_rings := 4
+
 func _apply_highlight() -> void:
 	var m := HIGHLIGHT_MATERIAL
 	m.set_shader_parameter(&'color', highlight_color)

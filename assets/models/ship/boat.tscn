@@ -18,6 +18,7 @@
 [ext_resource type="PackedScene" uid="uid://bluq008n0ueup" path="res://scenes/boat/power_panel.tscn" id="7_opf80"]
 [ext_resource type="PackedScene" uid="uid://ws3qh2fav0ah" path="res://assets/models/boat/front_light.glb" id="7_vlsv3"]
 [ext_resource type="PackedScene" uid="uid://bs7x4dgp16lr5" path="res://assets/models/boat/boat_0.1.glb" id="8_2ib73"]
+[ext_resource type="PackedScene" uid="uid://cguat1jf2frql" path="res://scenes/boat/radar.tscn" id="8_pf22c"]
 [ext_resource type="PackedScene" uid="uid://d327mym4cwyr7" path="res://assets/models/boat/ladder.glb" id="9_4dvsp"]
 [ext_resource type="Script" uid="uid://c31olmyjgo1bk" path="res://assets/scripts/interactables/searchlight_interactable.gd" id="9_searchlight"]
 [ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="11_w61sw"]
@@ -350,6 +351,9 @@ transform = Transform3D(1.8757025e-07, 0, -1.4303691, 0, 1.4303691, 0, 1.4303691
 
 [node name="power_panel" parent="controls" unique_id=1000709516 instance=ExtResource("7_opf80")]
 transform = Transform3D(-0.073518366, 0, -1.5874966, 0, 1.589198, 0, 1.5874966, 0, -0.073518366, 5.45639, 5.283303, 3.238004)
+
+[node name="radar" parent="controls" unique_id=1828085955 instance=ExtResource("8_pf22c")]
+transform = Transform3D(-0.5540108, 0, -1.4611652, 0, 1.5626681, 0, 1.4611652, 0, -0.5540108, -1.0775648, 4.7520876, 2.009932)
 
 [node name="boat_navigation" type="Node3D" parent="." unique_id=280909978]
 transform = Transform3D(-2.7089227e-08, -0.36981598, 0.61972916, -1.6165162e-08, 0.6197296, 0.36981574, -0.7216841, 0, -3.154581e-08, -3.222597, 5.49919, 0.09899557)

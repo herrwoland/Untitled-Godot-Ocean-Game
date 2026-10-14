@@ -1,0 +1,91 @@
+[gd_scene format=3 uid="uid://cguat1jf2frql"]
+
+[ext_resource type="Script" uid="uid://d27lsaujwpfg" path="res://scenes/boat/radar.gd" id="1_radar"]
+[ext_resource type="Script" uid="uid://bu5ui6qwq1aas" path="res://assets/scripts/interactables/pull_interactable.gd" id="2_pull"]
+[ext_resource type="PackedScene" uid="uid://dno7cg7l3pfw1" path="res://assets/models/boat/radar.glb" id="3_0xa0n"]
+[ext_resource type="Texture2D" uid="uid://d1x3lsjc8boy4" path="res://assets/models/boat/glass_texture.png" id="3_sy1je"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_body"]
+albedo_color = Color(0.13, 0.12, 0.11, 1)
+metallic = 0.4
+roughness = 0.6
+
+[sub_resource type="BoxMesh" id="Mesh_body"]
+material = SubResource("Mat_body")
+size = Vector3(0.56, 0.06, 0.7)
+
+[sub_resource type="PlaneMesh" id="Mesh_screen"]
+size = Vector2(0.46, 0.46)
+
+[sub_resource type="PlaneMesh" id="Mesh_bar"]
+size = Vector2(0.4, 0.03)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bw12s"]
+resource_name = "glass_window"
+transparency = 1
+albedo_color = Color(1, 1, 1, 0.45882353)
+albedo_texture = ExtResource("3_sy1je")
+roughness_texture = ExtResource("3_sy1je")
+metadata/_gltf_primary_texture_coord = 0
+
+[sub_resource type="BoxShape3D" id="Shape_click"]
+size = Vector3(0.050695494, 0.06772461, 0.24699554)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_sy1je"]
+resource_name = "Material.002"
+cull_mode = 2
+albedo_color = Color(0.32, 0.20629333, 0.1536, 1)
+roughness = 0.5
+emission_enabled = true
+emission = Color(0.37737197, 0.6129472, 0, 1)
+emission_energy_multiplier = 0.0
+
+[node name="radar" type="Node3D" unique_id=1828085955 node_paths=PackedStringArray("screen", "charge_bar")]
+script = ExtResource("1_radar")
+screen = NodePath("radar/radar_top/radar_body")
+charge_bar = NodePath("radar/radar_top/radar_bar")
+
+[node name="placeholder" type="Node3D" parent="." unique_id=1767527105]
+visible = false
+
+[node name="radar_body" type="MeshInstance3D" parent="placeholder" unique_id=216499959]
+mesh = SubResource("Mesh_body")
+
+[node name="radar_screen" type="MeshInstance3D" parent="placeholder" unique_id=1598011143]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0305, -0.06)
+mesh = SubResource("Mesh_screen")
+
+[node name="radar_charge_bar" type="MeshInstance3D" parent="placeholder" unique_id=536236550]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0305, 0.26)
+mesh = SubResource("Mesh_bar")
+
+[node name="ping" type="AudioStreamPlayer3D" parent="." unique_id=1830926657]
+bus = &"SFX"
+
+[node name="ready" type="AudioStreamPlayer3D" parent="." unique_id=752624096]
+bus = &"SFX"
+
+[node name="radar" parent="." unique_id=672426391 instance=ExtResource("3_0xa0n")]
+
+[node name="radar_bar_glass" parent="radar/radar_top" parent_id_path=PackedInt32Array(672426391, 507666583) index="1" unique_id=1193740537]
+surface_material_override/0 = SubResource("StandardMaterial3D_bw12s")
+
+[node name="radar_body" parent="radar/radar_top" parent_id_path=PackedInt32Array(672426391, 507666583) index="2" unique_id=1286945801]
+surface_material_override/1 = SubResource("Mat_body")
+
+[node name="interactable" type="Area3D" parent="radar/radar_top/radar_button" parent_id_path=PackedInt32Array(672426391, 2099419639) index="0" unique_id=1601982345 node_paths=PackedStringArray("highlight_mesh")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3656187, -0.023058414, -0.025111675)
+collision_layer = 4
+collision_mask = 0
+script = ExtResource("2_pull")
+highlight_mesh = NodePath("..")
+usable_from_helm = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="radar/radar_top/radar_button/interactable" unique_id=1840845116]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.35609427, 0.026264649, 0.025510427)
+shape = SubResource("Shape_click")
+
+[node name="radar_light" parent="radar/radar_top" parent_id_path=PackedInt32Array(672426391, 507666583) index="4" unique_id=1577213787]
+surface_material_override/0 = SubResource("StandardMaterial3D_sy1je")
+
+[editable path="radar"]

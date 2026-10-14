@@ -402,6 +402,14 @@ func _reset() -> void:
 ## ---- public ------------------------------------------------------------------
 
 ## Awake and after someone (the CreatureDirector keeps the hunters off).
+## The middle of its body in the world, and how wide that body is (m): for anything that
+## must see it whole from afar, like the ship's radar.
+func body_position() -> Vector3:
+	return _skeleton.global_transform * body_center if _skeleton else global_position
+
+func body_size() -> float:
+	return body_radius * _scale
+
 func is_awake() -> bool:
 	return state == State.WAKING or state == State.HUNT or state == State.BOAT or state == State.FISH
 
