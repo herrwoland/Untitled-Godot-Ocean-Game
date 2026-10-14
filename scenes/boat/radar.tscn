@@ -119,6 +119,10 @@ _data = {
 &"button_click": SubResource("Animation_bw12s")
 }
 
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_5s6u7"]
+height = 0.66845703
+radius = 0.2529297
+
 [node name="radar" type="Node3D" unique_id=1828085955 node_paths=PackedStringArray("screen", "charge_bar")]
 script = ExtResource("1_radar")
 screen = NodePath("radar/radar_top/radar_body")
@@ -170,10 +174,17 @@ surface_material_override/0 = SubResource("StandardMaterial3D_sy1je")
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1882205455]
 libraries/ = SubResource("AnimationLibrary_afqe8")
 
-[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=1727143242]
+[node name="light_omni" type="OmniLight3D" parent="." unique_id=1727143242]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.38824221, 0.02351427, -0.13288301)
 light_color = Color(4.47616e-06, 0.7210916, 0.2306717, 1)
-light_energy = 0.5
+light_energy = 0.2
+light_volumetric_fog_energy = 16.0
 omni_range = 0.16364945
+
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=1544511102]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=1358670666]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.28881836, 0)
+shape = SubResource("CylinderShape3D_5s6u7")
 
 [editable path="radar"]

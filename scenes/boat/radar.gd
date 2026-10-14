@@ -32,6 +32,9 @@ const NEVER := -100000.0 # hit time of a texel nothing has touched
 ## Which surface of `ready_light` glows; its own material's emission is switched (colour and
 ## strength: GameSettings radar_ready_light_*).
 @export var ready_light_surface := 0
+## A real light that shines with the ready light. Left empty, the first light directly under
+## the radar (whatever it is named).
+@export var ready_glow: Light3D
 ## Clicked to ping. Left empty, the first clickable thing (PullInteractable) under the radar.
 @export var interactable: Area3D
 ## Turns the picture on the plate if it comes out the wrong way round (degrees, about the up axis).
@@ -42,7 +45,6 @@ const NEVER := -100000.0 # hit time of a texel nothing has touched
 @onready var _ping_sound: AudioStreamPlayer3D = get_node_or_null(^'ping')
 @onready var _ready_sound: AudioStreamPlayer3D = get_node_or_null(^'ready')
 @onready var _anim: AnimationPlayer = get_node_or_null(^'AnimationPlayer')
-@onready var _ready_glow: OmniLight3D = get_node_or_null(^'OmniLight3D') # lit with the ready light
 
 ## Played on the AnimationPlayer (child) when the button is pressed and a ping goes out.
 @export var press_animation := &'button_click'
@@ -88,6 +90,9 @@ func _ready() -> void:
 		interactable.pulled.connect(func(_player: Node) -> void: ping())
 	else:
 		push_warning("Radar: nothing to click (no PullInteractable under it).")
+	if ready_glow == null:
+		var lights := find_children("*", "Light3D", false, false)
+		ready_glow = lights[0] if not lights.is_empty() else null
 	if ready_light == null:
 		ready_light = find_child("radar_light", true, false) as MeshInstance3D
 	if ready_light and ready_light.mesh and ready_light_surface < ready_light.mesh.get_surface_count():
@@ -170,8 +175,8 @@ func _process(delta: float) -> void:
 	if _ready_mat:
 		_ready_mat.emission = s.radar_ready_light_color
 		_ready_mat.emission_energy_multiplier = s.radar_ready_light_energy if ready else 0.0
-	if _ready_glow:
-		_ready_glow.visible = ready
+	if ready_glow:
+		ready_glow.visible = ready
 	if interactable and interactable.get(&'enabled') != ready:
 		interactable.set(&'enabled', ready) # the button only glows (and works) when it can ping
 

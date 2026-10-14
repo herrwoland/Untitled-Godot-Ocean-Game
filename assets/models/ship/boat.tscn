@@ -261,15 +261,20 @@ debug_color = Color(0.761639, 0.449833, 0.105389, 1)
 [node name="lights" type="Node3D" parent="." unique_id=635125895]
 
 [node name="cabin_controls_light_1" type="SpotLight3D" parent="lights" unique_id=1969581804]
-transform = Transform3D(-1.7944059e-08, -0.9118551, 0.41051224, -3.9858453e-08, 0.41051224, 0.9118551, -1, -1.7763568e-15, -4.3711392e-08, -0.38653946, 7.717661, 0)
+transform = Transform3D(-1.6122465e-08, -0.92949325, 0.36883903, -4.0629438e-08, 0.36883903, 0.92949325, -1, -1.7763568e-15, -4.3711392e-08, -0.38653946, 7.717661, 0)
 light_color = Color(1, 0.909037, 0.7275678, 1)
-light_energy = 5.079
-spot_angle = 38.552494
+spot_angle = 40.83076
+
+[node name="cabin_controls_light_2" type="SpotLight3D" parent="lights" unique_id=1957219981]
+transform = Transform3D(3.5336445e-08, -0.5886286, -0.8084036, -2.5729767e-08, -0.8084036, 0.5886286, -1, -1.2851974e-15, -4.371139e-08, -0.38653946, 7.717661, 0)
+light_color = Color(1, 0.909037, 0.7275678, 1)
+spot_range = 9.581981
+spot_angle = 47.36656
 
 [node name="cabin_light_1" type="OmniLight3D" parent="lights" unique_id=755157783]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.437637, 7.4419847, 1.640837)
 light_color = Color(1, 0.827451, 0.4392157, 1)
-light_energy = 0.358
+light_energy = 0.2
 light_volumetric_fog_energy = 16.0
 light_specular = 0.0
 omni_range = 6.582
@@ -277,7 +282,7 @@ omni_range = 6.582
 [node name="cabin_light_2" type="OmniLight3D" parent="lights" unique_id=1827528259]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.437637, 7.4419847, -1.6186192)
 light_color = Color(1, 0.8286217, 0.43948364, 1)
-light_energy = 0.358
+light_energy = 0.2
 light_volumetric_fog_energy = 16.0
 light_specular = 0.0
 omni_range = 6.582
@@ -285,6 +290,7 @@ omni_range = 6.582
 [node name="cabin_light_3" type="OmniLight3D" parent="lights" unique_id=1408277876]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.1836624, 2.929485, 2.743222)
 light_color = Color(1, 0.8286217, 0.43948364, 1)
+light_energy = 0.2
 light_volumetric_fog_energy = 0.0
 light_specular = 0.0
 omni_range = 5.734757
@@ -292,6 +298,7 @@ omni_range = 5.734757
 [node name="cabin_light_4" type="OmniLight3D" parent="lights" unique_id=144347189]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.163427, 3.0398862, 0.025683403)
 light_color = Color(1, 0.8286217, 0.43948364, 1)
+light_energy = 0.2
 light_volumetric_fog_energy = 0.0
 light_specular = 0.0
 omni_range = 5.734757
@@ -353,7 +360,7 @@ transform = Transform3D(1.8757025e-07, 0, -1.4303691, 0, 1.4303691, 0, 1.4303691
 transform = Transform3D(-0.073518366, 0, -1.5874966, 0, 1.589198, 0, 1.5874966, 0, -0.073518366, 5.45639, 5.283303, 3.238004)
 
 [node name="radar" parent="controls" unique_id=1828085955 instance=ExtResource("8_pf22c")]
-transform = Transform3D(-0.5540108, 0, -1.4611652, 0, 1.5626681, 0, 1.4611652, 0, -0.5540108, -1.0775648, 4.7520876, 2.009932)
+transform = Transform3D(-1.5626681, 0, -1.3661278e-07, 0, 1.5626681, 0, 1.3661278e-07, 0, -1.5626681, -1.4005388, 4.7520876, 2.0524437)
 
 [node name="boat_navigation" type="Node3D" parent="." unique_id=280909978]
 transform = Transform3D(-2.7089227e-08, -0.36981598, 0.61972916, -1.6165162e-08, 0.6197296, 0.36981574, -0.7216841, 0, -3.154581e-08, -3.222597, 5.49919, 0.09899557)
