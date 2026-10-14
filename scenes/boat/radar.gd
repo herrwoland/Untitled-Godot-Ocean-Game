@@ -12,21 +12,37 @@ const SCREEN_SHADER := preload("res://scenes/boat/radar_screen.gdshader")
 const CHARGE_SHADER := preload("res://scenes/boat/radar_charge.gdshader")
 const NEVER := -100000.0 # hit time of a texel nothing has touched
 
-## The round plate. Its UVs must fill 0..1 with the circle's centre at (0.5, 0.5). Seen from
-## above, U runs along the mesh's +X and V along its +Z (as a PlaneMesh does).
+## The mesh holding the round screen. The screen is one flat surface of it, UV-mapped top-down
+## as a square around the circle (any part of the texture, any way round: the picture follows
+## the UVs, read from the mesh itself).
 @export var screen: MeshInstance3D
-## The strip that fills while the radar charges. U runs 0 -> 1 along it. Optional.
+## Which surface (material slot) of `screen` is the glass. -1 = the flattest one.
+@export var screen_surface := -1
+## The strip that fills while the radar charges. Optional. It fills along its longest side,
+## from the end where its U is smallest.
 @export var charge_bar: MeshInstance3D
-## Turns the picture on the plate if the model's UVs face another way (degrees, about the up axis).
+## Which surface (material slot) of `charge_bar` lights up.
+@export var charge_bar_surface := 0
+## Glows when the radar is charged and ready. Left empty, a child named "radar_light".
+@export var ready_light: MeshInstance3D
+## Which surface of `ready_light` glows; its own material's emission is switched.
+@export var ready_light_surface := 0
+## Emission energy of the ready light while it is lit.
+@export_range(0.0, 16.0, 0.1) var ready_light_energy := 1.0
+## Clicked to ping. Left empty, the first clickable thing (PullInteractable) under the radar.
+@export var interactable: Area3D
+## Turns the picture on the plate if it comes out the wrong way round (degrees, about the up axis).
 @export_range(-180.0, 180.0, 90.0) var screen_turn_deg := 0.0
 ## The ship it reads power from and centres on. Left empty, the ship this radar is aboard.
 @export var ship: Node3D
 
-@onready var _interactable: Area3D = get_node_or_null(^'interactable')
 @onready var _ping_sound: AudioStreamPlayer3D = get_node_or_null(^'ping')
 @onready var _ready_sound: AudioStreamPlayer3D = get_node_or_null(^'ready')
 
 var _screen_mat := ShaderMaterial.new()
+var _ready_mat: StandardMaterial3D # the ready light's own material, switched on and off
+var _screen_du := Vector3.RIGHT # the screen's U and V directions in its mesh's space
+var _screen_dv := Vector3.BACK
 var _charge_mat := ShaderMaterial.new()
 var _image: Image
 var _texture: ImageTexture
@@ -55,18 +71,36 @@ func _ready() -> void:
 	if ship:
 		_powered = ship.get(&'powered') != false
 		ship.power_changed.connect(_on_power_changed)
-	if _interactable and _interactable.has_signal(&'pulled'):
-		_interactable.pulled.connect(func(_player: Node) -> void: ping())
+	if interactable == null:
+		for area: Area3D in find_children("*", "Area3D", true, false):
+			if area.has_signal(&'pulled'):
+				interactable = area
+				break
+	if interactable:
+		interactable.pulled.connect(func(_player: Node) -> void: ping())
+	else:
+		push_warning("Radar: nothing to click (no PullInteractable under it).")
+	if ready_light == null:
+		ready_light = find_child("radar_light", true, false) as MeshInstance3D
+	if ready_light and ready_light.mesh and ready_light_surface < ready_light.mesh.get_surface_count():
+		var mat := ready_light.get_active_material(ready_light_surface) as StandardMaterial3D
+		if mat:
+			_ready_mat = mat.duplicate()
+			ready_light.set_surface_override_material(ready_light_surface, _ready_mat)
 	var terrains := get_tree().root.find_children("*", "Terrain3D", true, false)
 	_terrain = terrains[0] if not terrains.is_empty() else null
 	_ray.collision_mask = 1
 	_ray.hit_back_faces = false
 	_screen_mat.shader = SCREEN_SHADER
 	_charge_mat.shader = CHARGE_SHADER
-	if screen:
-		screen.material_override = _screen_mat
-	if charge_bar:
-		charge_bar.material_override = _charge_mat
+	if screen and screen.mesh:
+		if screen_surface < 0:
+			screen_surface = _flattest_surface(screen.mesh)
+		_fit_screen(screen.mesh, screen_surface)
+		screen.set_surface_override_material(screen_surface, _screen_mat)
+	if charge_bar and charge_bar.mesh:
+		_fit_bar(charge_bar.mesh, charge_bar_surface)
+		charge_bar.set_surface_override_material(charge_bar_surface, _charge_mat)
 	_build(GameSettings.current().radar_resolution)
 	_clear()
 
@@ -113,6 +147,8 @@ func _process(delta: float) -> void:
 	_charge_mat.set_shader_parameter(&'tint', s.radar_color)
 	_charge_mat.set_shader_parameter(&'energy', s.radar_energy)
 	_charge_mat.set_shader_parameter(&'now', _clock)
+	if _ready_mat:
+		_ready_mat.emission_energy_multiplier = ready_light_energy if _powered and _charge >= 1.0 else 0.0
 
 ## The ring moves (and looks around) in physics time: it casts rays for rock.
 func _physics_process(delta: float) -> void:
@@ -189,8 +225,10 @@ func _is_land(world: Vector3, space: PhysicsDirectSpaceState3D, s: GameSettings)
 func _update_axes() -> void:
 	var basis := screen.global_basis if screen else global_basis
 	var turn := Basis(Vector3.UP, deg_to_rad(screen_turn_deg))
-	var u := turn * Vector3(basis.x.x, 0.0, basis.x.z)
-	var v := turn * Vector3(basis.z.x, 0.0, basis.z.z)
+	var du := basis * _screen_du
+	var dv := basis * _screen_dv
+	var u := turn * Vector3(du.x, 0.0, du.z)
+	var v := turn * Vector3(dv.x, 0.0, dv.z)
 	if u.length_squared() > 1e-6 and v.length_squared() > 1e-6:
 		_axis_u = u.normalized()
 		_axis_v = v.normalized()
@@ -200,6 +238,87 @@ func _bow_on_screen() -> Vector2:
 	var bow := -(ship.global_basis.x if ship else global_basis.x)
 	var on_screen := Vector2(bow.dot(_axis_u), bow.dot(_axis_v))
 	return on_screen.normalized() if on_screen.length_squared() > 1e-6 else Vector2(0.0, -1.0)
+
+## The surface lying flattest (least height for its width): the glass of a screen.
+static func _flattest_surface(mesh: Mesh) -> int:
+	var best := 0
+	var best_ratio := INF
+	for i in mesh.get_surface_count():
+		var box := _bounds(mesh.surface_get_arrays(i)[Mesh.ARRAY_VERTEX])
+		var ratio := box.size.y / maxf(maxf(box.size.x, box.size.z), 1e-6)
+		if ratio < best_ratio:
+			best_ratio = ratio
+			best = i
+	return best
+
+static func _bounds(verts: PackedVector3Array) -> AABB:
+	var box := AABB(verts[0], Vector3.ZERO)
+	for v in verts:
+		box = box.expand(v)
+	return box
+
+## Reads where the screen's circle sits in its UVs, and which way U and V run across the
+## mesh (a least-squares fit of position against UV over the surface's vertices).
+func _fit_screen(mesh: Mesh, surface: int) -> void:
+	var arrays := mesh.surface_get_arrays(surface)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	if uvs.is_empty():
+		return
+	var uv_min := uvs[0]
+	var uv_max := uvs[0]
+	var uv_mean := Vector2.ZERO
+	var pos_mean := Vector3.ZERO
+	for i in uvs.size():
+		uv_min = uv_min.min(uvs[i])
+		uv_max = uv_max.max(uvs[i])
+		uv_mean += uvs[i]
+		pos_mean += verts[i]
+	uv_mean /= uvs.size()
+	pos_mean /= uvs.size()
+	var suu := 0.0
+	var suv := 0.0
+	var svv := 0.0
+	var bu := Vector3.ZERO
+	var bv := Vector3.ZERO
+	for i in uvs.size():
+		var d := uvs[i] - uv_mean
+		var p := verts[i] - pos_mean
+		suu += d.x * d.x
+		suv += d.x * d.y
+		svv += d.y * d.y
+		bu += p * d.x
+		bv += p * d.y
+	var det := suu * svv - suv * suv
+	if absf(det) > 1e-12:
+		_screen_du = (bu * svv - bv * suv) / det
+		_screen_dv = (bv * suu - bu * suv) / det
+	_screen_mat.set_shader_parameter(&'uv_center', (uv_min + uv_max) * 0.5)
+	_screen_mat.set_shader_parameter(&'uv_half', ((uv_max - uv_min) * 0.5).max(Vector2(1e-4, 1e-4)))
+
+## The bar fills along its longest side, starting from the end where its U is smallest.
+func _fit_bar(mesh: Mesh, surface: int) -> void:
+	var arrays := mesh.surface_get_arrays(surface)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	var box := _bounds(verts)
+	var axis := Vector3.ZERO
+	axis[box.get_longest_axis_index()] = 1.0
+	var half := box.get_longest_axis_size() * 0.5
+	var from := box.get_center() - axis * half
+	var to := box.get_center() + axis * half
+	if not uvs.is_empty():
+		var lo := 0
+		var hi := 0
+		for i in uvs.size():
+			if uvs[i].x < uvs[lo].x: lo = i
+			if uvs[i].x > uvs[hi].x: hi = i
+		if (verts[hi] - verts[lo]).dot(axis) < 0.0:
+			var swap := from
+			from = to
+			to = swap
+	_charge_mat.set_shader_parameter(&'bar_from', from)
+	_charge_mat.set_shader_parameter(&'bar_to', to)
 
 func _on_power_changed(on: bool) -> void:
 	_powered = on

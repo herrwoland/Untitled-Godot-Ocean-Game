@@ -18,15 +18,17 @@ uniform float ring_width = 0.012;
 uniform float grain = 0.35;
 uniform float range_rings = 4.0;
 uniform float texels = 128.0;
+uniform vec2 uv_center = vec2(0.5); // where the screen's circle sits in the mesh's UVs
+uniform vec2 uv_half = vec2(0.5);
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 
 void fragment() {
-	vec2 p = UV * 2.0 - 1.0;
+	vec2 p = (UV - uv_center) / uv_half;
 	float r = length(p);
-	vec2 cell = floor(UV * texels);
+	vec2 cell = floor((p * 0.5 + 0.5) * texels);
 	// The phosphor: bright the moment the ring touches, then a long slow fade.
 	vec2 hit = texture(hits, (cell + 0.5) / texels).rg;
 	float age = max(now - hit.r, 0.0);
