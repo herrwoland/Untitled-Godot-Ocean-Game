@@ -566,7 +566,7 @@ mesh = SubResource("BoxMesh_getpj")
 
 [node name="Camera" type="Camera3D" parent="." unique_id=946660721]
 transform = Transform3D(-0.0471064, 0, 0.998889, 0, 1, 0, -0.998889, 0, -0.0471064, -15, 1, 0)
-far = 10000.0
+far = 12000.0
 script = ExtResource("3_camera")
 
 [node name="HelmPosition" type="Marker3D" parent="." unique_id=1679096902]

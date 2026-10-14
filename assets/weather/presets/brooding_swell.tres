@@ -20,7 +20,7 @@ waves = Array[Dictionary]([{
 &"detail": 1.0,
 &"displacement_scale": 0.3,
 &"fetch_length": 150.0,
-&"foam_amount": 1.2,
+&"foam_amount": 2.5,
 &"normal_scale": 1.0,
 &"spread": 0.3,
 &"swell": 0.8,
@@ -32,7 +32,7 @@ waves = Array[Dictionary]([{
 &"detail": 1.0,
 &"displacement_scale": 0.0,
 &"fetch_length": 550.0,
-&"foam_amount": 1.5,
+&"foam_amount": 3.0,
 &"normal_scale": 0.2,
 &"spread": 0.4,
 &"swell": 0.8,
@@ -184,7 +184,7 @@ sun = {
 &"light_energy": 0.65,
 &"light_indirect_energy": 1.0,
 &"light_volumetric_fog_energy": 0.25,
-&"quaternion": Quaternion(-0.03441739, 0.16554306, 0.005780891, 0.98558486),
+&"quaternion": Quaternion(-0.033513766, 0.27882117, 0.00973665, 0.9597087),
 &"shadow_opacity": 0.8
 }
 world_fog = {

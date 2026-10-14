@@ -52,6 +52,7 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 			mesh = WATER_MESH_HIGH
 		if mesh_quality == MeshQuality.HIGH8K:
 			mesh = WATER_MESH_HIGH8K
+		if is_node_ready(): _build_far_ring()
 
 ## How many times the wave simulation should update per second.
 ## Note: This doesn't reduce the frame stutter caused by FFT calculation, only
@@ -385,6 +386,7 @@ func _ready() -> void:
 	# Float division: 1 / 10 in integers is 0, which read the whole map back every frame.
 	_displacement_update_rate = 1.0 / maxf(float(displacement_updates_per_second), 1.0)
 	_setup_underwater_effect()
+	_build_far_ring()
 
 func _process(delta : float) -> void:
 	_update_wave_blockers()
@@ -900,6 +902,68 @@ func _update_scales_uniform() -> void:
 func _update_water(delta : float) -> void:
 	if wave_generator == null: _setup_wave_generator()
 	wave_generator.update(delta, parameters)
+
+## The sea past the clipmap's edge, out to FAR_RING_REACH: an internal child drawn with the same
+## material, so it is lit, tinted and mirrors the sky exactly like the water near you, and the
+## ocean runs on to the horizon instead of ending in a seam against the sky. Its inner edge is
+## the clipmap's own boundary vertices, so the waves (which the shader fades to flat by ~1 km
+## anyway) carry across without a crack; past that it is a few big flat triangles. Follows the
+## camera with this node, like the clipmap.
+const FAR_RING_REACH := 16000.0 # m from the centre: beyond any camera's far plane
+const FAR_RING_GROWTH := 1.06 # each loop of the ring is this much wider than the last
+
+var _far_ring: MeshInstance3D
+
+func _build_far_ring() -> void:
+	if mesh == null:
+		return
+	# The clipmap's boundary, in order around it.
+	var verts: PackedVector3Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var half := 0.0
+	for v in verts:
+		half = maxf(half, maxf(absf(v.x), absf(v.z)))
+	var edge := {}
+	for v in verts:
+		if absf(absf(v.x) - half) < 0.01 or absf(absf(v.z) - half) < 0.01:
+			edge[Vector2(snappedf(v.x, 0.01), snappedf(v.z, 0.01))] = true
+	var loop: Array = edge.keys()
+	loop.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.angle() < b.angle())
+	var n := loop.size()
+	if n < 4:
+		return
+	# Loops of the same shape, each FAR_RING_GROWTH times wider, until it reaches FAR_RING_REACH.
+	var loops := ceili(log(FAR_RING_REACH / half) / log(FAR_RING_GROWTH))
+	var points := PackedVector3Array()
+	for k in loops + 1:
+		var scale := pow(FAR_RING_GROWTH, k)
+		for v: Vector2 in loop:
+			points.append(Vector3(v.x * scale, 0.0, v.y * scale))
+	var indices := PackedInt32Array()
+	for k in loops:
+		for i in n:
+			var a := k * n + i
+			var b := k * n + (i + 1) % n
+			indices.append_array([a, b, a + n, b, b + n, a + n])
+	var normals := PackedVector3Array()
+	normals.resize(points.size())
+	normals.fill(Vector3.UP)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = points
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var ring := ArrayMesh.new()
+	ring.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	if not is_instance_valid(_far_ring):
+		_far_ring = MeshInstance3D.new()
+		_far_ring.name = &'FarRing'
+		add_child(_far_ring, false, Node.INTERNAL_MODE_BACK)
+	_far_ring.mesh = ring
+	_far_ring.material_override = material_override
+	_far_ring.layers = layers
+	_far_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_far_ring.sorting_offset = sorting_offset
+	_far_ring.extra_cull_margin = extra_cull_margin
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
