@@ -260,6 +260,7 @@ var _water_shape_count := 0
 var _wave_blockers: Array[Node] = []
 var _blocker_a := PackedVector4Array()
 var _blocker_b := PackedVector4Array()
+var _blocker_c := PackedVector4Array()
 var _contact_nodes := [] # See _contact_body.
 var _contact_bodies := PackedVector4Array()
 var _contact_refresh := 0.0
@@ -279,14 +280,15 @@ func get_wave_height(global_position: Vector3, masked: bool = true) -> float:
 
 	# Domes/swells from WaterDeformer nodes lift the surface and calm the waves riding on it.
 	var shape := water_shapes_eval(xz)
-	var wave_scale := (1.0 - shape.y) * (blocker_mask(global_position) if masked else 1.0)
+	var calm := blocker_calm(global_position) if masked else Vector2(1.0, 0.0)
+	var wave_scale := (1.0 - shape.y) * calm.x
 
 	var rest := xz
 	var displacement := Vector3.ZERO
 	for i in 3:
 		displacement = _cpu_displacement(rest) * wave_scale
 		rest = xz - Vector2(displacement.x, displacement.z)
-	return displacement.y + shape.x
+	return displacement.y + shape.x + calm.y * (1.0 - calm.x)
 
 ## Where a piece of the water surface is right now, given where it sits at rest (x, z with no
 ## waves): the waves carry it round in a small loop as well as up and down. Following one piece
@@ -294,9 +296,11 @@ func get_wave_height(global_position: Vector3, masked: bool = true) -> float:
 ## and water shapes as get_wave_height().
 func surface_point(rest: Vector2, masked: bool = true) -> Vector3:
 	var shape := water_shapes_eval(rest)
-	var wave_scale := (1.0 - shape.y) * (blocker_mask(Vector3(rest.x, 0.0, rest.y)) if masked else 1.0)
+	var calm := blocker_calm(Vector3(rest.x, 0.0, rest.y)) if masked else Vector2(1.0, 0.0)
+	var wave_scale := (1.0 - shape.y) * calm.x
 	var d := _cpu_displacement(rest) * wave_scale
-	return Vector3(rest.x + d.x, d.y + shape.x, rest.y + d.z) # same height convention as get_wave_height()
+	var y := d.y + shape.x + calm.y * (1.0 - calm.x)
+	return Vector3(rest.x + d.x, y, rest.y + d.z) # same height convention as get_wave_height()
 
 ## The rest position (see surface_point) of the water that is over `global_position` right now.
 func surface_rest(global_position: Vector3, masked: bool = true) -> Vector2:
@@ -329,12 +333,23 @@ func water_shapes_eval(p: Vector2) -> Vector2:
 
 ## Combined wave-blocker attenuation at a position (0 = fully calmed, 1 = untouched).
 func blocker_mask(global_position: Vector3) -> float:
+	return blocker_calm(global_position).x
+
+## (attenuation, height of the calmed water) at a position: the strongest blocker there decides
+## both. The surface is the waves * attenuation + that height * (1 - attenuation).
+## Must mirror wave_blocker_eval() in water.gdshader and underwater_post.glsl.
+func blocker_calm(global_position: Vector3) -> Vector2:
 	var mask := 1.0
+	var height := 0.0
 	for i in mini(_wave_blockers.size(), MAX_WAVE_BLOCKERS):
 		var blocker = _wave_blockers[i]
-		if is_instance_valid(blocker):
-			mask = minf(mask, blocker.attenuation(global_position))
-	return mask
+		if not is_instance_valid(blocker):
+			continue
+		var m: float = blocker.attenuation(global_position)
+		if m < mask:
+			mask = m
+			height = blocker.calm_height(global_position)
+	return Vector2(mask, height)
 
 ## True inside a HOLE blocker or a DryVolume (eg. the inside of a hull): there is no water here.
 func is_water_hole(global_position: Vector3) -> bool:
@@ -577,6 +592,7 @@ func _update_underwater_effect() -> void:
 	fx.blocker_count = mini(_wave_blockers.size(), MAX_WAVE_BLOCKERS)
 	fx.blocker_a = _blocker_a
 	fx.blocker_b = _blocker_b
+	fx.blocker_c = _blocker_c
 	fx.glow_count = _glow_count
 	fx.glow_a = _glow_a
 	fx.glow_b = _glow_b
@@ -755,12 +771,33 @@ func _update_wave_blockers() -> void:
 	var count := mini(_wave_blockers.size(), MAX_WAVE_BLOCKERS)
 	_blocker_a.resize(MAX_WAVE_BLOCKERS)
 	_blocker_b.resize(MAX_WAVE_BLOCKERS)
+	_blocker_c.resize(MAX_WAVE_BLOCKERS)
 	for i in count:
-		_blocker_a[i] = _wave_blockers[i].pack_a()
-		_blocker_b[i] = _wave_blockers[i].pack_b()
+		var blocker = _wave_blockers[i]
+		if blocker.follows_waves:
+			blocker.calm_plane = _wave_plane(blocker)
+		_blocker_a[i] = blocker.pack_a()
+		_blocker_b[i] = blocker.pack_b()
+		_blocker_c[i] = blocker.pack_c()
 	WATER_MAT.set_shader_parameter(&'wave_blocker_count', count)
 	WATER_MAT.set_shader_parameter(&'wave_blocker_a', _blocker_a)
 	WATER_MAT.set_shader_parameter(&'wave_blocker_b', _blocker_b)
+	WATER_MAT.set_shader_parameter(&'wave_blocker_c', _blocker_c)
+
+## The plane through the real waves under a blocker's footprint: (height at its centre, dh/dx,
+## dh/dz), from the heights at its ends and sides. Spanning the whole footprint, it follows the
+## long waves (a swell lifting and tilting a ship) and averages away the short ones.
+func _wave_plane(blocker: Node) -> Vector3:
+	var c: Vector4 = blocker.pack_a()
+	var center := Vector3(c.x, 0.0, c.y)
+	var along := Vector3(c.z, 0.0, c.w) # the footprint's frame, see wave_blocker.gd
+	var across := Vector3(-c.w, 0.0, c.z)
+	var half: Vector2 = blocker.half_size()
+	half = Vector2(maxf(half.x, 0.5), maxf(half.y, 0.5))
+	var slope_along := (get_wave_height(center + along * half.x, false) - get_wave_height(center - along * half.x, false)) / (2.0 * half.x)
+	var slope_across := (get_wave_height(center + across * half.y, false) - get_wave_height(center - across * half.y, false)) / (2.0 * half.y)
+	var gradient := Vector2(c.z, c.w) * slope_along + Vector2(-c.w, c.z) * slope_across
+	return Vector3(get_wave_height(center, false), gradient.x, gradient.y)
 
 func _in_dry_volume(world_pos : Vector3) -> bool:
 	for volume in _dry_volumes:

@@ -71,6 +71,7 @@ group_uniforms wave_blockers;
 uniform int wave_blocker_count = 0;
 uniform vec4 wave_blocker_a[8]; // (pos.x, pos.z, frame cos, frame sin)
 uniform vec4 wave_blocker_b[8]; // (half x / radius, half z / capsule half length, fade width, flags: +1 box, +2 hole, +4 capsule)
+uniform vec4 wave_blocker_c[8]; // calm plane: (height at the centre, dh/dx, dh/dz, unused)
 group_uniforms;
 
 
@@ -310,12 +311,14 @@ varying float underside; // 1.0 when this fragment is the water surface seen fro
 varying float rain_wet; // How rain-beaten this bit of surface is (0..1), for the lighting.
 
 // Wave-blocker attenuation at a rest position (pre-displacement). Returns
-// (mask, hole): mask 0 inside a blocker rising to 1 across its fade width;
-// hole 1 inside a HOLE blocker (surface discarded there).
-// Must mirror distance_xz() in wave_blocker.gd exactly.
-vec2 wave_blocker_eval(vec2 p) {
+// (mask, hole, calm height): mask 0 inside a blocker rising to 1 across its fade width;
+// hole 1 inside a HOLE blocker (surface discarded there); calm height = where the calmed
+// water lies there, on the strongest blocker's calm plane (see wave_blocker.gd).
+// Must mirror distance_xz() in wave_blocker.gd and blocker_calm() in water.gd exactly.
+vec3 wave_blocker_eval(vec2 p) {
 	float mask = 1.0;
 	float hole = 0.0;
+	float calm_height = 0.0;
 	for (int i = 0; i < wave_blocker_count; i++) {
 		vec4 a = wave_blocker_a[i];
 		vec4 b = wave_blocker_b[i];
@@ -331,12 +334,17 @@ vec2 wave_blocker_eval(vec2 p) {
 		} else { // circle footprint
 			d = length(rel) - b.x;
 		}
-		mask = min(mask, smoothstep(0.0, max(b.z, 0.001), d));
+		float m = smoothstep(0.0, max(b.z, 0.001), d);
+		if (m < mask) {
+			mask = m;
+			vec4 c = wave_blocker_c[i];
+			calm_height = c.x + dot(c.yz, rel);
+		}
 		if ((flags & 2) == 2 && d <= 0.0) {
 			hole = 1.0;
 		}
 	}
-	return vec2(mask, hole);
+	return vec3(mask, hole, calm_height);
 }
 
 // Sum of all water shapes at a rest position. Returns (height, dh/dx, dh/dz, calm); `foam` gets
@@ -446,7 +454,7 @@ void vertex() {
 	float wake_churn = 0.0;
 	float shape_foam;
 	vec4 shape = water_shapes_eval(VERTEX.xz, shape_foam);
-	vec2 blocker = wave_blocker_eval(VERTEX.xz);
+	vec3 blocker = wave_blocker_eval(VERTEX.xz);
 	blocker_mask = blocker.x;
 	blocker_hole = blocker.y;
 	// is optimized: first check if the distance is greater than 150 meters.
@@ -472,8 +480,10 @@ void vertex() {
 	{
 		wave_height = 0.0;
 	}
-	VERTEX.y += shape.x;
-	wave_height += shape.x;
+	// Calmed water lies on its blocker's calm plane: sea level by a shore, the swell under a ship.
+	float calm_lift = blocker.z * (1.0 - blocker_mask);
+	VERTEX.y += shape.x + calm_lift;
+	wave_height += shape.x + calm_lift;
 }
 
 /** Filter weights for a cubic B-spline. */

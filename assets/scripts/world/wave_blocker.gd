@@ -11,6 +11,11 @@ extends Area3D
 ##
 ## water.gd gathers all blockers each frame and feeds them to the water shader
 ## and to get_wave_height(), so visuals and gameplay always agree.
+##
+## The calmed water lies on calm_plane. For a blocker on solid ground (a shore) that is sea level.
+## One carried by a floating body (a hull) follows the long waves under it instead (see
+## follows_waves): flat at sea level, a ship riding a big swell would sit in a trough under a
+## shelf of water, and on a crest her whole hull would hang out above a flat sea.
 
 enum Mode { CALM, HOLE }
 enum Kind { CIRCLE, BOX, CAPSULE }
@@ -24,6 +29,12 @@ var _half_extents := Vector2(5, 5)
 var _capsule_half_height := 0.0 # Half the capsule's straight section, along its axis.
 var _shape_node: Node3D
 
+## True for a blocker carried by something floating (any RigidBody3D above it): water.gd then
+## lifts and tilts calm_plane with the waves under the footprint every frame.
+var follows_waves := false
+## The plane the calmed water lies on: (height at the footprint's centre, dh/dx, dh/dz).
+var calm_plane := Vector3.ZERO
+
 func _ready() -> void:
 	add_to_group(&'wave_blocker')
 	# Purely a marker volume — never participate in physics.
@@ -32,6 +43,10 @@ func _ready() -> void:
 	collision_layer = 0
 	collision_mask = 0
 	refresh_from_shape()
+	var node := get_parent()
+	while node and not follows_waves:
+		follows_waves = node is RigidBody3D
+		node = node.get_parent()
 
 ## Reads the footprint from the first CollisionShape3D child. Call again if
 ## the shape is changed at runtime.
@@ -98,6 +113,20 @@ func distance_xz(world_pos: Vector3) -> float:
 func attenuation(world_pos: Vector3) -> float:
 	return smoothstep(0.0, maxf(fade_width, 0.001), distance_xz(world_pos))
 
+## Height of the calmed water at a position (see calm_plane).
+func calm_height(world_pos: Vector3) -> float:
+	var c := _center()
+	return calm_plane.x + calm_plane.y * (world_pos.x - c.x) + calm_plane.z * (world_pos.z - c.z)
+
+## Half the footprint's extent along its frame (length) and across it (width).
+func half_size() -> Vector2:
+	match _kind:
+		Kind.BOX:
+			return _half_extents
+		Kind.CAPSULE:
+			return Vector2(_capsule_half_length() + _radius, _radius)
+	return Vector2(_radius, _radius)
+
 func contains(world_pos: Vector3) -> bool:
 	return distance_xz(world_pos) <= 0.0
 
@@ -117,3 +146,7 @@ func pack_b() -> Vector4:
 		Kind.CAPSULE:
 			return Vector4(_radius, _capsule_half_length(), fade_width, float(flags + 4))
 	return Vector4(_radius, 0.0, fade_width, float(flags))
+
+## Shader packing — c: the calm plane (height at the centre, dh/dx, dh/dz, unused)
+func pack_c() -> Vector4:
+	return Vector4(calm_plane.x, calm_plane.y, calm_plane.z, 0.0)

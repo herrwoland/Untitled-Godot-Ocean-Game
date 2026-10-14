@@ -7,7 +7,7 @@ class_name UnderwaterEffect extends CompositorEffect
 const SHADER_PATH := 'res://assets/shaders/compute/underwater_post.glsl'
 const COPY_SHADER_PATH := 'res://assets/shaders/compute/image_copy.glsl'
 const CAUSTICS_SHADER_PATH := 'res://assets/shaders/compute/caustics.glsl'
-const PARAMS_SIZE := 2256 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow + fog gradient + 2x8 vec4 blockers + glow info + 2x16 vec4 glows + beam info + 3x8 vec4 beams + beam info 2 + 7 vec4 sonar pulse, std140.
+const PARAMS_SIZE := 2384 # 2 mat4 + 4 vec4 map scales + 10 vec4 + 2x16 vec4 water shapes + 4 vec4 shadow + fog gradient + 3x8 vec4 blockers + glow info + 2x16 vec4 glows + beam info + 3x8 vec4 beams + beam info 2 + 7 vec4 sonar pulse, std140.
 const MAX_WATER_SHAPES := 16
 const MAX_GLOWS := 16
 const MAX_BEAMS := 8
@@ -33,6 +33,7 @@ var lens_dry := false # camera inside a DryVolume (eg. a hull): no underwater ef
 var blocker_count := 0 # Wave blockers (ShoreCalm and the like), so the waterline matches the surface.
 var blocker_a := PackedVector4Array()
 var blocker_b := PackedVector4Array()
+var blocker_c := PackedVector4Array()
 var vignette := 0.35
 var silhouette_range := 45.0
 var fog_down := 0.35
@@ -301,7 +302,7 @@ func _update_params(scene_data : RenderSceneDataRD, view : int) -> void:
 	data.append_array([sb.y.x, sb.y.y, sb.y.z, shadow_softness])
 	data.append_array([-sb.z.x, -sb.z.y, -sb.z.z, shadow_bias])
 	data.append_array([fog_down, fog_up, 0.0, 0.0])
-	for blockers in [blocker_a, blocker_b]:
+	for blockers in [blocker_a, blocker_b, blocker_c]:
 		for i in 8:
 			var v : Vector4 = blockers[i] if i < blockers.size() else Vector4.ZERO
 			data.append_array([v.x, v.y, v.z, v.w])

@@ -51,6 +51,7 @@ layout(set = 0, binding = 4, std140) uniform Params {
 	vec4 fog_gradient;    // x brightness looking straight down, y looking straight up
 	vec4 blocker_a[8];    // Wave blockers, see wave_blocker.gd: (pos.x, pos.z, frame cos, frame sin)
 	vec4 blocker_b[8];    // (half x / radius, half z / capsule half length, fade width, flags)
+	vec4 blocker_c[8];    // calm plane: (height at the centre, dh/dx, dh/dz, unused)
 	vec4 glow_info;       // x = number of UnderwaterGlow nodes, y = overall strength
 	vec4 glow_a[16];      // (position, core size)
 	vec4 glow_b[16];      // (colour * strength, reach)
@@ -91,9 +92,11 @@ vec3 view_pos(vec2 uv, float depth) {
 // Calm zones (ShoreCalm and the like) flatten the waves, so the surface here is not the one
 // the FFT alone would give. Without this the effect tests against a sea that is not being
 // drawn, and everything keyed to the waterline goes wrong near a shore.
-// Must mirror wave_blocker_eval() in water.gdshader and blocker_mask() in water.gd.
-float wave_blocker_mask(vec2 pos) {
+// Returns (mask, height of the calmed water), see blocker_calm() in water.gd.
+// Must mirror wave_blocker_eval() in water.gdshader and blocker_calm() in water.gd.
+vec2 wave_blocker_calm(vec2 pos) {
 	float mask = 1.0;
+	float calm_height = 0.0;
 	int count = int(p.shafts2.z + 0.5);
 	for (int i = 0; i < count; i++) {
 		vec4 a = p.blocker_a[i];
@@ -110,9 +113,14 @@ float wave_blocker_mask(vec2 pos) {
 		} else { // circle
 			d = length(rel) - b.x;
 		}
-		mask = min(mask, smoothstep(0.0, max(b.z, 0.001), d));
+		float m = smoothstep(0.0, max(b.z, 0.001), d);
+		if (m < mask) {
+			mask = m;
+			vec4 c = p.blocker_c[i];
+			calm_height = c.x + dot(c.yz, rel);
+		}
 	}
-	return mask;
+	return vec2(mask, calm_height);
 }
 
 vec3 displacement(vec2 xz) {
@@ -129,14 +137,14 @@ vec3 displacement(vec2 xz) {
 // `xz` with a couple of fixed-point iterations before reading the height.
 float wave_height(vec2 xz) {
 	vec2 shape = water_shapes(xz);
-	float calm = wave_blocker_mask(xz);
+	vec2 calm = wave_blocker_calm(xz);
 	vec2 rest = xz;
 	vec3 d = vec3(0.0);
 	for (int i = 0; i < 3; i++) {
-		d = displacement(rest) * (1.0 - shape.y) * calm;
+		d = displacement(rest) * (1.0 - shape.y) * calm.x;
 		rest = xz - d.xz;
 	}
-	return p.effect2.y + d.y + shape.x;
+	return p.effect2.y + d.y + shape.x + calm.y * (1.0 - calm.x);
 }
 
 #ifndef MODE_SHAFTS
