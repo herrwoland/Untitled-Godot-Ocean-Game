@@ -94,6 +94,45 @@ enum MeshQuality { LOW, HIGH, HIGH8K }
 @export_range(0.25, 6.0, 0.05) var crossing_foam_falloff := 2.0
 ## How long the churn of air takes to clear after the camera crosses the surface (s).
 @export_range(0.1, 4.0, 0.05) var waterline_churn_time := 0.9
+@export_subgroup('Going Under')
+## The exposure drops this far the moment the camera goes under, then comes back (0 = off, 1 = black).
+## Also hides any frame where the waves glitch as the camera crosses them.
+@export_range(0.0, 1.0, 0.01) var submerge_exposure_dip := 0.97
+## Seconds it stays that dark before it starts to come back.
+@export_range(0.0, 2.0, 0.01) var submerge_exposure_hold := 0.1
+## Seconds until the exposure is back to normal.
+@export_range(0.05, 4.0, 0.05) var submerge_exposure_time := 0.5
+## Just before going under, the dark water in front of the lens rises up the screen from the
+## bottom: it starts when the lens is this far above the surface (m) and covers it at the surface.
+## Keep it under the player's float_eye_height, or floating darkens the bottom of the view.
+@export_range(0.0, 1.0, 0.01) var submerge_wipe_height := 0.18
+## How much the top of that water swells up and down across the screen (fraction of its height).
+@export_range(0.0, 0.3, 0.005) var submerge_wipe_wave := 0.07
+## How soft (out of focus) its top is.
+@export_range(0.0, 0.3, 0.005) var submerge_wipe_softness := 0.06
+## Sky caught along its top, like the lit back of a swell.
+@export_range(0.0, 1.5, 0.01) var submerge_wipe_sheen := 0.4
+## Beads of air left on the lens for a moment each time the camera goes under (submerge_lens.gd).
+@export var lens_beads_enabled := true
+## Seconds until the last bead has slid off.
+@export_range(0.1, 3.0, 0.05) var lens_bead_time := 0.6
+@export_range(0, 12, 1) var lens_bead_count := 9
+## Radius of a typical bead (fraction of screen height).
+@export_range(0.001, 0.2, 0.001) var lens_bead_size := 0.009
+## How much a bead shrinks the view behind it.
+@export_range(0.0, 2.0, 0.05) var lens_bead_refraction := 0.6
+## Brightness of their silver edges (light from the surface caught in them).
+@export_range(0.0, 4.0, 0.05) var lens_bead_brightness := 0.9
+@export var lens_bead_color := Color(0.75, 0.85, 0.9)
+## Out-of-focus blur inside a bead.
+@export_range(0.0, 5.0, 0.1) var lens_bead_blur := 2.0
+## How fast they slide up off the lens.
+@export_range(0.0, 1.0, 0.01) var lens_bead_rise := 0.25
+## How much their outline trembles.
+@export_range(0.0, 3.0, 0.05) var lens_bead_wobble := 1.0
+## Seconds above water before going under again counts as a new dive (so bobbing doesn't).
+@export_range(0.0, 2.0, 0.05) var lens_bead_min_air_time := 0.3
+@export_subgroup('')
 @export_range(0.0, 1.0, 0.01) var underwater_vignette := 0.35
 ## How far away big shapes can still be made out as dark silhouettes against the water (m).
 ## Detail and colour are lost much sooner (the material's underwater_absorption).
@@ -208,6 +247,7 @@ var _shadow_camera : Camera3D
 var _waterline_churn := 0.0
 var _crossing_foam := 0.0
 var _last_cam_submersion := INF
+var _submerge_lens : SubmergeLens
 var _shadow_capture : WaterShadowCapture
 var _wake_map : WakeMap
 var _marine_snow : GPUParticles3D
@@ -398,6 +438,7 @@ func _process(delta : float) -> void:
 	_update_underwater_effect()
 	_update_wakes(delta)
 	_update_marine_snow()
+	_update_submerge_lens(delta)
 	_update_depth_lighting()
 	# TODO: These should probably be the same update
 	# Update waves once every 1.0/updates_per_second.
@@ -1079,6 +1120,37 @@ func _view_camera() -> Camera3D:
 		var editor_vp = Engine.get_singleton(&'EditorInterface').get_editor_viewport_3d(0)
 		if editor_vp: cam = editor_vp.get_camera_3d()
 	return cam
+
+## The water rising up the screen, the exposure dip and air beads on the lens around going under (not in the editor; inside a dry hull
+## the lens isn't underwater).
+func _update_submerge_lens(delta : float) -> void:
+	if Engine.is_editor_hint(): return
+	if not _submerge_lens:
+		_submerge_lens = SubmergeLens.new()
+		add_child(_submerge_lens, false, Node.INTERNAL_MODE_BACK) # Internal: never saved into scenes.
+	var cam := _view_camera()
+	if not cam: return
+	var submersion := get_wave_height(cam.global_position) - cam.global_position.y
+	var lens := _submerge_lens
+	lens.enabled = lens_beads_enabled
+	lens.duration = lens_bead_time
+	lens.count = lens_bead_count
+	lens.bead_size = lens_bead_size
+	lens.refraction = lens_bead_refraction
+	lens.brightness = lens_bead_brightness
+	lens.tint = lens_bead_color
+	lens.blur = lens_bead_blur
+	lens.rise = lens_bead_rise
+	lens.wobble = lens_bead_wobble
+	lens.min_air_time = lens_bead_min_air_time
+	lens.exposure_dip = submerge_exposure_dip
+	lens.exposure_hold = submerge_exposure_hold
+	lens.exposure_time = submerge_exposure_time
+	lens.wipe_height = submerge_wipe_height
+	lens.wipe_wave = submerge_wipe_wave
+	lens.wipe_softness = submerge_wipe_softness
+	lens.wipe_sheen = submerge_wipe_sheen
+	lens.update(submersion, _in_dry_volume(cam.global_position), delta)
 
 ## Keeps the marine snow box centred on the camera; hidden above water.
 func _update_marine_snow() -> void:
