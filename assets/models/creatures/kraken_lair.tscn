@@ -48,4 +48,4 @@ shape = SubResource("Shape_guard")
 [node name="Kraken" parent="." unique_id=764573148 node_paths=PackedStringArray("perch", "guard_area") instance=ExtResource("1_kraken")]
 perch = NodePath("../Perch")
 guard_area = NodePath("../GuardArea")
-wake_time = 20.0
+wake_time = 5.0

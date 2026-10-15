@@ -9,7 +9,7 @@
 [ext_resource type="Material" uid="uid://byumtcccq4ew3" path="res://assets/water/mat_water.tres" id="5_lt75t"]
 [ext_resource type="AudioStream" uid="uid://cvvn0vke5comw" path="res://assets/ocean_loop.wav" id="6_jpklm"]
 [ext_resource type="Script" uid="uid://bdjbwk3saoju4" path="res://assets/water/water.gd" id="7_s0x5e"]
-[ext_resource type="Resource" uid="uid://71nrjqb0j07l" path="res://assets/weather/presets/night.tres" id="8_6iyjs"]
+[ext_resource type="Resource" uid="uid://cbd7svv1ee60m" path="res://assets/weather/presets/brooding_swell.tres" id="8_6iyjs"]
 [ext_resource type="AudioStream" uid="uid://ck6vmandgjhy0" path="res://assets/wind_loop.wav" id="8_6r5si"]
 [ext_resource type="Shader" uid="uid://bjmoda33o8qkd" path="res://assets/shaders/spatial/sea_spray.gdshader" id="8_eu8jb"]
 [ext_resource type="Material" uid="uid://5xqyddws6rt5" path="res://assets/water/mat_spray.tres" id="9_skbf4"]
@@ -67,61 +67,61 @@ seamless = true
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0odxb"]
 shader = ExtResource("2_getpj")
 shader_parameter/noise_texture = SubResource("NoiseTexture2D_1u8w0")
-shader_parameter/coverage = 0.6
-shader_parameter/density = 6.0
-shader_parameter/billow = 0.8
-shader_parameter/cloud_detail = 0.6
+shader_parameter/coverage = 0.97
+shader_parameter/density = 12.0
+shader_parameter/billow = 0.4
+shader_parameter/cloud_detail = 0.35
 shader_parameter/cloud_erosion = 0.45
 shader_parameter/detail_size = 2.0
 shader_parameter/underside_contrast = 0.9
-shader_parameter/cloud_base = 1.1
-shader_parameter/cloud_thickness = 1.6
-shader_parameter/cloud_size = 10.0
+shader_parameter/cloud_base = 0.6
+shader_parameter/cloud_thickness = 3.0
+shader_parameter/cloud_size = 14.0
 shader_parameter/warp_strength = 0.3
 shader_parameter/wind_direction = Vector2(1, 0.35)
-shader_parameter/wind_speed = 0.005
+shader_parameter/wind_speed = 0.02
 shader_parameter/scud_speed_mult = 2.2
-shader_parameter/rain_shafts = 0.0
-shader_parameter/haze_distance = 40.0
+shader_parameter/rain_shafts = 0.35
+shader_parameter/haze_distance = 30.0
 shader_parameter/planet_radius = 2000.0
 shader_parameter/cloud_map_ready = false
-shader_parameter/cloud_lit_color = Color(0.8, 0.85, 0.95, 1)
-shader_parameter/cloud_dark_color = Color(0.03, 0.035, 0.05, 1)
-shader_parameter/zenith_color = Color(0.008, 0.01, 0.02, 1)
-shader_parameter/horizon_color = Color(0.03, 0.035, 0.05, 1)
-shader_parameter/ground_color = Color(0.005, 0.007, 0.01, 1)
+shader_parameter/cloud_lit_color = Color(0.3, 0.27, 0.27, 1)
+shader_parameter/cloud_dark_color = Color(0.02, 0.022, 0.028, 1)
+shader_parameter/zenith_color = Color(0.015, 0.017, 0.022, 1)
+shader_parameter/horizon_color = Color(0.12, 0.1, 0.1, 1)
+shader_parameter/ground_color = Color(0.02, 0.03, 0.04, 1)
 shader_parameter/sun_glow = 0.25
-shader_parameter/silver_lining = 1.5
-shader_parameter/lightning_strength = 0.0
+shader_parameter/silver_lining = 1.2
+shader_parameter/lightning_strength = 0.12
 shader_parameter/exposure = 1.0
 shader_parameter/sun_size = 1.4
 shader_parameter/sun_disc_energy = 14.0
 shader_parameter/sun_corona = 0.8
-shader_parameter/moon_amount = 1.0
+shader_parameter/moon_amount = 0.0
 shader_parameter/moon_size = 6.57200030891012
 shader_parameter/moon_color = Color(0.86, 0.88, 0.92, 1)
 shader_parameter/moon_brightness = 10.0810004788475
 shader_parameter/moon_phase = 0.25
 shader_parameter/moon_halo = 0.9090000431775
-shader_parameter/sunset_color = Color(0.9, 0.45, 0.2, 1)
-shader_parameter/sunset_strength = 0.0
-shader_parameter/sunset_spread = 2.5
+shader_parameter/sunset_color = Color(0.95, 0.4, 0.15, 1)
+shader_parameter/sunset_strength = 0.6
+shader_parameter/sunset_spread = 5.0
 
 [sub_resource type="Sky" id="Sky_vroi3"]
 sky_material = SubResource("ShaderMaterial_0odxb")
 
 [sub_resource type="Environment" id="Environment_icybu"]
 background_mode = 2
-background_energy_multiplier = 0.12
+background_energy_multiplier = 0.5
 sky = SubResource("Sky_vroi3")
-ambient_light_energy = 0.15
+ambient_light_energy = 0.7
 tonemap_mode = 4
 glow_enabled = true
 glow_normalized = true
-glow_intensity = 0.25
+glow_intensity = 0.16
 glow_strength = 1.1
 glow_bloom = 0.15
-fog_light_color = Color(0.02, 0.025, 0.05, 1)
+fog_light_color = Color(0.107337, 0.114064, 0.276683, 1)
 fog_light_energy = 0.0
 fog_sky_affect = 0.0
 fog_height = -4.0
@@ -129,8 +129,9 @@ fog_height_density = 16.0
 fog_depth_curve = 0.25
 fog_depth_begin = 200.0
 fog_depth_end = 350.0
-volumetric_fog_density = 0.004
-volumetric_fog_length = 500.0
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.003
+volumetric_fog_sky_affect = 0.95
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_uypp3"]
 resource_local_to_scene = false
@@ -230,35 +231,39 @@ radius = 342.64648
 
 [sub_resource type="Resource" id="Resource_adqv5"]
 script = ExtResource("2_pw5n6")
-tile_length = Vector2(88, 88)
-displacement_scale = 0.5
-wind_speed = 4.0
+tile_length = Vector2(620, 620)
+displacement_scale = 0.75
+wind_speed = 22.0
 wind_direction = 20.0
-fetch_length = 150.0
-spread = 0.2
-foam_amount = 1.5
+fetch_length = 1500.0
+swell = 1.6
+spread = 0.05
+detail = 0.4
+whitecap = 2.0
+foam_amount = 0.0
 
 [sub_resource type="Resource" id="Resource_luhq0"]
 script = ExtResource("2_pw5n6")
-tile_length = Vector2(57, 57)
-displacement_scale = 0.45
-wind_speed = 2.5
+tile_length = Vector2(150, 150)
+displacement_scale = 0.3
+wind_speed = 7.0
 wind_direction = 15.0
 fetch_length = 150.0
-spread = 0.4
-foam_amount = 0.0
+spread = 0.3
+whitecap = 0.7
+foam_amount = 2.5
 
 [sub_resource type="Resource" id="Resource_83u3u"]
 script = ExtResource("2_pw5n6")
 tile_length = Vector2(16, 16)
 displacement_scale = 0.0
-normal_scale = 0.25
-wind_speed = 8.0
+normal_scale = 0.2
+wind_speed = 12.0
 wind_direction = 20.0
 fetch_length = 550.0
 spread = 0.4
 whitecap = 0.25
-foam_amount = 0.5
+foam_amount = 3.0
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_k6xhe"]
 
@@ -313,15 +318,6 @@ shader_parameter/quantization_level = 24
 shader_parameter/aberration_intensity = 1.0
 shader_parameter/aberration_threshold = 1.0
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_shore"]
-size = Vector3(60, 4, 60)
-
-[sub_resource type="BoxMesh" id="BoxMesh_shore"]
-size = Vector3(60, 4, 60)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_shore"]
-albedo_color = Color(0.72, 0.65, 0.5, 1)
-
 [sub_resource type="BoxShape3D" id="BoxShape3D_bed"]
 size = Vector3(2.8735352, 0.6, 1.4977112)
 
@@ -330,6 +326,15 @@ size = Vector3(2.8584595, 0.23444825, 1.4418945)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bed"]
 albedo_color = Color(0.5, 0.15, 0.15, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_shore"]
+size = Vector3(60, 4, 60)
+
+[sub_resource type="BoxMesh" id="BoxMesh_shore"]
+size = Vector3(60, 4, 60)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_shore"]
+albedo_color = Color(0.72, 0.65, 0.5, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_homezone"]
 size = Vector3(18, 5.739319, 18)
@@ -360,6 +365,13 @@ size = Vector3(25, 4, 110)
 
 [sub_resource type="BoxMesh" id="BoxMesh_beachwest"]
 size = Vector3(25, 4, 110)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_shorecalm"]
+size = Vector3(52.04123, 8, 110)
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_testhole"]
+height = 12.0
+radius = 5.0
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_wall_west"]
 size = Vector3(12, 28, 120)
@@ -404,13 +416,6 @@ emission_enabled = true
 emission = Color(1, 0.9, 0.6, 1)
 emission_energy_multiplier = 8.0
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_shorecalm"]
-size = Vector3(52.04123, 8, 110)
-
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_testhole"]
-height = 12.0
-radius = 5.0
-
 [sub_resource type="CylinderMesh" id="CylinderMesh_5s6u7"]
 height = 15.95
 
@@ -434,11 +439,10 @@ eye_waterline_clearance = 0.9
 eye_waterline_speed = 16.0
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=2103121333]
-transform = Transform3D(0.9456001, -0.051692113, 0.32119668, -0.00840572, 0.9830844, 0.18296006, -0.32522088, -0.17570706, 0.92917067, 0, 10, 0)
-light_color = Color(0.55, 0.65, 0.95, 1)
-light_energy = 0.3
-light_indirect_energy = 0.5
-light_volumetric_fog_energy = 0.3
+transform = Transform3D(0.84432745, -0.03737739, 0.53452146, 0, 0.9975641, 0.069756456, -0.5358265, -0.058897335, 0.842271, 0, 10, 0)
+light_color = Color(0.99999994, 0.7894118, 0.6734708, 1)
+light_energy = 0.65
+light_volumetric_fog_energy = 0.25
 light_specular = 0.0
 shadow_enabled = true
 shadow_bias = 0.0
@@ -446,10 +450,9 @@ shadow_opacity = 0.8
 shadow_blur = 4.592
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 377.3467, 25.953184, 241.99313)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38.251118, 20.10825, -162.44502)
 script = ExtResource("60_rain")
 intensity = 0.0
-wind_strength = 2.0
 lens_drops_enabled = false
 
 [node name="Weather" type="Node" parent="." unique_id=1337985377 node_paths=PackedStringArray("water", "sun", "world_environment", "world_fog", "rain")]
@@ -487,7 +490,7 @@ assets = SubResource("Terrain3DAssets_4w656")
 top_level = true
 metadata/_edit_lock_ = true
 
-[node name="CreatureDirector" type="Node3D" parent="." unique_id=77054325 node_paths=PackedStringArray("player", "water")]
+[node name="CreatureDirector" type="Node3D" parent="." unique_id=77054325 node_paths=PackedStringArray("player", "water", "fish_waters")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 517.28467, 0, -222.04877)
 script = ExtResource("35_creatures")
 creature_scene = ExtResource("50_hrvbo")
@@ -495,6 +498,7 @@ player = NodePath("../Player")
 water = NodePath("../Water")
 creature_count = 4
 speed_multiplier = 2.5
+fish_waters = NodePath("Area3D")
 
 [node name="Area3D" type="Area3D" parent="CreatureDirector" unique_id=2069015607]
 
@@ -504,7 +508,7 @@ shape = SubResource("CylinderShape3D_5s6u7")
 debug_color = Color(0.8128558, 0.030233042, 0.97549945, 0.41960785)
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 378, 0, 242)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39, 0, -162)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -521,6 +525,9 @@ depth_darkening = 0.01
 underwater_distortion = 0.001
 underwater_blur = 0.5
 waterline_width = 12.0
+submerge_exposure_dip = 0.4
+lens_beads_enabled = false
+lens_bead_size = 0.09
 underwater_daylight = 4.0
 light_beam_strength = 0.2
 light_beam_quality = 6
@@ -564,12 +571,12 @@ material = SubResource("FogMaterial_riff4")
 
 [node name="OceanAudioPlayer" type="AudioStreamPlayer" parent="." unique_id=275062109]
 stream = ExtResource("6_jpklm")
-volume_db = 13.5
+volume_db = 15.0
 autoplay = true
 
 [node name="WindAudioPlayer" type="AudioStreamPlayer" parent="." unique_id=381288878]
 stream = ExtResource("8_6r5si")
-volume_db = -28.833334
+volume_db = -30.0
 autoplay = true
 
 [node name="MusicPlayer" type="AudioStreamPlayer" parent="." unique_id=799557590]
@@ -579,6 +586,11 @@ autoplay = true
 [node name="Boat" parent="." unique_id=108108734 node_paths=PackedStringArray("water") instance=ExtResource("45_boat")]
 transform = Transform3D(-0.99955845, 0.027389033, -0.011583984, 0.027358893, 0.9996218, 0.0027563104, 0.0116551, 0.0024383024, -0.99992985, 396.3212, 1.5854063, 325.05444)
 water = NodePath("../Water")
+
+[node name="NoteView" parent="." unique_id=591198653 instance=ExtResource("31_note")]
+
+[node name="Island" parent="." unique_id=1072612934 instance=ExtResource("17_island")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 790.53076, -8.565859, 15.829681)
 
 [node name="Box Octet Experiment" type="RigidBody3D" parent="." unique_id=1036328041 node_paths=PackedStringArray("buoyant_cells", "mesh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.27228, 0, 21.2058)
@@ -601,11 +613,6 @@ water = NodePath("../../Water")
 parent = NodePath("..")
 cell_density_kg_per_m3 = 300.0
 calc_f_gravity = true
-
-[node name="Island" parent="." unique_id=1072612934 instance=ExtResource("17_island")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 790.53076, -8.565859, 15.829681)
-
-[node name="NoteView" parent="." unique_id=591198653 instance=ExtResource("31_note")]
 
 [node name="SleepFade" type="CanvasLayer" parent="." unique_id=1732156623]
 layer = 5
@@ -645,19 +652,6 @@ offset_right = 80.0
 offset_bottom = 20.0
 script = ExtResource("25_fps")
 
-[node name="Shore" type="StaticBody3D" parent="." unique_id=362217321]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -130, 1, 10)
-visible = false
-collision_layer = 0
-collision_mask = 0
-
-[node name="ShoreCollider" type="CollisionShape3D" parent="Shore" unique_id=202965370]
-shape = SubResource("BoxShape3D_shore")
-
-[node name="ShoreMesh" type="MeshInstance3D" parent="Shore" unique_id=1447716156]
-mesh = SubResource("BoxMesh_shore")
-surface_material_override/0 = SubResource("StandardMaterial3D_shore")
-
 [node name="shore" type="Node3D" parent="." unique_id=150492625]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -133.12311, 4.601178, 10)
 
@@ -688,6 +682,19 @@ surface_material_override/0 = SubResource("StandardMaterial3D_bed")
 
 [node name="LetterPoint" parent="." unique_id=1405991154 instance=ExtResource("43_letter")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -127.64436, 4.6482186, 11.01949)
+
+[node name="Shore" type="StaticBody3D" parent="." unique_id=362217321]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -130, 1, 10)
+visible = false
+collision_layer = 0
+collision_mask = 0
+
+[node name="ShoreCollider" type="CollisionShape3D" parent="Shore" unique_id=202965370]
+shape = SubResource("BoxShape3D_shore")
+
+[node name="ShoreMesh" type="MeshInstance3D" parent="Shore" unique_id=1447716156]
+mesh = SubResource("BoxMesh_shore")
+surface_material_override/0 = SubResource("StandardMaterial3D_shore")
 
 [node name="HomeZone" type="Area3D" parent="." unique_id=1786139595]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -132, 6, 10)
@@ -811,6 +818,38 @@ surface_material_override/0 = ExtResource("41_0cbny")
 autoplay = true
 max_distance = 1500.0
 
+[node name="ShoreCalm" type="Area3D" parent="." unique_id=590891729]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -138.98691, 0, 10)
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+script = ExtResource("38_blocker")
+fade_width = 40.0
+
+[node name="ShoreCalmShape" type="CollisionShape3D" parent="ShoreCalm" unique_id=731208181]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.9793854, 0, 0)
+shape = SubResource("BoxShape3D_shorecalm")
+
+[node name="TestWaveHole" type="Area3D" parent="." unique_id=1426995111]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 85.387695, 0, 131.02925)
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+script = ExtResource("38_blocker")
+mode = 1
+
+[node name="TestWaveHoleShape" type="CollisionShape3D" parent="TestWaveHole" unique_id=1619899738]
+shape = SubResource("CylinderShape3D_testhole")
+debug_color = Color(0.97, 0, 0.4688336, 1)
+
+[node name="IsleOfTheDead" parent="." unique_id=1706685954 instance=ExtResource("39_isle")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 260, 0, -260)
+
+[node name="KrakenLair" parent="." unique_id=186950073 instance=ExtResource("80_kraken_lair")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 480, 0, 380)
+
 [node name="RockWalls" type="StaticBody3D" parent="." unique_id=1076589946]
 visible = false
 
@@ -859,6 +898,10 @@ transform = Transform3D(0.96593, 0, -0.25882, 0, 1, 0, 0.25882, 0, 0.96593, -103
 mesh = SubResource("BoxMesh_wall_spur")
 surface_material_override/0 = SubResource("StandardMaterial3D_rockwall")
 
+[node name="EndingFish" parent="." unique_id=1659028753 instance=ExtResource("40_endfish")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -110, 3, 16)
+visible = false
+
 [node name="Lighthouse" type="Node3D" parent="." unique_id=1476677203]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -150, 26, -70)
 visible = false
@@ -891,45 +934,12 @@ spot_range = 900.0
 spot_attenuation = 0.6
 spot_angle = 4.0
 
-[node name="ShoreCalm" type="Area3D" parent="." unique_id=590891729]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -138.98691, 0, 10)
-collision_layer = 0
-collision_mask = 0
-monitoring = false
-monitorable = false
-script = ExtResource("38_blocker")
-fade_width = 40.0
-
-[node name="ShoreCalmShape" type="CollisionShape3D" parent="ShoreCalm" unique_id=731208181]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.9793854, 0, 0)
-shape = SubResource("BoxShape3D_shorecalm")
-
-[node name="TestWaveHole" type="Area3D" parent="." unique_id=1426995111]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 85.387695, 0, 131.02925)
-collision_layer = 0
-collision_mask = 0
-monitoring = false
-monitorable = false
-script = ExtResource("38_blocker")
-mode = 1
-
-[node name="TestWaveHoleShape" type="CollisionShape3D" parent="TestWaveHole" unique_id=1619899738]
-shape = SubResource("CylinderShape3D_testhole")
-debug_color = Color(0.97, 0, 0.4688336, 1)
-
-[node name="IsleOfTheDead" parent="." unique_id=1706685954 instance=ExtResource("39_isle")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 260, 0, -260)
-
-[node name="KrakenLair" parent="." unique_id=186950073 instance=ExtResource("80_kraken_lair")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 480, 0, 380)
-
-[node name="EndingFish" parent="." unique_id=1659028753 instance=ExtResource("40_endfish")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -110, 3, 16)
-visible = false
-
 [node name="DeepPassing" type="Node3D" parent="." unique_id=80484297 node_paths=PackedStringArray("player")]
 script = ExtResource("41_passing")
 player = NodePath("../Player")
+
+[node name="water_test_cam" type="Camera3D" parent="." unique_id=874141532]
+transform = Transform3D(-0.9902683, 0.065872595, -0.122594856, 0, 0.8808907, 0.47331968, 0.13917147, 0.46871346, -0.87231815, -66.901695, 8.194256, 11.157707)
 
 [node name="HunterFish" parent="." unique_id=2037867007 instance=ExtResource("50_hrvbo")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 86.672325, -21.21131, -12.386536)
@@ -945,13 +955,8 @@ size = 3.1999999999999997
 reach = 91.0
 metadata/_custom_type_script = "uid://csyjpi4nlac4u"
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1794267363]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.98754764, 0)
-visible = false
-mesh = SubResource("CylinderMesh_5s6u7")
-
-[node name="water_test_cam" type="Camera3D" parent="." unique_id=874141532]
-transform = Transform3D(-0.9902683, 0.065872595, -0.122594856, 0, 0.8808907, 0.47331968, 0.13917147, 0.46871346, -0.87231815, -66.901695, 8.194256, 11.157707)
+[node name="vortex_mouth" parent="." unique_id=827155423 instance=ExtResource("54_4w656")]
+transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 3278.989, 3.0122223, 95.900246)
 
 [node name="BuoyancyPointTest" parent="." unique_id=1759410664 node_paths=PackedStringArray("water") instance=ExtResource("54_6iyjs")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.723843, -10.054815, 4.2255745)
@@ -964,8 +969,10 @@ drag_coef_yaw = 0.0
 drag_coef_pitch = 0.0
 drag_coef_roll = 0.0
 
-[node name="vortex_mouth" parent="." unique_id=827155423 instance=ExtResource("54_4w656")]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 3278.989, 3.0122223, 95.900246)
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1794267363]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.98754764, 0)
+visible = false
+mesh = SubResource("CylinderMesh_5s6u7")
 
 [editable path="shore/House_01"]
 [editable path="StonyBeach/Light_House_0_1"]
