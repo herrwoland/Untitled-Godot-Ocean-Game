@@ -32,7 +32,7 @@
 [ext_resource type="PackedScene" uid="uid://b0ovts5skp0ft" path="res://scenes/boat/mailbox.tscn" id="24_printer"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_82xsv"]
-size = Vector3(44, 8.062927, 13.075356)
+size = Vector3(42.12262, 8.062927, 13.075356)
 
 [sub_resource type="Curve" id="Curve_rf6rj"]
 _data = [Vector2(0, 0.50357145), 0.0, 0.03748476, 0, 1, Vector2(0.57166123, 0.52500004), 0.0, 0.0, 0, 0, Vector2(1, 0), -1.2256655, 0.0, 1, 0]
@@ -258,7 +258,7 @@ mesh = NodePath("HullDragVolume")
 engine_cells = [NodePath("Aft Ballast")]
 
 [node name="Collider" type="CollisionShape3D" parent="." unique_id=50161810]
-transform = Transform3D(0.999998, 0, 2.57045e-07, 0, 0.999998, 0, -2.04891e-07, 0, 0.999998, -0.972511, -0.5460404, 0.106040716)
+transform = Transform3D(0.999998, 0, 2.57045e-07, 0, 0.999998, 0, -2.04891e-07, 0, 0.999998, -2.3256881, -0.5460404, 0.106041)
 shape = SubResource("BoxShape3D_82xsv")
 debug_color = Color(0.761639, 0.449833, 0.105389, 1)
 
@@ -381,54 +381,51 @@ transform = Transform3D(0.9999999, 0, 7.1054274e-15, 3.3881316e-21, 0.99999994, 
 [node name="boat" parent="." unique_id=331109473 instance=ExtResource("8_2ib73")]
 transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, 1.508625, -3.5490909, 0)
 
-[node name="StaticBody3D" parent="boat/body" parent_id_path=PackedInt32Array(331109473, 1426477435) index="0" unique_id=41932038]
+[node name="StaticBody3D" parent="boat/body" parent_id_path=PackedInt32Array(331109473, 1649976164) index="0" unique_id=109804119]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/cabin" parent_id_path=PackedInt32Array(331109473, 1215597146) index="0" unique_id=301548416]
+[node name="StaticBody3D" parent="boat/cabin" parent_id_path=PackedInt32Array(331109473, 1990787165) index="0" unique_id=311108580]
 collision_layer = 2
 
-[node name="Cube_006" parent="boat" index="14" unique_id=164224682]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.7148559, 5.065892, 0.19160867)
-
-[node name="StaticBody3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 86092125) index="0" unique_id=1098095477]
+[node name="StaticBody3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 197059835) index="0" unique_id=678930398]
 collision_layer = 2
 
-[node name="smoke" type="GPUParticles3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 86092125) index="1" unique_id=2001236800]
+[node name="smoke" type="GPUParticles3D" parent="boat/exhaust_pipe" parent_id_path=PackedInt32Array(331109473, 197059835) index="1" unique_id=2001236800]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.18878, 0)
 amount = 20
 lifetime = 2.5999999999999996
 process_material = SubResource("ParticleProcessMaterial_60ctv")
 draw_pass_1 = SubResource("PlaneMesh_4mseo")
 
-[node name="StaticBody3D" parent="boat/floor_top" parent_id_path=PackedInt32Array(331109473, 866964725) index="0" unique_id=1893681959]
+[node name="StaticBody3D" parent="boat/floor_top" parent_id_path=PackedInt32Array(331109473, 24582739) index="0" unique_id=1293180267]
 collision_layer = 2
 
-[node name="lamp_shielded_001" parent="boat" index="25" unique_id=630234531]
+[node name="lamp_shielded_001" parent="boat" index="23" unique_id=1623883882]
 surface_material_override/0 = SubResource("StandardMaterial3D_vlsv3")
 
-[node name="lamp_shielded_002" parent="boat" index="26" unique_id=1483883006]
+[node name="lamp_shielded_002" parent="boat" index="24" unique_id=1005202838]
 surface_material_override/0 = SubResource("StandardMaterial3D_kll55")
 
-[node name="lamp_shielded_003" parent="boat" index="27" unique_id=472524657]
+[node name="lamp_shielded_003" parent="boat" index="25" unique_id=438893912]
 surface_material_override/0 = SubResource("StandardMaterial3D_duxm1")
 
-[node name="lamp_vertical" parent="boat" index="28" unique_id=2076969166]
+[node name="lamp_vertical" parent="boat" index="26" unique_id=1191599112]
 surface_material_override/0 = SubResource("StandardMaterial3D_duxm1")
 
-[node name="StaticBody3D" type="StaticBody3D" parent="boat/stairs_control/stair" parent_id_path=PackedInt32Array(331109473, 453126367) index="0" unique_id=1719776150]
+[node name="StaticBody3D" type="StaticBody3D" parent="boat/stairs_control/stair" parent_id_path=PackedInt32Array(331109473, 531185611) index="0" unique_id=1719776150]
 collision_layer = 2
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="boat/stairs_control/stair/StaticBody3D" unique_id=742157758]
 transform = Transform3D(1, -2.4150717e-07, 7.3631156e-08, 2.4150725e-07, 0.8299049, -0.5579044, 7.36312e-08, 0.55790436, 0.82990515, 0.0025644302, -2.12534, -1.1581947)
 shape = SubResource("BoxShape3D_klyyb")
 
-[node name="StaticBody3D" parent="boat/top_door" parent_id_path=PackedInt32Array(331109473, 1534516732) index="0" unique_id=110385120]
+[node name="StaticBody3D" parent="boat/top_door" parent_id_path=PackedInt32Array(331109473, 799778765) index="0" unique_id=1689788088]
 collision_layer = 2
 
-[node name="StaticBody3D" parent="boat/top_door_001" parent_id_path=PackedInt32Array(331109473, 1544802253) index="0" unique_id=1238119780]
+[node name="StaticBody3D" parent="boat/top_door_001" parent_id_path=PackedInt32Array(331109473, 769972089) index="0" unique_id=1214543142]
 collision_layer = 2
 
-[node name="control_panel" parent="boat" index="71" unique_id=21878016]
+[node name="control_panel" parent="boat" index="70" unique_id=1769502697]
 transform = Transform3D(0.6308224, 0, -3.5527137e-15, 0, 0.6308224, 0, 0, 0, 0.5597129, -0.014570771, 5.5032043, 2.9313788)
 
 [node name="boat_wave_blocker" parent="boat" unique_id=748553163 instance=ExtResource("3_f2dya")]

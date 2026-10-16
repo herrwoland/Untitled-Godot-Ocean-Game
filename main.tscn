@@ -15,8 +15,6 @@
 [ext_resource type="Material" uid="uid://5xqyddws6rt5" path="res://assets/water/mat_spray.tres" id="9_skbf4"]
 [ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="10_spqpo"]
 [ext_resource type="Texture2D" uid="uid://b6322bl0qxuss" path="res://assets/textures/Ground057_1K-PNG_Color.png" id="11_0n3wm"]
-[ext_resource type="Script" uid="uid://dsn01qhv7ioi3" path="res://assets/scripts/buoyant_cell.gd" id="14_vivmo"]
-[ext_resource type="Script" uid="uid://kwfe6bfkiqn2" path="res://assets/scripts/mass_calculation.gd" id="14_yaehf"]
 [ext_resource type="PackedScene" uid="uid://c3q8m6t1p7f2a" path="res://assets/player/player.tscn" id="16_player"]
 [ext_resource type="PackedScene" uid="uid://c7pflpm1pnx7k" path="res://assets/models/island.tscn" id="17_island"]
 [ext_resource type="PackedScene" uid="uid://cf2rcpsk3hrt1" path="res://assets/ui/start_screen.tscn" id="18_start"]
@@ -46,9 +44,7 @@
 [ext_resource type="PackedScene" uid="uid://k7f1jdao3vrq" path="res://assets/models/package.tscn" id="44_package"]
 [ext_resource type="PackedScene" uid="uid://c1a5366rpgr2k" path="res://assets/models/ship/boat.tscn" id="45_boat"]
 [ext_resource type="PackedScene" uid="uid://c4j4cc8pl3fqr" path="res://assets/models/creatures/hunter_fish.tscn" id="50_hrvbo"]
-[ext_resource type="Script" uid="uid://csyjpi4nlac4u" path="res://assets/scripts/world/underwater_glow.gd" id="53_abqjc"]
 [ext_resource type="PackedScene" uid="uid://bvclspwu0sse" path="res://assets/models/vortex_mouth/vortex_mouth.fbx" id="54_4w656"]
-[ext_resource type="PackedScene" path="res://scenes/test/buoyancy_point_test.tscn" id="54_6iyjs"]
 [ext_resource type="Script" uid="uid://c7xykbyb5m0er" path="res://assets/scripts/world/rain.gd" id="60_rain"]
 [ext_resource type="Script" uid="uid://5j2rqum415rn" path="res://assets/weather/weather.gd" id="70_weather"]
 [ext_resource type="PackedScene" uid="uid://cnp3jjyjpjamw" path="res://assets/models/creatures/kraken_lair.tscn" id="80_kraken_lair"]
@@ -294,18 +290,6 @@ texture_filter = 0
 density = 0.01
 albedo = Color(0.37830523, 0.56667346, 0.57315886, 1)
 
-[sub_resource type="FogMaterial" id="FogMaterial_riff4"]
-density = 8.0
-albedo = Color(0.218936, 0.365236, 0.525464, 1)
-height_falloff = 0.176
-edge_fade = 1.75
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_vivmo"]
-size = Vector3(10, 6, 4)
-
-[sub_resource type="BoxMesh" id="BoxMesh_82xsv"]
-size = Vector3(10, 6, 4)
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ps1"]
 shader = ExtResource("24_ps1")
 shader_parameter/shader_enabled = true
@@ -325,15 +309,6 @@ size = Vector3(2.8584595, 0.23444825, 1.4418945)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bed"]
 albedo_color = Color(0.5, 0.15, 0.15, 1)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_shore"]
-size = Vector3(60, 4, 60)
-
-[sub_resource type="BoxMesh" id="BoxMesh_shore"]
-size = Vector3(60, 4, 60)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_shore"]
-albedo_color = Color(0.72, 0.65, 0.5, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_homezone"]
 size = Vector3(18, 5.739319, 18)
@@ -366,57 +341,11 @@ size = Vector3(25, 4, 110)
 size = Vector3(25, 4, 110)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_shorecalm"]
-size = Vector3(52.04123, 8, 110)
+size = Vector3(161, 21.849487, 510.99103)
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_testhole"]
 height = 12.0
 radius = 5.0
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_wall_west"]
-size = Vector3(12, 28, 120)
-
-[sub_resource type="BoxMesh" id="BoxMesh_wall_west"]
-size = Vector3(12, 28, 120)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rockwall"]
-albedo_color = Color(0.22, 0.23, 0.26, 1)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_wall_ns"]
-size = Vector3(65, 28, 12)
-
-[sub_resource type="BoxMesh" id="BoxMesh_wall_ns"]
-size = Vector3(65, 28, 12)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_wall_spur"]
-size = Vector3(30, 28, 12)
-
-[sub_resource type="BoxMesh" id="BoxMesh_wall_spur"]
-size = Vector3(30, 28, 12)
-
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_lighthouse"]
-height = 80.0
-radius = 6.0
-
-[sub_resource type="CylinderMesh" id="CylinderMesh_lighthouse"]
-top_radius = 4.5
-bottom_radius = 7.0
-height = 80.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lighthouse"]
-albedo_color = Color(0.75, 0.72, 0.68, 1)
-
-[sub_resource type="SphereMesh" id="SphereMesh_lamp"]
-radius = 2.2
-height = 4.4
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lamp"]
-albedo_color = Color(1, 0.95, 0.8, 1)
-emission_enabled = true
-emission = Color(1, 0.9, 0.6, 1)
-emission_energy_multiplier = 8.0
-
-[sub_resource type="CylinderMesh" id="CylinderMesh_5s6u7"]
-height = 15.95
 
 [node name="Main" type="Node3D" unique_id=503649113]
 script = ExtResource("1_skarq")
@@ -449,7 +378,7 @@ shadow_opacity = 0.8
 shadow_blur = 4.592
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38.251118, 20.10825, -162.44502)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.039074, 24.391726, 21.701447)
 script = ExtResource("60_rain")
 intensity = 0.0
 lens_drops_enabled = false
@@ -460,7 +389,7 @@ preset = ExtResource("8_6iyjs")
 water = NodePath("../Water")
 sun = NodePath("../Sun")
 world_environment = NodePath("../Environment")
-world_fog = NodePath("../FogVolume")
+world_fog = NodePath("")
 rain = NodePath("../Rain")
 
 [node name="MissionController" type="Node" parent="." unique_id=1801545549 node_paths=PackedStringArray("player", "boat", "player_spawn", "letter_point", "pickup_point", "delivery_point", "package", "ending_fish", "sleep_fade")]
@@ -506,7 +435,7 @@ shape = SubResource("CylinderShape3D_5s6u7")
 debug_color = Color(0.8128558, 0.030233042, 0.97549945, 0.41960785)
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39, 0, -162)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28, 0, 22)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")
@@ -562,11 +491,6 @@ visible = false
 size = Vector3(2000, 200, 2000)
 material = SubResource("FogMaterial_hrvbo")
 
-[node name="FogVolume" type="FogVolume" parent="." unique_id=2070058143]
-visible = false
-shape = 4
-material = SubResource("FogMaterial_riff4")
-
 [node name="OceanAudioPlayer" type="AudioStreamPlayer" parent="." unique_id=275062109]
 stream = ExtResource("6_jpklm")
 volume_db = 15.0
@@ -587,28 +511,6 @@ water = NodePath("../Water")
 
 [node name="Island" parent="." unique_id=1072612934 instance=ExtResource("17_island")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 790.53076, -8.565859, 15.829681)
-
-[node name="Box Octet Experiment" type="RigidBody3D" parent="." unique_id=1036328041 node_paths=PackedStringArray("buoyant_cells", "mesh")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.27228, 0, 21.2058)
-visible = false
-script = ExtResource("14_yaehf")
-buoyant_cells = [NodePath("MeshInstance3D"), NodePath("MeshInstance3D")]
-drag_coef_axial = 0.8
-drag_coef_lateral = 0.8
-mesh = NodePath("MeshInstance3D")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Box Octet Experiment" unique_id=951590419]
-visible = false
-shape = SubResource("BoxShape3D_vivmo")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Box Octet Experiment" unique_id=1719571553 node_paths=PackedStringArray("water", "parent")]
-visible = false
-mesh = SubResource("BoxMesh_82xsv")
-script = ExtResource("14_vivmo")
-water = NodePath("../../Water")
-parent = NodePath("..")
-cell_density_kg_per_m3 = 300.0
-calc_f_gravity = true
 
 [node name="SleepFade" type="CanvasLayer" parent="." unique_id=1732156623]
 layer = 5
@@ -678,19 +580,6 @@ surface_material_override/0 = SubResource("StandardMaterial3D_bed")
 
 [node name="LetterPoint" parent="." unique_id=1405991154 instance=ExtResource("43_letter")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -127.64436, 4.6482186, 11.01949)
-
-[node name="Shore" type="StaticBody3D" parent="." unique_id=362217321]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -130, 1, 10)
-visible = false
-collision_layer = 0
-collision_mask = 0
-
-[node name="ShoreCollider" type="CollisionShape3D" parent="Shore" unique_id=202965370]
-shape = SubResource("BoxShape3D_shore")
-
-[node name="ShoreMesh" type="MeshInstance3D" parent="Shore" unique_id=1447716156]
-mesh = SubResource("BoxMesh_shore")
-surface_material_override/0 = SubResource("StandardMaterial3D_shore")
 
 [node name="HomeZone" type="Area3D" parent="." unique_id=1786139595]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -132, 6, 10)
@@ -824,7 +713,7 @@ script = ExtResource("38_blocker")
 fade_width = 40.0
 
 [node name="ShoreCalmShape" type="CollisionShape3D" parent="ShoreCalm" unique_id=731208181]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.9793854, 0, 0)
+transform = Transform3D(0.9604443, 0, 0.27847224, 0, 1, 0, -0.27847224, 0, 0.9604443, -51.836, 6.9247437, -7.186632)
 shape = SubResource("BoxShape3D_shorecalm")
 
 [node name="TestWaveHole" type="Area3D" parent="." unique_id=1426995111]
@@ -846,89 +735,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 260, 0, -260)
 [node name="KrakenLair" parent="." unique_id=186950073 instance=ExtResource("80_kraken_lair")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 480, 0, 380)
 
-[node name="RockWalls" type="StaticBody3D" parent="." unique_id=1076589946]
-visible = false
-
-[node name="WestWallShape" type="CollisionShape3D" parent="RockWalls" unique_id=37088972]
-transform = Transform3D(0.99255, 0, -0.12187, 0, 1, 0, 0.12187, 0, 0.99255, -181, 14, 10)
-shape = SubResource("BoxShape3D_wall_west")
-
-[node name="WestWallMesh" type="MeshInstance3D" parent="RockWalls" unique_id=1436976705]
-transform = Transform3D(0.99255, 0, -0.12187, 0, 1, 0, 0.12187, 0, 0.99255, -181, 14, 10)
-mesh = SubResource("BoxMesh_wall_west")
-surface_material_override/0 = SubResource("StandardMaterial3D_rockwall")
-
-[node name="NorthWallShape" type="CollisionShape3D" parent="RockWalls" unique_id=939918320]
-transform = Transform3D(0.99255, 0, 0.12187, 0, 1, 0, -0.12187, 0, 0.99255, -138, 14, -44)
-shape = SubResource("BoxShape3D_wall_ns")
-
-[node name="NorthWallMesh" type="MeshInstance3D" parent="RockWalls" unique_id=479324812]
-transform = Transform3D(0.99255, 0, 0.12187, 0, 1, 0, -0.12187, 0, 0.99255, -138, 14, -44)
-mesh = SubResource("BoxMesh_wall_ns")
-surface_material_override/0 = SubResource("StandardMaterial3D_rockwall")
-
-[node name="SouthWallShape" type="CollisionShape3D" parent="RockWalls" unique_id=134532240]
-transform = Transform3D(0.99255, 0, -0.12187, 0, 1, 0, 0.12187, 0, 0.99255, -138, 14, 64)
-shape = SubResource("BoxShape3D_wall_ns")
-
-[node name="SouthWallMesh" type="MeshInstance3D" parent="RockWalls" unique_id=1255507793]
-transform = Transform3D(0.99255, 0, -0.12187, 0, 1, 0, 0.12187, 0, 0.99255, -138, 14, 64)
-mesh = SubResource("BoxMesh_wall_ns")
-surface_material_override/0 = SubResource("StandardMaterial3D_rockwall")
-
-[node name="NorthSpurShape" type="CollisionShape3D" parent="RockWalls" unique_id=259175732]
-transform = Transform3D(0.96593, 0, 0.25882, 0, 1, 0, -0.25882, 0, 0.96593, -103, 14, -46)
-shape = SubResource("BoxShape3D_wall_spur")
-
-[node name="NorthSpurMesh" type="MeshInstance3D" parent="RockWalls" unique_id=1605245962]
-transform = Transform3D(0.96593, 0, 0.25882, 0, 1, 0, -0.25882, 0, 0.96593, -103, 14, -46)
-mesh = SubResource("BoxMesh_wall_spur")
-surface_material_override/0 = SubResource("StandardMaterial3D_rockwall")
-
-[node name="SouthSpurShape" type="CollisionShape3D" parent="RockWalls" unique_id=525732072]
-transform = Transform3D(0.96593, 0, -0.25882, 0, 1, 0, 0.25882, 0, 0.96593, -103, 14, 66)
-shape = SubResource("BoxShape3D_wall_spur")
-
-[node name="SouthSpurMesh" type="MeshInstance3D" parent="RockWalls" unique_id=1844623706]
-transform = Transform3D(0.96593, 0, -0.25882, 0, 1, 0, 0.25882, 0, 0.96593, -103, 14, 66)
-mesh = SubResource("BoxMesh_wall_spur")
-surface_material_override/0 = SubResource("StandardMaterial3D_rockwall")
-
 [node name="EndingFish" parent="." unique_id=1659028753 instance=ExtResource("40_endfish")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -110, 3, 16)
 visible = false
-
-[node name="Lighthouse" type="Node3D" parent="." unique_id=1476677203]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -150, 26, -70)
-visible = false
-
-[node name="TowerBody" type="StaticBody3D" parent="Lighthouse" unique_id=521131274]
-
-[node name="TowerShape" type="CollisionShape3D" parent="Lighthouse/TowerBody" unique_id=1457112083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 40, 0)
-shape = SubResource("CylinderShape3D_lighthouse")
-
-[node name="TowerMesh" type="MeshInstance3D" parent="Lighthouse/TowerBody" unique_id=1636015562]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 40, 0)
-mesh = SubResource("CylinderMesh_lighthouse")
-surface_material_override/0 = SubResource("StandardMaterial3D_lighthouse")
-
-[node name="LampPivot" type="Node3D" parent="Lighthouse" unique_id=1796204689]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 82, 0)
-visible = false
-script = ExtResource("33_lhlight")
-
-[node name="Lamp" type="MeshInstance3D" parent="Lighthouse/LampPivot" unique_id=601800660]
-mesh = SubResource("SphereMesh_lamp")
-surface_material_override/0 = SubResource("StandardMaterial3D_lamp")
-
-[node name="Beam" type="SpotLight3D" parent="Lighthouse/LampPivot" unique_id=1976254664]
-light_color = Color(1, 0.92, 0.7, 1)
-light_energy = 12.0
-light_volumetric_fog_energy = 4.0
-spot_range = 900.0
-spot_attenuation = 0.6
-spot_angle = 4.0
 
 [node name="DeepPassing" type="Node3D" parent="." unique_id=80484297 node_paths=PackedStringArray("player")]
 script = ExtResource("41_passing")
@@ -937,38 +746,8 @@ player = NodePath("../Player")
 [node name="water_test_cam" type="Camera3D" parent="." unique_id=874141532]
 transform = Transform3D(-0.9902683, 0.065872595, -0.122594856, 0, 0.8808907, 0.47331968, 0.13917147, 0.46871346, -0.87231815, -66.901695, 8.194256, 11.157707)
 
-[node name="HunterFish" parent="." unique_id=2037867007 instance=ExtResource("50_hrvbo")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 86.672325, -21.21131, -12.386536)
-visible = false
-
-[node name="UnderwaterGlow" type="Node3D" parent="HunterFish" unique_id=507328574]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.225838, -0.6602993, -6.5473404)
-visible = false
-script = ExtResource("53_abqjc")
-color = Color(1, 0.075666666, 0.060000002, 1)
-strength = 6.68
-size = 3.1999999999999997
-reach = 91.0
-metadata/_custom_type_script = "uid://csyjpi4nlac4u"
-
 [node name="vortex_mouth" parent="." unique_id=827155423 instance=ExtResource("54_4w656")]
 transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 3278.989, 3.0122223, 95.900246)
-
-[node name="BuoyancyPointTest" parent="." unique_id=1759410664 node_paths=PackedStringArray("water") instance=ExtResource("54_6iyjs")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.723843, -10.054815, 4.2255745)
-visible = false
-water = NodePath("../Water")
-debug = true
-drag_coef_lateral = 0.0
-drag_coef_vertical = 0.0
-drag_coef_yaw = 0.0
-drag_coef_pitch = 0.0
-drag_coef_roll = 0.0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1794267363]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.98754764, 0)
-visible = false
-mesh = SubResource("CylinderMesh_5s6u7")
 
 [editable path="shore/House_01"]
 [editable path="StonyBeach/Light_House_0_1"]
