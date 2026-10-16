@@ -29,7 +29,6 @@
 [ext_resource type="Script" uid="uid://dot2o2qjhydl5" path="res://assets/scripts/interactables/bed.gd" id="28_bed"]
 [ext_resource type="Script" uid="uid://b0osiac7p66k8" path="res://assets/scripts/interactables/mission_point.gd" id="29_mpoint"]
 [ext_resource type="Script" uid="uid://4r1rmgfeqjfg" path="res://assets/scripts/interactables/home_zone.gd" id="30_home"]
-[ext_resource type="PackedScene" uid="uid://dyw615s83yi68" path="res://assets/ui/note_view.tscn" id="31_note"]
 [ext_resource type="Script" uid="uid://xirrbn1q428o" path="res://assets/scripts/world/lighthouse_light.gd" id="33_lhlight"]
 [ext_resource type="Script" uid="uid://d3o51uaudkc7e" path="res://assets/scripts/world/creature_director.gd" id="35_creatures"]
 [ext_resource type="Script" uid="uid://1yls1dmbq84k" path="res://assets/scripts/world/sanity_director.gd" id="37_sanity"]
@@ -464,7 +463,7 @@ world_environment = NodePath("../Environment")
 world_fog = NodePath("../FogVolume")
 rain = NodePath("../Rain")
 
-[node name="MissionController" type="Node" parent="." unique_id=1801545549 node_paths=PackedStringArray("player", "boat", "player_spawn", "letter_point", "pickup_point", "delivery_point", "package", "ending_fish", "note_view", "sleep_fade")]
+[node name="MissionController" type="Node" parent="." unique_id=1801545549 node_paths=PackedStringArray("player", "boat", "player_spawn", "letter_point", "pickup_point", "delivery_point", "package", "ending_fish", "sleep_fade")]
 script = ExtResource("26_mission")
 player = NodePath("../Player")
 boat = NodePath("../Boat")
@@ -474,7 +473,6 @@ pickup_point = NodePath("../PickupPoint")
 delivery_point = NodePath("../DeliveryPoint")
 package = NodePath("../Package")
 ending_fish = NodePath("../EndingFish")
-note_view = NodePath("../NoteView")
 sleep_fade = NodePath("../SleepFade/FadeRect")
 
 [node name="SanityDirector" type="Node" parent="." unique_id=1057535268]
@@ -586,8 +584,6 @@ autoplay = true
 [node name="Boat" parent="." unique_id=108108734 node_paths=PackedStringArray("water") instance=ExtResource("45_boat")]
 transform = Transform3D(-0.99955845, 0.027389033, -0.011583984, 0.027358893, 0.9996218, 0.0027563104, 0.0116551, 0.0024383024, -0.99992985, 396.3212, 1.5854063, 325.05444)
 water = NodePath("../Water")
-
-[node name="NoteView" parent="." unique_id=591198653 instance=ExtResource("31_note")]
 
 [node name="Island" parent="." unique_id=1072612934 instance=ExtResource("17_island")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 790.53076, -8.565859, 15.829681)

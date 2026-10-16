@@ -14,7 +14,6 @@ const CoordinateSystem := preload("res://assets/scripts/core/coordinate_system.g
 @export var delivery_point: Node3D
 @export var package: Node3D
 @export var ending_fish: Node3D
-@export var note_view: CanvasLayer
 @export var sleep_fade: ColorRect
 
 const DELIVERY_RADIUS := 4.0 # how close the package must get to complete the hand-off
@@ -87,9 +86,6 @@ func _on_package_delivered() -> void:
 		carry.drop()
 	if GameState.current_day >= GameState.FINAL_DAY:
 		ending_fish.appear()
-		note_view.show_note("It is done.\n\nSomething is waiting on the shore,\nin front of your house.")
-	else:
-		note_view.show_note("It is out of your hands now.\n\nGo home.")
 
 var _dying := false
 
@@ -101,9 +97,7 @@ func _on_player_died() -> void:
 	_dying = true
 	var tween := create_tween()
 	tween.tween_property(sleep_fade, "modulate:a", 1.0, 0.5)
-	tween.tween_callback(func() -> void:
-		GameState.start_day()
-		note_view.show_note("You wake, panting.\n\nThe same grey morning. The same letter."))
+	tween.tween_callback(GameState.start_day)
 	tween.tween_interval(0.4)
 	tween.tween_property(sleep_fade, "modulate:a", 0.0, 1.0)
 	tween.tween_callback(func() -> void: _dying = false)
@@ -112,7 +106,6 @@ func _on_player_died() -> void:
 ## the next morning. On the final day sleep is refused — the fish is the exit.
 func do_sleep() -> void:
 	if GameState.current_day >= GameState.FINAL_DAY:
-		note_view.show_note("You cannot sleep.\n\nIt is still waiting on the shore.")
 		return
 	var tween := create_tween()
 	tween.tween_property(sleep_fade, "modulate:a", 1.0, 1.2)
