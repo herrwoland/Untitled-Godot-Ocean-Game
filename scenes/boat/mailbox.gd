@@ -1,24 +1,63 @@
 extends Node3D
 ## The cabin printer: the only voice that answers the deliveries. print_page()
-## feeds a fresh sheet out of the slot with the print_paper animation; once it
-## has stopped, the sheet is an ordinary carryable (read it by holding it
-## close, like the letter). Clockwork and its own lamps -- it prints with the
-## ship's power off too.
+## queues a sheet; it is printed once the player is in the cabin (inside the
+## Area3D), feeding out of the slot with the print_paper animation. Once it has
+## stopped, the sheet is an ordinary carryable (read it by holding it close,
+## like the letter). Clockwork and its own lamps -- it prints with the ship's
+## power off too.
+
+const PLAYER_LAYER := 0b10 # the player body's collision layer
 
 @export var paper_scene: PackedScene = preload("res://scenes/boat/printed_paper.tscn")
 
+@export_group("Debug")
+## Prints a test page every debug_interval seconds (still waits for the player).
+@export var debug_test_pages: bool = false
+@export var debug_interval: float = 10.0
+
 @onready var exit_point: Node3D = $paper_exit_point
 @onready var animation: AnimationPlayer = $AnimationPlayer
+@onready var presence: Area3D = get_node_or_null(^'Area3D') # no area = print at once
 
+var _queue: Array[String] = [] # pages waiting for the player to come in
+var _printing := false
 var _in_slot: RigidBody3D = null # the last sheet, until someone takes it
 var _pages: Array[RigidBody3D] = [] # every sheet ever printed; they stay aboard
+var _debug_clock := 0.0
+var _debug_count := 0
 
 func _ready() -> void:
 	add_to_group(&'printer')
 	add_to_group(&'off_grid') # its lamps are the animation's to light, not the ship's
 	EventBus.day_started.connect(_on_day_started)
+	if presence:
+		# Watch for the player only; never sit on a layer anything aboard collides with.
+		presence.collision_layer = 0
+		presence.collision_mask = PLAYER_LAYER
+		presence.monitoring = true
+		presence.body_entered.connect(func(_body: Node3D) -> void: _try_print())
 
 func print_page(text: String) -> void:
+	_queue.append(text)
+	_try_print()
+
+func _player_present() -> bool:
+	if not presence:
+		return true
+	for body in presence.get_overlapping_bodies():
+		if body.is_in_group(&'player'):
+			return true
+	return false
+
+func _try_print() -> void:
+	if _printing or _queue.is_empty() or not _player_present():
+		return
+	_printing = true
+	await _print_now(_queue.pop_front())
+	_printing = false
+	_try_print() # anything else that arrived meanwhile
+
+func _print_now(text: String) -> void:
 	# A sheet nobody took slips out onto the floor to make room.
 	if is_instance_valid(_in_slot) and _in_slot.get_parent() == exit_point:
 		_let_fall(_in_slot)
@@ -52,7 +91,14 @@ func _fit_to_slot(page: Node3D) -> void:
 func _follow_slot() -> void:
 	_in_slot.global_transform = exit_point.global_transform.orthonormalized()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if debug_test_pages:
+		_debug_clock += delta
+		if _debug_clock >= debug_interval:
+			_debug_clock = 0.0
+			if _queue.is_empty(): # don't pile up test pages while nobody is aboard
+				_debug_count += 1
+				print_page("TEST PAGE %d\n\nTHE SEA IS CALM.\nTHE SEA IS NEVER CALM." % _debug_count)
 	if is_instance_valid(_in_slot) and not _in_slot.carried and _in_slot.get_parent() == exit_point:
 		_follow_slot()
 
@@ -64,9 +110,11 @@ func _physics_process(_delta: float) -> void:
 		_in_slot.top_level = false
 		_in_slot = null
 
-## Overnight the carry controller lets go of whatever was held without dropping
-## it; a printout held then is found on the cabin floor in the morning.
+## A new (or repeated) morning: replies still waiting belong to a day that is
+## gone. And the carry controller lets go of whatever was held without dropping
+## it; a printout held overnight is found on the cabin floor.
 func _on_day_started(_day: int) -> void:
+	_queue.clear()
 	for page in _pages:
 		if is_instance_valid(page) and page.carried:
 			page.global_transform = exit_point.global_transform
