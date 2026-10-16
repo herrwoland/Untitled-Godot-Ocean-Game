@@ -73,6 +73,9 @@ var pin_joints := 7 # how many of the last joints turn to keep a pinned tip on
 ## laid exactly onto it every frame instead of chasing it on its springs: an
 ## arm wrapped round a rolling hull goes with her, never through her.
 var lay_on_path := false
+## BOAT, not yet holding: meters its tip has climbed up its route from the
+## bottom (under her keel) toward the grip spot; < 0 = still coming up to it.
+var climb := -1.0
 var _path_from := -1 # the first goal point that lies on the route (goals_path)
 const PIN_DISTAL := 7 # the light end that holds a pinned tip exactly
 const PIN_BASE_EASE := 0.12 # the heavier joints behind it lean this much of the way each frame
@@ -147,6 +150,18 @@ func configure() -> void:
 		else:
 			var t := (along[k] + _segments[k] * _world * 0.5) / length
 			_limit[k] = lerpf(bend_root, bend_tip, pow(t, bend_exponent))
+			if _tight > 1.0:
+				_limit[k] = minf(_limit[k] * _tight, deg_to_rad(100.0))
+
+## Holding on, an arm clamps down: its joints may bend this much more, so it
+## wraps tightly round what it holds instead of cutting across its corners.
+const TIGHT_FACTOR := 2.0
+var _tight := 1.0
+func set_tight(on: bool, factor := TIGHT_FACTOR) -> void:
+	var f := factor if on else 1.0
+	if not is_equal_approx(f, _tight):
+		_tight = f
+		configure()
 
 func root() -> Vector3:
 	return skeleton.global_transform * _root_origin
@@ -164,6 +179,8 @@ func set_role(new_role: Role) -> void:
 	gripped = false
 	pin_tip = false
 	lay_on_path = false
+	climb = -1.0
+	set_tight(false)
 	seek_tip = 0.0
 	curl_from = -1.0
 	reach_front = 1.0

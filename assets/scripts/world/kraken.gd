@@ -78,6 +78,7 @@ enum FishPhase { CHASE, REEL, DRAG, SETTLE, FEED } # a giant fish in its waters:
 ## after it brings the average back down to about that speed.
 @export var stroke_peak := 1.0
 @export var settle_pulls := 3 # hauls of the arms that bring it home onto the rock
+
 ## Within this distance of the prey it rears up for the attack (otherwise it
 ## swims mantle first with the arms trailing).
 @export var face_range := 90.0
@@ -330,6 +331,8 @@ var _fish_rids: Array[RID] = []
 
 # The rock's measured shape (see _measure_rock).
 const ROCK_LEVELS := 26
+const SHIP_CLEARANCE := 0.4 # m between an arm's skin and her plating on its route
+const HULL_BUDGET_USEC := 2000 # time a frame may spend measuring a ship
 const ROCK_PUSH_SPEED := 35.0 # m/s a held fish is moved out of the rock at most
 const ROCK_ANGLES := 16
 const ROCK_STEP := 4.0 # m between measured heights...
@@ -476,6 +479,7 @@ func _physics_process(delta: float) -> void:
 	if _holding:
 		_update_hold(delta)
 	_update_arms(delta)
+	_warm_hull()
 	_track_breach(delta)
 	_breathe()
 	_mantle_follow(delta)
@@ -631,17 +635,37 @@ func _process_boat(delta: float) -> void:
 					continue
 				assigned += 1
 				var attach := _ship.to_global(arm.hull_path[0])
+				# out of reach, a tip aimed at the spot would be pulled short on the
+				# straight line toward it — through her. It lets go instead and
+				# waits under her keel (the foot of its route, outside her)
+				var in_reach := arm.root().distance_to(attach) < arm.length * 0.97
+				if arm.gripped and not in_reach:
+					arm.gripped = false
 				if arm.gripped:
-					arm.tip_target = _clamp_reach(arm, attach)
+					arm.tip_target = attach
 					gripping += 1
 					continue
-				# reaching for a moving hull: carried along with her, closing in on top
-				var reach := arm.tip_target + ship_vel * delta
-				arm.tip_target = _clamp_reach(arm, reach.move_toward(attach, reach_speed * delta))
-				# close enough to curl on: from here the pinned tip and the route
-				# laid on her settle it exactly (a tip curling up over an edge
-				# from below never gets nearer than about its own thickness)
-				if arm.tip().distance_to(attach) < ship_grip_catch * _scale:
+				# it never goes through her: first up to the foot of its route,
+				# outside under her keel; then its tip climbs the route itself — up
+				# her side and over onto the spot — the arm lying along what it has
+				# climbed (a straight line from below to her deck would cut her)
+				var foot := _ship.to_global(arm.hull_path[-1])
+				var route_len := _route_length(arm.hull_path)
+				if arm.climb < 0.0:
+					var reach := arm.tip_target + ship_vel * delta
+					# quick while far below her, the reach speed for the last stretch
+					var quick := reach_speed * lerpf(1.0, 2.5, smoothstep(15.0, 60.0, reach.distance_to(foot)))
+					arm.tip_target = _clamp_reach(arm, reach.move_toward(foot, quick * delta))
+					if arm.tip().distance_to(foot) < ship_grip_catch * _scale and in_reach:
+						arm.climb = 0.0
+				else:
+					if not in_reach:
+						arm.climb = -1.0 # she has drifted off: down to the foot of it again
+					else:
+						arm.climb = minf(arm.climb + reach_speed * delta, route_len)
+					arm.tip_target = _ship.to_global(_route_point(arm.hull_path, route_len - maxf(arm.climb, 0.0)))
+				# at the spot: it takes hold (the pinned tip settles it exactly)
+				if arm.climb >= route_len - 0.01 or (arm.climb >= 0.0 and arm.tip().distance_to(attach) < ship_grip_catch * _scale):
 					arm.gripped = true
 					if _first_grip < 0.0:
 						_first_grip = _time
@@ -1624,6 +1648,23 @@ func _assign_ship_arms() -> void:
 		arm.set_role(KrakenArm.Role.BOAT)
 		arm.hull_path = path
 
+## Length of a route (her local space).
+func _route_length(path: PackedVector3Array) -> float:
+	var total := 0.0
+	for j in range(1, path.size()):
+		total += path[j].distance_to(path[j - 1])
+	return total
+
+## The point `d` meters along a route from its start (the grip spot end).
+func _route_point(path: PackedVector3Array, d: float) -> Vector3:
+	var walked := 0.0
+	for j in range(1, path.size()):
+		var seg := path[j].distance_to(path[j - 1])
+		if walked + seg >= d:
+			return path[j - 1].lerp(path[j], (d - walked) / maxf(seg, 0.001))
+		walked += seg
+	return path[-1]
+
 ## Every hand-placed grip spot on her, in her local space.
 func _ship_grip_spots() -> Array[Vector3]:
 	var spots: Array[Vector3] = []
@@ -1685,39 +1726,73 @@ func _hull_path(hull: HullShape, x: float, side: int, hook := NAN, spot := Vecto
 	var top := hull.rail(x, side) if is_nan(hook) else hook
 	var keel := hull.keel(x)
 	var w_top := hull.width(x, top - 0.4, side)
-	var path: PackedVector3Array
+	# every point of the route stands off her by the arm's own thickness there
+	# (thin at the tip, thick toward the body) and a little more: the route is
+	# the arm's middle, and its skin must lie on her, not in her
+	var path := PackedVector3Array()
+	var d := 0.0
+	var add := func(p: Vector3) -> void:
+		if not path.is_empty():
+			d += p.distance_to(path[-1])
+		path.append(p)
 	if spot != Vector3.INF:
 		# the tip rests on the spot itself; the arm leaves it straight out over
 		# the nearest edge at that height
 		w_top = maxf(w_top, absf(spot.z))
-		path = PackedVector3Array([
-			spot + Vector3.UP * 0.5,
-			Vector3(x, top + 0.9, s * (w_top + 0.9)),
-		])
+		add.call(spot + Vector3.UP * (_arm_thickness(0.0) + SHIP_CLEARANCE))
 	else:
-		path = PackedVector3Array([
-			Vector3(x, top + 0.5, s * maxf(w_top - 0.6, 0.0)), # the tip, hooked over the top of the rail
-			Vector3(x, top + 0.9, s * (w_top + 0.9)), # curling over its outer edge
-		])
+		add.call(Vector3(x, top + _arm_thickness(0.0) + SHIP_CLEARANCE, s * maxf(w_top - 0.6, 0.0))) # hooked over the rail
+	var r := _arm_thickness(d + 2.0) + SHIP_CLEARANCE
+	add.call(Vector3(x, top + r, s * (w_top + r))) # curling over its outer edge
 	# Down her side, draped: never stepping back in under a bulge, so the arm
-	# hangs from her widest point the way a heavy arm would, clear of the
-	# plating by enough that its natural curve does not cut her bilge.
+	# hangs from her widest point the way a heavy arm would, its skin clear of
+	# the plating so its natural curve does not cut her bilge.
 	var widest := w_top
 	var y := top - 0.6
 	while y > keel:
 		widest = maxf(widest, hull.width(x, y, side))
-		path.append(Vector3(x, y, s * (widest + 2.0)))
+		r = _arm_thickness(d) + SHIP_CLEARANCE
+		add.call(Vector3(x, y, s * (widest + r + 0.6)))
 		y -= 1.0
-	path.append(Vector3(x, keel - 1.5, s * (widest + 3.0)))
-	path.append(Vector3(x, keel - 4.5, s * (widest + 4.5))) # where it comes up from below
+	r = _arm_thickness(d) + SHIP_CLEARANCE
+	add.call(Vector3(x, keel - 1.5 - r, s * (widest + r + 1.0)))
+	add.call(Vector3(x, keel - 4.5 - r, s * (widest + r + 2.5))) # where it comes up from below
 	return path
+
+## How thick an arm is (its radius, m) this far from its tip.
+func _arm_thickness(from_tip: float) -> float:
+	var arm := _arms[0]
+	var n := arm.points.size()
+	for i in range(n - 1, -1, -1):
+		if arm.length - arm.along[i] >= from_tip:
+			return arm.radius_at(i)
+	return arm.radius_at(0)
 
 ## Her shape, measured once per ship from her visible meshes.
 func _hull_shape(ship: RigidBody3D) -> HullShape:
 	var id := ship.get_instance_id()
 	if not _hull_shapes.has(id):
-		_hull_shapes[id] = HullShape.new(ship, _ship_box())
-	return _hull_shapes[id]
+		_hull_shapes[id] = HullShape.new(ship, _ship_box(ship))
+	var hull: HullShape = _hull_shapes[id]
+	if not hull.ready:
+		hull.build(1 << 60) # needed now: finish it at once
+	return hull
+
+## Measuring a ship takes a while: it is done a little every frame (a couple
+## of milliseconds) from when a ship comes near its waters, so by the time it
+## grabs her it knows her shape and nothing stalls.
+func _warm_hull() -> void:
+	var ship := _ship_under_player()
+	if ship == null or perch == null:
+		return
+	if ship.global_position.distance_to(perch.global_position) > leash_distance * 1.5:
+		return
+	var id := ship.get_instance_id()
+	if not _hull_shapes.has(id):
+		_hull_shapes[id] = HullShape.new(ship, _ship_box(ship))
+	var hull: HullShape = _hull_shapes[id]
+	if not hull.ready:
+		hull.build(HULL_BUDGET_USEC)
 
 ## A ship's real outline, for the arms to grip: from every vertex of her
 ## visible meshes, in her local space (x along her, y up, z across), her
@@ -1728,6 +1803,7 @@ func _hull_shape(ship: RigidBody3D) -> HullShape:
 class HullShape:
 	const DX := 2.0
 	const DY := 1.0
+	const SAMPLE := 0.8 # m between points sampled over her faces
 	var x_min := 0.0
 	var x_max := 0.0
 	var y_min := 0.0
@@ -1738,10 +1814,18 @@ class HullShape:
 	var _keel := PackedFloat32Array() # per slice
 	var _box: AABB
 
+	var ready := false
+	var _jobs: Array = [] # per surface still to sample: [transform, vertices, indices or null, next triangle]
+	var _verts := PackedVector3Array()
+	var _stage := 0
+	var _cursor := 0
+	var _bounds: AABB
+	var _widest: Array[PackedFloat32Array] = [PackedFloat32Array(), PackedFloat32Array()]
+
+	## Only gathers her meshes; build() does the measuring.
 	func _init(ship: Node3D, box: AABB) -> void:
 		_box = box
 		var to_ship := ship.global_transform.affine_inverse()
-		var verts := PackedVector3Array()
 		for node in ship.find_children("*", "MeshInstance3D", true, false):
 			var mi := node as MeshInstance3D
 			if mi.mesh == null or not mi.is_visible_in_tree():
@@ -1749,45 +1833,99 @@ class HullShape:
 			var xf := to_ship * mi.global_transform
 			for surface in mi.mesh.get_surface_count():
 				var arrays := mi.mesh.surface_get_arrays(surface)
-				for v: Vector3 in arrays[Mesh.ARRAY_VERTEX]:
-					verts.append(xf * v)
-		var bounds := AABB(box.position, box.size)
-		if not verts.is_empty():
-			bounds = AABB(verts[0], Vector3.ZERO)
-			for v in verts:
-				bounds = bounds.expand(v)
-		x_min = bounds.position.x
-		x_max = bounds.end.x
-		y_min = bounds.position.y
-		nx = maxi(1, ceili(bounds.size.x / DX))
-		ny = maxi(1, ceili(bounds.size.y / DY))
-		for side in 2:
-			_width[side].resize(nx * ny)
-			_width[side].fill(-1.0)
-			_rail[side].resize(nx)
-			_rail[side].fill(-INF)
-		_keel.resize(nx)
-		_keel.fill(INF)
-		for v in verts:
-			var ix := _ix(v.x)
-			var iy := clampi(int((v.y - y_min) / DY), 0, ny - 1)
-			var side := 0 if v.z >= 0.0 else 1
-			_width[side][ix * ny + iy] = maxf(_width[side][ix * ny + iy], absf(v.z))
-			_keel[ix] = minf(_keel[ix], v.y)
-		# The rail: the highest point standing near her outer edge in each slice.
-		var widest: Array[PackedFloat32Array] = [PackedFloat32Array(), PackedFloat32Array()]
-		for side in 2:
-			widest[side].resize(nx)
-			for ix in nx:
-				var w := 0.0
-				for iy in ny:
-					w = maxf(w, _width[side][ix * ny + iy])
-				widest[side][ix] = w
-		for v in verts:
-			var ix := _ix(v.x)
-			var side := 0 if v.z >= 0.0 else 1
-			if absf(v.z) >= widest[side][ix] * 0.85:
-				_rail[side][ix] = maxf(_rail[side][ix], v.y)
+				var idx = arrays[Mesh.ARRAY_INDEX]
+				_jobs.append([xf, arrays[Mesh.ARRAY_VERTEX], idx if idx != null and idx.size() > 0 else null, 0])
+
+	## Measures on for at most budget microseconds; true once she is done.
+	func build(budget: int) -> bool:
+		var t0 := Time.get_ticks_usec()
+		var over := func() -> bool: return Time.get_ticks_usec() - t0 > budget
+		# 1: points over every triangle's whole face, not just its corners: a
+		# big flat plate has its corners far apart, and the slices between
+		# them would read as no hull at all
+		while not _jobs.is_empty():
+			var job: Array = _jobs[-1]
+			var xf: Transform3D = job[0]
+			var vv: PackedVector3Array = job[1]
+			var idx = job[2]
+			var count: int = idx.size() if idx != null else vv.size()
+			var t: int = job[3]
+			while t < count - 2:
+				var a3: Vector3 = xf * vv[idx[t] if idx != null else t]
+				var b3: Vector3 = xf * vv[idx[t + 1] if idx != null else t + 1]
+				var c3: Vector3 = xf * vv[idx[t + 2] if idx != null else t + 2]
+				var longest := maxf(a3.distance_to(b3), maxf(b3.distance_to(c3), c3.distance_to(a3)))
+				var n := clampi(ceili(longest / SAMPLE), 1, 40)
+				for i in n + 1:
+					for j in n + 1 - i:
+						_verts.append(a3 + (b3 - a3) * (float(i) / n) + (c3 - a3) * (float(j) / n))
+				t += 3
+				if t % 24 == 0 and over.call(): # every 8 triangles: a big plate is many points
+					job[3] = t
+					return false
+			_jobs.pop_back()
+		# 2: her bounds and the grid
+		if _stage == 0:
+			_bounds = AABB(_box.position, _box.size)
+			if not _verts.is_empty():
+				_bounds = AABB(_verts[0], Vector3.ZERO)
+			_stage = 1
+			_cursor = 0
+		if _stage == 1:
+			while _cursor < _verts.size():
+				_bounds = _bounds.expand(_verts[_cursor])
+				_cursor += 1
+				if _cursor % 4096 == 0 and over.call():
+					return false
+			x_min = _bounds.position.x
+			x_max = _bounds.end.x
+			y_min = _bounds.position.y
+			nx = maxi(1, ceili(_bounds.size.x / DX))
+			ny = maxi(1, ceili(_bounds.size.y / DY))
+			for side in 2:
+				_width[side].resize(nx * ny)
+				_width[side].fill(-1.0)
+				_rail[side].resize(nx)
+				_rail[side].fill(-INF)
+			_keel.resize(nx)
+			_keel.fill(INF)
+			_stage = 2
+			_cursor = 0
+		# 3: her width per slice and height, and her keel
+		if _stage == 2:
+			while _cursor < _verts.size():
+				var v := _verts[_cursor]
+				var ix := _ix(v.x)
+				var iy := clampi(int((v.y - y_min) / DY), 0, ny - 1)
+				var side := 0 if v.z >= 0.0 else 1
+				_width[side][ix * ny + iy] = maxf(_width[side][ix * ny + iy], absf(v.z))
+				_keel[ix] = minf(_keel[ix], v.y)
+				_cursor += 1
+				if _cursor % 4096 == 0 and over.call():
+					return false
+			for side in 2:
+				_widest[side].resize(nx)
+				for ix in nx:
+					var w := 0.0
+					for iy in ny:
+						w = maxf(w, _width[side][ix * ny + iy])
+					_widest[side][ix] = w
+			_stage = 3
+			_cursor = 0
+		# 4: the rail, the highest point standing near her outer edge per slice
+		if _stage == 3:
+			while _cursor < _verts.size():
+				var v := _verts[_cursor]
+				var ix := _ix(v.x)
+				var side := 0 if v.z >= 0.0 else 1
+				if absf(v.z) >= _widest[side][ix] * 0.85:
+					_rail[side][ix] = maxf(_rail[side][ix], v.y)
+				_cursor += 1
+				if _cursor % 4096 == 0 and over.call():
+					return false
+			_verts = PackedVector3Array() # done with them
+			ready = true
+		return true
 
 	func _ix(x: float) -> int:
 		return clampi(int((x - x_min) / DX), 0, nx - 1)
@@ -1813,8 +1951,10 @@ class HullShape:
 		return k if k < INF else _box.position.y
 
 ## Her hull box in her local space (the big collider round the whole vessel).
-func _ship_box() -> AABB:
-	for shape: CollisionShape3D in _ship.find_children("*", "CollisionShape3D", false, false):
+func _ship_box(ship: Node3D = null) -> AABB:
+	if ship == null:
+		ship = _ship
+	for shape: CollisionShape3D in ship.find_children("*", "CollisionShape3D", false, false):
 		if shape.shape is BoxShape3D:
 			var size: Vector3 = shape.shape.size
 			return AABB(shape.position - size * 0.5, size)
@@ -1875,7 +2015,13 @@ func _carry_kept_ship() -> void:
 func _hold_ship_arms() -> void:
 	for arm in _arms:
 		if arm.role == KrakenArm.Role.BOAT:
-			arm.tip_target = _clamp_reach(arm, _ship.to_global(arm.hull_path[0]))
+			var spot := _ship.to_global(arm.hull_path[0])
+			if arm.root().distance_to(spot) < arm.length * 0.97:
+				arm.tip_target = spot
+			else:
+				# out of reach: let go rather than be pulled short through her
+				arm.gripped = false
+				arm.tip_target = _clamp_reach(arm, _ship.to_global(arm.hull_path[-1]))
 
 func _release_ship_arms() -> void:
 	for arm in _arms:
@@ -1960,6 +2106,7 @@ func _update_arms(delta: float) -> void:
 		arm.pin_tip = (arm.role == KrakenArm.Role.BOAT or arm.role == KrakenArm.Role.FISH) and arm.gripped
 		arm.pin_joints = 20 if arm.role == KrakenArm.Role.FISH else 7
 		arm.lay_on_path = arm.role == KrakenArm.Role.BOAT and arm.gripped
+		arm.set_tight(arm.role == KrakenArm.Role.BOAT and arm.gripped)
 		arm.simulate(delta)
 		if not far:
 			arm.apply_to_skeleton()
@@ -1996,16 +2143,32 @@ func _set_arm_goals(_delta: float) -> void:
 				# its route onto her, carried with her; until the tip has hold, the
 				# route is shifted to where the tip has got to on its way there
 				var xf := _ship.global_transform
-				var shift := arm.tip_target - xf * arm.hull_path[0]
-				var route := PackedVector3Array()
-				for p in arm.hull_path:
-					var w := xf * p + shift
-					# coming from below, it lies along her only as far as the route
-					# keeps going down: rolled over, it just holds her rail
-					if route.size() >= 2 and w.y > route[-1].y + 0.5:
-						break
-					route.append(w)
-				arm.goals_path(route)
+				if not arm.gripped:
+					if arm.climb < 0.0:
+						arm.goals_reach(arm.tip_target, out) # still coming up from below
+					else:
+						# lying along what it has climbed: from its tip down the route
+						var climbed := PackedVector3Array()
+						var rlen := _route_length(arm.hull_path)
+						var from := rlen - arm.climb # distance of the tip from the spot end
+						climbed.append(xf * _route_point(arm.hull_path, from))
+						var walked := 0.0
+						for j in range(1, arm.hull_path.size()):
+							walked += arm.hull_path[j].distance_to(arm.hull_path[j - 1])
+							if walked > from:
+								climbed.append(xf * arm.hull_path[j])
+						arm.goals_path(climbed)
+				else:
+					var shift := arm.tip_target - xf * arm.hull_path[0]
+					var route := PackedVector3Array()
+					for p in arm.hull_path:
+						var w := xf * p + shift
+						# coming from below, it lies along her only as far as the route
+						# keeps going down: rolled over, it just holds her rail
+						if route.size() >= 2 and w.y > route[-1].y + 0.5:
+							break
+						route.append(w)
+					arm.goals_path(route)
 			KrakenArm.Role.FISH:
 				if arm.gripped and is_instance_valid(_fish):
 					var ring := _fish_ring(arm)
