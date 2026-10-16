@@ -409,6 +409,9 @@ _data = {
 height = 0.7505493
 radius = 1.2792969
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(0.505, 1.206, 0.359)
+
 [node name="mailbox" type="Node3D" unique_id=802731096]
 script = ExtResource("1_kgeb6")
 
@@ -471,5 +474,13 @@ bus = &"SFX"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04048872, 0.577301, -1.0401986)
 shape = SubResource("CylinderShape3D_5s6u7")
 debug_color = Color(0.59050024, 0.37, 1, 0.7254902)
+
+[node name="Collision" type="StaticBody3D" parent="." unique_id=1688410337]
+collision_layer = 2
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Collision" unique_id=429117760]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.592, 0.0733)
+shape = SubResource("BoxShape3D_body")
 
 [editable path="mailbox"]

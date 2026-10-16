@@ -7,6 +7,7 @@ extends Node3D
 ## power off too.
 
 const PLAYER_LAYER := 0b10 # the player body's collision layer
+const FALL_CLEAR_TIME := 1.0 # seconds a sheet let go from the slot ignores the printer's body
 
 @export var paper_scene: PackedScene = preload("res://scenes/boat/printed_paper.tscn")
 
@@ -63,6 +64,8 @@ func _print_now(text: String) -> void:
 		_let_fall(_in_slot)
 	var page: RigidBody3D = paper_scene.instantiate()
 	page.process_mode = Node.PROCESS_MODE_DISABLED # no hover or stowing while it feeds out
+	page.continuous_cd = true # a sheet is thin enough to skip through the floor in one step
+	page.ignore_player = true
 	_fit_to_slot(page)
 	exit_point.add_child(page)
 	page.top_level = true # follows the slot unscaled (see _process)
@@ -126,6 +129,16 @@ func _let_fall(page: RigidBody3D) -> void:
 		page.reparent(_world())
 	page.top_level = false
 	page.process_mode = Node.PROCESS_MODE_INHERIT
+	# It leaves from inside the slot: let it fall clear of the printer's own body
+	# first, or the solver flings the light sheet out of the box.
+	var body: PhysicsBody3D = get_node_or_null(^'Collision')
+	if body:
+		page.add_collision_exception_with(body)
+		var page_ref: WeakRef = weakref(page)
+		get_tree().create_timer(FALL_CLEAR_TIME).timeout.connect(func() -> void:
+			var still_here: RigidBody3D = page_ref.get_ref()
+			if still_here and is_instance_valid(body):
+				still_here.remove_collision_exception_with(body))
 	page.on_dropped(ship.linear_velocity if ship else Vector3.ZERO)
 
 func _world() -> Node:

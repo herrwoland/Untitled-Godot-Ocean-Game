@@ -38,6 +38,10 @@ const STOW_SPEED := 1.0 # m/s of falling (relative to the deck) below which a la
 const STOW_GAP := 0.15 # m of air between the item's underside and a deck that still counts as resting on it
 
 var carried := false
+## Never collide with the player's body (set by the printer for its sheets). The
+## player shares layer 2 with the decks, so something this light lying on the
+## floor or landing on them gets shoved out of them at absurd speed.
+var ignore_player := false
 var _picked_once := false
 var _floating := false # neutral-buoyancy item currently held by the water
 var _highlight_material: StandardMaterial3D
@@ -93,9 +97,20 @@ func set_highlighted(on: bool) -> void:
 ## carried along by the ship rather than moved by the physics, so the solver
 ## treats them as standing still and friction drags a landed item backwards
 ## across a deck under way -- waiting for it to settle would let it slide off.
+##
+## A falling item is set down by hand instead of left to the solver: the decks are
+## moved by the ship, not by the physics, so a thin sheet landing on one (or lying
+## there as she heaves up into it) can be pushed out through the wrong side. When
+## the deck is within this step's fall, it is laid flat onto it right away.
 func _try_stow() -> void:
 	var from := global_position
-	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * (_half_height + STOW_GAP), LAYER_DECKS, [get_rid()])
+	var step := get_physics_process_delta_time()
+	var fall := maxf(-linear_velocity.y, 0.0) * step * 2.0 # this step's fall, with margin
+	# Bodies it is told to pass (eg. the printer it just fell out of) can't catch it either.
+	var ignore: Array[RID] = [get_rid()]
+	for body: PhysicsBody3D in get_collision_exceptions():
+		ignore.append(body.get_rid())
+	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * (_half_height + STOW_GAP + fall), LAYER_DECKS, ignore)
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if hit.is_empty():
 		return
@@ -103,8 +118,14 @@ func _try_stow() -> void:
 	if ship == null:
 		return
 	var deck_point_velocity := ship.linear_velocity + ship.angular_velocity.cross(global_position - ship.global_position)
-	if (linear_velocity - deck_point_velocity).dot(ship.global_basis.y) < -STOW_SPEED:
-		return # still falling onto her
+	var falling := -(linear_velocity - deck_point_velocity).dot(ship.global_basis.y)
+	if falling > STOW_SPEED:
+		if from.y - hit.position.y > _half_height + STOW_GAP + falling * step * 2.0:
+			return # still well above her
+		# About to hit the deck: land it now, flat on the boards.
+		var up := ship.global_basis.y
+		var level := Basis(Quaternion(global_basis.y.normalized(), up)) * global_basis
+		global_transform = Transform3D(level, hit.position + up * _half_height)
 	_stowed_on = ship
 	_loose_parent = get_parent()
 	freeze = true
@@ -159,6 +180,10 @@ func on_dropped(inherited_velocity: Vector3) -> void:
 	# the physics would shove the entire ship to get it out.
 	collision_layer = LAYER_ITEMS | LAYER_INTERACTABLE
 	collision_mask = 0b11 # land on the world (shore) and on ship decks (layer 2)
+	if ignore_player:
+		var player := get_tree().get_first_node_in_group(&'player')
+		if player is PhysicsBody3D:
+			add_collision_exception_with(player)
 	linear_velocity = inherited_velocity
 	angular_velocity = Vector3.ZERO
 	sleeping = false

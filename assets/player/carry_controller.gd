@@ -39,7 +39,7 @@ func drop() -> void:
 	carried = null
 	# It leaves our hands right in front of our face: let it fall clear of us before it can
 	# bump the body that is still standing there.
-	if player is PhysicsBody3D:
+	if player is PhysicsBody3D and not item.ignore_player: # those keep their exception for good
 		item.add_collision_exception_with(player)
 		var item_ref: WeakRef = weakref(item) # it may be gone by then (eg. burnt in the furnace)
 		get_tree().create_timer(DROP_CLEAR_TIME).timeout.connect(func() -> void:

@@ -1,10 +1,10 @@
 [gd_scene format=3 uid="uid://dyl6q4htclj81"]
 
 [ext_resource type="PackedScene" uid="uid://clbl6hh6ygdco" path="res://assets/models/boat/paper.glb" id="1_vx1cn"]
-[ext_resource type="Script" path="res://assets/scripts/interactables/carryable.gd" id="2_carry"]
+[ext_resource type="Script" uid="uid://b77ymr5bqjqwr" path="res://assets/scripts/interactables/carryable.gd" id="2_carry"]
 
 [sub_resource type="BoxShape3D" id="Shape_paper"]
-size = Vector3(0.24, 0.04, 0.36)
+size = Vector3(0.24, 0.03220703, 0.36)
 
 [node name="printed_paper" type="RigidBody3D" unique_id=1154759652]
 collision_layer = 4
@@ -16,6 +16,7 @@ script = ExtResource("2_carry")
 item_name = "Printout"
 
 [node name="Shape" type="CollisionShape3D" parent="." unique_id=1797284032]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0038964842, 0)
 shape = SubResource("Shape_paper")
 
 [node name="paper" parent="." unique_id=1410211048 instance=ExtResource("1_vx1cn")]
