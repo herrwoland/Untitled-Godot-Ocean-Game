@@ -177,6 +177,15 @@ enum FishPhase { CHASE, REEL, DRAG, SETTLE, FEED } # a giant fish in its waters:
 
 @export_group("Idle")
 @export var breath_period := 7.0 # s, the mantle swelling and emptying
+## The mantle is a heavy soft sack: its end lags behind as the body moves and
+## turns, swings past and settles back (a spring, slowed by the water).
+@export var mantle_length := 16.0 # model units from the mantle bone to the mantle's end
+@export var mantle_stiffness := 0.45 # 1/s, how quickly it swings back in line (lower = looser, slower)
+@export_range(0.0, 2.0, 0.05) var mantle_damping := 0.28 # 1 = no swing past, lower = it swings to and fro longer
+@export_range(0.0, 80.0, 1.0) var mantle_max_angle := 45.0 # degrees it may hang off line at most
+## Even when it is still the mantle drifts, like a tail in a slow current.
+@export_range(0.0, 40.0, 0.5) var mantle_sway_angle := 12.0 # degrees
+@export var mantle_sway_period := 11.0 # s
 @export_range(0.0, 0.2, 0.005) var breath_amount := 0.05
 @export var idle_drift := 0.08 # radians the wrapped arms creep along the rock
 @export var loose_arms := 2 # arms that never quite settle on the rock, drifting
@@ -258,6 +267,8 @@ var _jet_speed := 0.0 # m/s the push gives
 var _jet_spread := 0.2 # how open the arms are through the stroke
 var _top_arms: Array[int] = [] # arms on the top half of the crown (the eye side): they reach; the rest swim
 var _mantle_bone := -1
+var _mantle_end := Vector3.INF # world: where the mantle's end really is (lagging)
+var _mantle_vel := Vector3.ZERO
 var _arms: Array[KrakenArm] = []
 var _player: Node3D
 var _water: Node
@@ -467,6 +478,7 @@ func _physics_process(delta: float) -> void:
 	_update_arms(delta)
 	_track_breach(delta)
 	_breathe()
+	_mantle_follow(delta)
 
 ## The water it throws up wherever its head and mantle or an arm goes through
 ## the surface: the body, and two points along each arm.
@@ -2344,6 +2356,47 @@ func _breathe() -> void:
 		return
 	var b := sin(_time * TAU / maxf(breath_period, 0.5)) * breath_amount
 	_skeleton.set_bone_pose_scale(_mantle_bone, Vector3(1.0 + b, 1.0 + b * 0.3, 1.0 + b))
+
+## The mantle trails the body: its end is a weight on a soft spring, pulled
+## toward where the body would carry it, swinging and settling; the bone turns
+## to point at it, never more than mantle_max_angle off.
+func _mantle_follow(delta: float) -> void:
+	if _mantle_bone < 0 or delta <= 0.0:
+		return
+	var parent := _skeleton.get_bone_parent(_mantle_bone)
+	var parent_pose := _skeleton.get_bone_global_pose(parent) if parent >= 0 else Transform3D()
+	var rest := parent_pose * _skeleton.get_bone_rest(_mantle_bone) # skeleton space, unturned
+	var xf := _skeleton.global_transform
+	var root := xf * rest.origin
+	# where the body would carry it, wandering slowly off line on its own
+	var sway := deg_to_rad(mantle_sway_angle)
+	if state == State.PERCHED:
+		sway *= 0.5 # on the rock: its back is to the stone
+	var ph := _time * TAU / maxf(mantle_sway_period, 1.0)
+	var drift := Basis(rest.basis.x.normalized(), sway * sin(ph)) * Basis(rest.basis.z.normalized(), sway * 0.8 * sin(ph * 0.61 + 1.3))
+	var wanted := xf * (rest.origin + drift * rest.basis.y.normalized() * mantle_length)
+	if _mantle_end == Vector3.INF or _mantle_end.distance_to(wanted) > mantle_length * _scale * 4.0:
+		_mantle_end = wanted # first frame, or a jump (the morning reset)
+		_mantle_vel = Vector3.ZERO
+	var w := mantle_stiffness * TAU * 0.25
+	_mantle_vel += ((wanted - _mantle_end) * w * w - _mantle_vel * 2.0 * mantle_damping * w) * delta
+	_mantle_end += _mantle_vel * delta
+	# never farther off line than mantle_max_angle, and as long as it is
+	var want_dir := (xf * (rest.origin + rest.basis.y.normalized() * mantle_length) - root).normalized() # straight back: the line it may only stray so far from
+	var dir := (_mantle_end - root).normalized()
+	var off := want_dir.angle_to(dir)
+	var limit := deg_to_rad(mantle_max_angle)
+	if off > limit:
+		dir = want_dir.slerp(dir, limit / off).normalized()
+	_mantle_end = root + dir * (wanted - root).length()
+	# turn the bone: rest direction onto the lagging one (skeleton space)
+	var inv := xf.basis.inverse()
+	var rest_dir := rest.basis.y.normalized()
+	var to_dir := (inv * dir).normalized()
+	var turn := Quaternion(rest_dir, to_dir) if rest_dir.dot(to_dir) < 0.9999 else Quaternion.IDENTITY
+	var global_basis_sk := Basis(turn) * rest.basis
+	var local := parent_pose.basis.inverse() * global_basis_sk
+	_skeleton.set_bone_pose_rotation(_mantle_bone, local.get_rotation_quaternion())
 
 ## A rumble for the player, only if they are near enough to feel it.
 func _shake_near(trauma: float, reach: float) -> void:
