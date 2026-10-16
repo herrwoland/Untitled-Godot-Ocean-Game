@@ -2,20 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://o315n2yd3m38"
-path.s3tc="res://.godot/imported/rock1_GreyRock02_1K_BaseColor.png-cf2a33e75d19ff5996fe1441b58e1bed.s3tc.ctex"
+uid="uid://buscvf5k0006p"
+path.s3tc="res://.godot/imported/rock01_GreyRock05_1K_BaseColor.png-274ccd729a01cb77e51a739fd173de7a.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 generator_parameters={
-"md5": "eff9bf9853aa5a3056477ee05f001b0f"
+"md5": "c9a550b3c4f100155673072af633669f"
 }
 
 [deps]
 
-source_file="res://assets/models/rocks/rock1_GreyRock02_1K_BaseColor.png"
-dest_files=["res://.godot/imported/rock1_GreyRock02_1K_BaseColor.png-cf2a33e75d19ff5996fe1441b58e1bed.s3tc.ctex"]
+source_file="res://assets/models/rocks/rock01_GreyRock05_1K_BaseColor.png"
+dest_files=["res://.godot/imported/rock01_GreyRock05_1K_BaseColor.png-274ccd729a01cb77e51a739fd173de7a.s3tc.ctex"]
 
 [params]
 
