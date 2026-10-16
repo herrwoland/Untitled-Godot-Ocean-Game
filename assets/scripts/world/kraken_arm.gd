@@ -69,6 +69,11 @@ var smooth_passes := 2
 var role := Role.FREE
 var pin_tip := false # BOAT, gripped: the tip is held exactly on tip_target
 var pin_joints := 7 # how many of the last joints turn to keep a pinned tip on
+## Holding on along a route (goals_path), the part of the arm on the route is
+## laid exactly onto it every frame instead of chasing it on its springs: an
+## arm wrapped round a rolling hull goes with her, never through her.
+var lay_on_path := false
+var _path_from := -1 # the first goal point that lies on the route (goals_path)
 const PIN_DISTAL := 7 # the light end that holds a pinned tip exactly
 const PIN_BASE_EASE := 0.12 # the heavier joints behind it lean this much of the way each frame
 ## The tip homing in on tip_target with its last joints (1/s, 0 = off): the
@@ -158,6 +163,7 @@ func set_role(new_role: Role) -> void:
 	timer = 0.0
 	gripped = false
 	pin_tip = false
+	lay_on_path = false
 	seek_tip = 0.0
 	curl_from = -1.0
 	reach_front = 1.0
@@ -259,8 +265,11 @@ func goals_path(path: PackedVector3Array) -> void:
 	var wrap := minf(walked[-1], length * 0.6)
 	var join := _point_on(path, walked, wrap)
 	var s0 := maxf(length - wrap, 1.0)
+	_path_from = -1
 	for i in points.size():
 		var from_tip := length - along[i]
+		if from_tip <= wrap and _path_from < 0:
+			_path_from = i
 		goals[i] = _point_on(path, walked, from_tip) if from_tip <= wrap else start.lerp(join, along[i] / s0)
 
 static func _point_on(path: PackedVector3Array, walked: PackedFloat32Array, distance: float) -> Vector3:
@@ -306,8 +315,28 @@ func simulate(delta: float) -> void:
 			_bend[k] = before_bend[k].lerp(_bend[k], scale)
 			_vel[k] *= scale
 		_rebuild()
+	if lay_on_path and _path_from > 0:
+		_lay_on_goals(_path_from - 1)
 	if pin_tip: # a grip holds on whatever the hull does
 		_pin_tip_to(tip_target, 1.0)
+
+## From joint `from` on, each joint turns straight at its next goal point, from
+## where the arm really is (within its limits): that part lies on the goals now.
+func _lay_on_goals(from: int) -> void:
+	var inv := skeleton.global_transform.affine_inverse()
+	for k in range(maxi(from, 0), _n):
+		var before := _base if k == 0 else _frames[k - 1] * _rest_local[k]
+		var want := inv * goals[k + 1] - _pos[k]
+		if want.length_squared() < 1e-8:
+			continue
+		var b := _swing(before.transposed() * want.normalized()).limit_length(_limit[k])
+		_bend[k] = b
+		_vel[k] = Vector2.ZERO
+		_frames[k] = before * _bend_basis(b)
+		_pos[k + 1] = _pos[k] + _frames[k].y * _segments[k]
+	var xf := skeleton.global_transform
+	for k in range(maxi(from, 0), _n + 1):
+		points[k] = xf * _pos[k]
 
 ## The goal chain as a target bend per joint, walked from the root: each
 ## joint aims at its goal point from where the arm has really got to (after

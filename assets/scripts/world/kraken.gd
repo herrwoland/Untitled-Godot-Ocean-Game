@@ -144,6 +144,11 @@ enum FishPhase { CHASE, REEL, DRAG, SETTLE, FEED } # a giant fish in its waters:
 
 @export_group("The ship")
 @export var ship_arms := 5 # arms that grip the hull
+## Of the hand-placed grip spots, only those this much of an arm's length can
+## reach from where it is (route included) are taken: fewer, firm holds rather
+## than arms stretched short of a spot and through her.
+@export_range(0.5, 1.0, 0.01) var ship_grip_reach := 0.9
+@export var ship_grip_catch := 2.0 # m (model units) from its spot at which a reaching tip takes hold
 @export var ship_grab_depth := 24.0 # m its crown waits beneath the hull
 ## m/s rising after a ship — its one burst of real speed; it aims where she is going
 @export var ship_chase_speed := 9.0
@@ -603,7 +608,10 @@ func _process_boat(delta: float) -> void:
 				# reaching for a moving hull: carried along with her, closing in on top
 				var reach := arm.tip_target + ship_vel * delta
 				arm.tip_target = _clamp_reach(arm, reach.move_toward(attach, reach_speed * delta))
-				if arm.tip().distance_to(attach) < 2.0:
+				# close enough to curl on: from here the pinned tip and the route
+				# laid on her settle it exactly (a tip curling up over an edge
+				# from below never gets nearer than about its own thickness)
+				if arm.tip().distance_to(attach) < ship_grip_catch * _scale:
 					arm.gripped = true
 					if _first_grip < 0.0:
 						_first_grip = _time
@@ -1545,21 +1553,19 @@ func _assign_ship_arms() -> void:
 	for arm in _arms:
 		if arm.role == KrakenArm.Role.FREE or arm.role == KrakenArm.Role.RECOIL:
 			free.append(arm)
-	# Grip spots placed by hand win: Marker3D nodes named KrakenGrip* on the ship
-	# (position along her and side from where it stands, its height = the hook).
-	var markers: Array[Vector3] = []
-	for node in _ship.find_children("KrakenGrip*", "Node3D", true, false):
-		markers.append(_ship.to_local(node.global_position))
+	# Grip spots placed by hand win: the children of a node named hall_markers
+	# (empties from Blender) or nodes named KrakenGrip*, on the safe-to-grab
+	# parts of her. Of those, ship_arms spots as far apart as can be.
+	var markers := _pick_grip_spots(_ship_grip_spots(), hull, free)
 	var count := mini(markers.size() if not markers.is_empty() else ship_arms, free.size())
 	for i in count:
 		var x := lerpf(hull.x_min, hull.x_max, lerpf(0.14, 0.86, float(i) / maxf(count - 1, 1)))
 		var side := 0 if i % 2 == 0 else 1
-		var hook := NAN
-		if not markers.is_empty():
-			x = markers[i].x
-			side = 0 if markers[i].z >= 0.0 else 1
-			hook = markers[i].y
-		var path := _hull_path(hull, x, side, hook)
+		var path: PackedVector3Array
+		if markers.is_empty():
+			path = _hull_path(hull, x, side)
+		else:
+			path = _hull_path(hull, markers[i].x, 0 if markers[i].z >= 0.0 else 1, markers[i].y, markers[i])
 		# the arm whose middle is nearest that side of her takes it
 		var world := _ship.to_global(path[path.size() / 2])
 		var best := 0
@@ -1571,18 +1577,81 @@ func _assign_ship_arms() -> void:
 		arm.set_role(KrakenArm.Role.BOAT)
 		arm.hull_path = path
 
+## Every hand-placed grip spot on her, in her local space.
+func _ship_grip_spots() -> Array[Vector3]:
+	var spots: Array[Vector3] = []
+	for holder in _ship.find_children("hall_markers", "Node3D", true, false):
+		for node in holder.get_children():
+			if node is Node3D:
+				spots.append(_ship.to_local(node.global_position))
+	for node in _ship.find_children("KrakenGrip*", "Node3D", true, false):
+		spots.append(_ship.to_local(node.global_position))
+	return spots
+
+## ship_arms of the spots, spread over her: only spots an arm can truly reach
+## from where the kraken is (from its crown to where the route meets the water,
+## plus the route itself, within its length), the one nearest the kraken
+## first, then each time the one farthest from those already taken.
+func _pick_grip_spots(all: Array[Vector3], hull: HullShape, free: Array[KrakenArm]) -> Array[Vector3]:
+	if all.is_empty() or free.is_empty():
+		return all
+	var arm_length := free[0].length
+	var spots: Array[Vector3] = []
+	for spot in all:
+		var path := _hull_path(hull, spot.x, 0 if spot.z >= 0.0 else 1, spot.y, spot)
+		var route := 0.0
+		for i in range(1, path.size()):
+			route += path[i].distance_to(path[i - 1])
+		var need := global_position.distance_to(_ship.to_global(path[-1])) + route
+		if need <= arm_length * ship_grip_reach:
+			spots.append(spot)
+	if spots.size() <= ship_arms:
+		return spots
+	var me := _ship.to_local(global_position)
+	var picked: Array[Vector3] = []
+	var first := 0
+	for i in spots.size():
+		if spots[i].distance_to(me) < spots[first].distance_to(me):
+			first = i
+	picked.append(spots[first])
+	while picked.size() < ship_arms:
+		var best := -1
+		var best_d := -1.0
+		for i in spots.size():
+			if picked.has(spots[i]):
+				continue
+			var d := INF
+			for p in picked:
+				d = minf(d, spots[i].distance_to(p))
+			if d > best_d:
+				best_d = d
+				best = i
+		picked.append(spots[best])
+	return picked
+
 ## The route of one arm onto her, in her local space, tip end first: hooked
-## over the top of her rail, then down the outside of the hull hugging its
-## curve, out under the keel's edge — where the arm comes up from below.
-func _hull_path(hull: HullShape, x: float, side: int, hook := NAN) -> PackedVector3Array:
+## over the top of her rail (or resting on a hand-placed grip spot), then over
+## her nearest outer edge and down the outside of the hull hugging its curve,
+## out under the keel's edge — where the arm comes up from below.
+func _hull_path(hull: HullShape, x: float, side: int, hook := NAN, spot := Vector3.INF) -> PackedVector3Array:
 	var s := 1.0 if side == 0 else -1.0
 	var top := hull.rail(x, side) if is_nan(hook) else hook
 	var keel := hull.keel(x)
 	var w_top := hull.width(x, top - 0.4, side)
-	var path := PackedVector3Array([
-		Vector3(x, top + 0.5, s * maxf(w_top - 0.6, 0.0)), # the tip, hooked over the top of the rail
-		Vector3(x, top + 0.9, s * (w_top + 0.9)), # curling over its outer edge
-	])
+	var path: PackedVector3Array
+	if spot != Vector3.INF:
+		# the tip rests on the spot itself; the arm leaves it straight out over
+		# the nearest edge at that height
+		w_top = maxf(w_top, absf(spot.z))
+		path = PackedVector3Array([
+			spot + Vector3.UP * 0.5,
+			Vector3(x, top + 0.9, s * (w_top + 0.9)),
+		])
+	else:
+		path = PackedVector3Array([
+			Vector3(x, top + 0.5, s * maxf(w_top - 0.6, 0.0)), # the tip, hooked over the top of the rail
+			Vector3(x, top + 0.9, s * (w_top + 0.9)), # curling over its outer edge
+		])
 	# Down her side, draped: never stepping back in under a bulge, so the arm
 	# hangs from her widest point the way a heavy arm would, clear of the
 	# plating by enough that its natural curve does not cut her bilge.
@@ -1843,6 +1912,7 @@ func _update_arms(delta: float) -> void:
 		# a grip holds on: the tip is kept on its spot on the hull / the fish
 		arm.pin_tip = (arm.role == KrakenArm.Role.BOAT or arm.role == KrakenArm.Role.FISH) and arm.gripped
 		arm.pin_joints = 20 if arm.role == KrakenArm.Role.FISH else 7
+		arm.lay_on_path = arm.role == KrakenArm.Role.BOAT and arm.gripped
 		arm.simulate(delta)
 		if not far:
 			arm.apply_to_skeleton()
