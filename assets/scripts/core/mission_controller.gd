@@ -84,6 +84,10 @@ func _on_package_delivered() -> void:
 	var carry: Node = get_tree().get_first_node_in_group(&'carry_controller')
 	if carry.carried == package:
 		carry.drop()
+	# No text on screen: the cabin printer answers instead.
+	var printer: Node = get_tree().get_first_node_in_group(&'printer')
+	if printer:
+		printer.print_page(_config().printout_text)
 	if GameState.current_day >= GameState.FINAL_DAY:
 		ending_fish.appear()
 
@@ -125,6 +129,13 @@ func _build_placeholder_days() -> void:
 		"The paper smells of low tide.\n\n\"The island. The well. Bring what sleeps at the bottom.\"",
 		"The letter is addressed to you.\n\n\"Come home.\"",
 	]
+	var printouts: Array[String] = [
+		"RECEIVED.\n\nRETURN HOME.",
+		"RECEIVED.\n\nRETURN HOME.\nDO NOT LOOK DOWN.",
+		"RECEIVED.\n\nYOU WERE LATE.\nRETURN HOME.",
+		"RECEIVED.\n\nIT WAS STILL WARM.\nRETURN HOME.",
+		"RECEIVED.\n\nSOMETHING IS WAITING ON THE SHORE,\nIN FRONT OF YOUR HOUSE.",
+	]
 	var pickups: Array[Vector3] = [
 		Vector3(150, 0, 60),
 		Vector3(220, 0, -120),
@@ -161,6 +172,7 @@ func _build_placeholder_days() -> void:
 		var cfg := DayConfig.new()
 		cfg.day = i + 1
 		cfg.letter_text = texts[i]
+		cfg.printout_text = printouts[i]
 		cfg.pickup_position = pickups[i]
 		cfg.delivery_position = deliveries[i]
 		cfg.package_depth = package_depths[i]

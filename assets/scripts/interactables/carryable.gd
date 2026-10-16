@@ -54,9 +54,12 @@ func _ready() -> void:
 			_half_height = maxf(-(shape.transform * box).position.y, 0.05)
 			break
 	# Give the mesh its own material copy so highlighting never leaks to others.
+	# Imported models (eg. the printout) have no "Mesh" node: use the first mesh inside.
 	var mesh_instance: MeshInstance3D = get_node_or_null(^'Mesh')
-	if mesh_instance and mesh_instance.get_surface_override_material(0):
-		_highlight_material = mesh_instance.get_surface_override_material(0).duplicate()
+	if not mesh_instance:
+		mesh_instance = find_children("*", "MeshInstance3D", true, false).pop_front()
+	if mesh_instance and mesh_instance.get_active_material(0) is StandardMaterial3D:
+		_highlight_material = mesh_instance.get_active_material(0).duplicate()
 		mesh_instance.set_surface_override_material(0, _highlight_material)
 
 func _physics_process(_delta: float) -> void:

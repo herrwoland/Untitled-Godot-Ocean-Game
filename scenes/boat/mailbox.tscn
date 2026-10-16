@@ -1,0 +1,464 @@
+[gd_scene format=3 uid="uid://b0ovts5skp0ft"]
+
+[ext_resource type="PackedScene" uid="uid://3uhevo1sb2hm" path="res://assets/models/boat/mailbox.glb" id="1_720j0"]
+[ext_resource type="Script" uid="uid://bmvrlfhvo4qyq" path="res://scenes/boat/mailbox.gd" id="1_kgeb6"]
+[ext_resource type="AudioStream" uid="uid://b74xe3qwepyeo" path="res://assets/SFX/answering-machine-tape-start.ogg" id="4_flj0w"]
+[ext_resource type="AudioStream" uid="uid://c48q6apsr5st3" path="res://assets/SFX/beep-1.ogg" id="5_yiptj"]
+[ext_resource type="AudioStream" uid="uid://ri44vbhdg425" path="res://assets/SFX/printing.ogg" id="6_0u541"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_w4eqt"]
+resource_name = "Material.003"
+cull_mode = 2
+albedo_color = Color(0.47, 0.4114067, 0.2632, 1)
+emission_enabled = true
+emission = Color(0.79312426, 0.5919549, 0.052765377, 1)
+emission_energy_multiplier = 0.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lap35"]
+resource_name = "Material.003"
+cull_mode = 2
+albedo_color = Color(0.47, 0.4114067, 0.2632, 1)
+emission_enabled = true
+emission = Color(0.79312426, 0.5919549, 0.052765377, 1)
+emission_energy_multiplier = 0.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ewaju"]
+resource_name = "Material.003"
+cull_mode = 2
+albedo_color = Color(0.47, 0.4114067, 0.2632, 1)
+emission_enabled = true
+emission = Color(0.79312426, 0.5919549, 0.052765377, 1)
+emission_energy_multiplier = 0.0
+
+[sub_resource type="Animation" id="Animation_kgeb6"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("mailbox/Cube_006:scale")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(1, 1, 1)]
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("paper_exit_point:position:x")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("paper_exit_point:position:y")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0.9175594, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("paper_exit_point:position:z")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(-0.089686275, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("paper_exit_point:rotation:x")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("paper_exit_point:rotation:y")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("paper_exit_point:rotation:z")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/7/type = "value"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("mailbox/Cube_006/mailbox_light_0:visible")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [false]
+}
+tracks/8/type = "value"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("mailbox/Cube_006/mailbox_light_1:visible")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [false]
+}
+tracks/9/type = "value"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("mailbox/Cube_006/mailbox_light_2:visible")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [false]
+}
+tracks/10/type = "value"
+tracks/10/imported = false
+tracks/10/enabled = true
+tracks/10/path = NodePath("mailbox/Cube_006/mailbox_light_002:surface_material_override/0:emission_energy_multiplier")
+tracks/10/interp = 1
+tracks/10/loop_wrap = true
+tracks/10/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/11/type = "value"
+tracks/11/imported = false
+tracks/11/enabled = true
+tracks/11/path = NodePath("mailbox/Cube_006/mailbox_light:surface_material_override/0:emission_energy_multiplier")
+tracks/11/interp = 1
+tracks/11/loop_wrap = true
+tracks/11/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/12/type = "value"
+tracks/12/imported = false
+tracks/12/enabled = true
+tracks/12/path = NodePath("mailbox/Cube_006/mailbox_light_001:surface_material_override/0:emission_energy_multiplier")
+tracks/12/interp = 1
+tracks/12/loop_wrap = true
+tracks/12/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [0.0]
+}
+
+[sub_resource type="Animation" id="Animation_w4eqt"]
+resource_name = "print_paper"
+length = 7.0
+step = 0.05
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("mailbox/Cube_006:scale")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 1.25, 1.3500001, 1.45, 1.5500004, 2.1, 2.2, 2.3, 2.4000003, 3.15, 3.2500002, 3.3500001, 3.4500005, 3.75, 3.8500001, 3.95, 4.05, 4.15, 4.25, 4.3500004, 4.45, 4.5499997, 4.65, 4.7499995, 4.8499994, 4.95, 5.0499997),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(1, 1, 1), Vector3(1, 1, 1), Vector3(0.998, 1.002, 1.002), Vector3(1.002, 0.998, 0.998), Vector3(1, 1, 1), Vector3(1, 1, 1), Vector3(0.998, 1.002, 1.002), Vector3(1.002, 0.998, 0.998), Vector3(1, 1, 1), Vector3(1, 1, 1), Vector3(0.998, 1.002, 1.002), Vector3(1.002, 0.998, 0.998), Vector3(1, 1, 1), Vector3(1, 1, 1), Vector3(0.998, 1.002, 1.002), Vector3(1.002, 0.998, 0.998), Vector3(1, 1, 1), Vector3(1, 1, 1), Vector3(0.998, 1.002, 1.002), Vector3(1.002, 0.998, 0.998), Vector3(1, 1, 1), Vector3(0.998, 1.002, 1.002), Vector3(1.002, 0.998, 0.998), Vector3(1, 1, 1), Vector3(0.998, 1.002, 1.002), Vector3(1.002, 0.998, 0.998), Vector3(1, 1, 1)]
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("paper_exit_point:position:x")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0, 0, -0.066666685, 0, 0.066666685, 0, 0, -0.066666685, 0, 0, 0),
+"times": PackedFloat32Array(3.15, 5.15, 5.8)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("paper_exit_point:position:y")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0.9175594, -0.25, 0, 0.25, 0, 0.887496, -0.033333384, 0.0031619498, 0.066666685, -0.0063238917, 0.86064434, -0.066666685, 0.004475276, 0, 0),
+"times": PackedFloat32Array(4.65, 5.15, 5.8)
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("paper_exit_point:position:z")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0.09133935, -0.25, 0, 0.25, 0, -0.20821823, -0.066666685, 0.025133314, 0.066666685, -0.025133314, -0.21026039, -0.066666685, -0.0035879118, 0, 0),
+"times": PackedFloat32Array(3.15, 5.15, 5.8)
+}
+tracks/4/type = "bezier"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("paper_exit_point:rotation:x")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0.066666685, -0.033895515, -0.203373, -0.033333384, 0.024093157, 0.066666685, -0.048186257, -0.43367645, -0.066666685, 0.038383912, 0, 0),
+"times": PackedFloat32Array(4.65, 5.15, 5.8)
+}
+tracks/5/type = "bezier"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("paper_exit_point:rotation:y")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0.066666685, 0, 0, -0.066666685, 0, 0.066666685, 0, 0, -0.066666685, 0, 0, 0),
+"times": PackedFloat32Array(3.15, 5.15, 5.8)
+}
+tracks/6/type = "bezier"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("paper_exit_point:rotation:z")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0, 0, 0, 0.066666685, 0, 0, -0.066666685, 0, 0.066666685, 0, 0, -0.066666685, 0, 0, 0),
+"times": PackedFloat32Array(3.15, 5.15, 5.8)
+}
+tracks/7/type = "value"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("mailbox/Cube_006/mailbox_light_0:visible")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"times": PackedFloat32Array(0, 0.05, 0.3, 0.35000002, 0.6, 0.65, 1.2, 1.2500001, 1.6, 1.65, 4.95, 5),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [false, true, true, false, false, true, true, false, false, true, true, false]
+}
+tracks/8/type = "value"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("mailbox/Cube_006/mailbox_light_1:visible")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"times": PackedFloat32Array(2.5, 2.55, 5.3, 5.3500004),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 1,
+"values": [false, true, true, false]
+}
+tracks/9/type = "value"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("mailbox/Cube_006/mailbox_light_2:visible")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"times": PackedFloat32Array(3.2, 3.25, 6, 6.05),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 1,
+"values": [false, true, true, false]
+}
+tracks/10/type = "value"
+tracks/10/imported = false
+tracks/10/enabled = true
+tracks/10/path = NodePath("mailbox/Cube_006/mailbox_light_002:surface_material_override/0:emission_energy_multiplier")
+tracks/10/interp = 1
+tracks/10/loop_wrap = true
+tracks/10/keys = {
+"times": PackedFloat32Array(3.2, 3.2499998, 6, 6.05),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [0.0, 1.0, 1.0, 0.0]
+}
+tracks/11/type = "value"
+tracks/11/imported = false
+tracks/11/enabled = true
+tracks/11/path = NodePath("mailbox/Cube_006/mailbox_light:surface_material_override/0:emission_energy_multiplier")
+tracks/11/interp = 1
+tracks/11/loop_wrap = true
+tracks/11/keys = {
+"times": PackedFloat32Array(0, 0.05, 0.3, 0.35000002, 0.6, 0.65, 1.2, 1.2500001, 1.6, 1.65, 4.95, 5),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0]
+}
+tracks/12/type = "value"
+tracks/12/imported = false
+tracks/12/enabled = true
+tracks/12/path = NodePath("mailbox/Cube_006/mailbox_light_001:surface_material_override/0:emission_energy_multiplier")
+tracks/12/interp = 1
+tracks/12/loop_wrap = true
+tracks/12/keys = {
+"times": PackedFloat32Array(2.5, 2.55, 5.3, 5.3500004),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [0.0, 1.0, 1.0, 0.0]
+}
+tracks/13/type = "audio"
+tracks/13/imported = false
+tracks/13/enabled = true
+tracks/13/path = NodePath("AnimationPlayer/AudioStreamPlayer3D")
+tracks/13/interp = 1
+tracks/13/loop_wrap = true
+tracks/13/keys = {
+"clips": [{
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("4_flj0w")
+}, {
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("4_flj0w")
+}, {
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("5_yiptj")
+}],
+"times": PackedFloat32Array(0.65, 2.5, 5.35)
+}
+tracks/13/use_blend = true
+tracks/14/type = "audio"
+tracks/14/imported = false
+tracks/14/enabled = true
+tracks/14/path = NodePath("AnimationPlayer/AudioStreamPlayer3D2")
+tracks/14/interp = 1
+tracks/14/loop_wrap = true
+tracks/14/keys = {
+"clips": [{
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("5_yiptj")
+}, {
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("5_yiptj")
+}],
+"times": PackedFloat32Array(0.19999999, 5)
+}
+tracks/14/use_blend = true
+tracks/15/type = "audio"
+tracks/15/imported = false
+tracks/15/enabled = true
+tracks/15/path = NodePath("AnimationPlayer/AudioStreamPlayer3D3")
+tracks/15/interp = 1
+tracks/15/loop_wrap = true
+tracks/15/keys = {
+"clips": [{
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("6_0u541")
+}, {
+"end_offset": 0.0,
+"start_offset": 0.0,
+"stream": ExtResource("5_yiptj")
+}],
+"times": PackedFloat32Array(2.2, 5.95)
+}
+tracks/15/use_blend = true
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_lap35"]
+_data = {
+&"RESET": SubResource("Animation_kgeb6"),
+&"print_paper": SubResource("Animation_w4eqt")
+}
+
+[node name="mailbox" type="Node3D" unique_id=802731096]
+script = ExtResource("1_kgeb6")
+
+[node name="mailbox" parent="." unique_id=1373072919 instance=ExtResource("1_720j0")]
+
+[node name="mailbox_light" parent="mailbox/Cube_006" parent_id_path=PackedInt32Array(1373072919, 800365918) index="0" unique_id=1585836697]
+surface_material_override/0 = SubResource("StandardMaterial3D_w4eqt")
+
+[node name="mailbox_light_001" parent="mailbox/Cube_006" parent_id_path=PackedInt32Array(1373072919, 800365918) index="1" unique_id=1014520729]
+surface_material_override/0 = SubResource("StandardMaterial3D_lap35")
+
+[node name="mailbox_light_002" parent="mailbox/Cube_006" parent_id_path=PackedInt32Array(1373072919, 800365918) index="2" unique_id=274861043]
+surface_material_override/0 = SubResource("StandardMaterial3D_ewaju")
+
+[node name="mailbox_light_0" type="OmniLight3D" parent="mailbox/Cube_006" parent_id_path=PackedInt32Array(1373072919, 800365918) index="3" unique_id=1426840568]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.08240265, 0.96565306, -0.11916672)
+visible = false
+light_color = Color(1, 0.783, 0.58000004, 1)
+light_energy = 0.2
+light_volumetric_fog_energy = 16.0
+omni_range = 0.375
+
+[node name="mailbox_light_1" type="OmniLight3D" parent="mailbox/Cube_006" parent_id_path=PackedInt32Array(1373072919, 800365918) index="4" unique_id=1249787560]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.96565306, -0.11916672)
+visible = false
+light_color = Color(1, 0.783, 0.58000004, 1)
+light_energy = 0.2
+light_volumetric_fog_energy = 16.0
+omni_range = 0.375
+
+[node name="mailbox_light_2" type="OmniLight3D" parent="mailbox/Cube_006" parent_id_path=PackedInt32Array(1373072919, 800365918) index="5" unique_id=371563696]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.08367036, 0.96565306, -0.11916672)
+visible = false
+light_color = Color(1, 0.783, 0.58000004, 1)
+light_energy = 0.2
+light_volumetric_fog_energy = 16.0
+omni_range = 0.375
+
+[node name="paper_exit_point" type="Marker3D" parent="." unique_id=887760186]
+transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 0.9175594, -0.089686275)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1790987024]
+libraries/ = SubResource("AnimationLibrary_lap35")
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="AnimationPlayer" unique_id=605330575]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.89921784, 0)
+bus = &"SFX"
+
+[node name="AudioStreamPlayer3D2" type="AudioStreamPlayer3D" parent="AnimationPlayer" unique_id=1331399941]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.89921784, 0)
+bus = &"SFX"
+
+[node name="AudioStreamPlayer3D3" type="AudioStreamPlayer3D" parent="AnimationPlayer" unique_id=1379418012]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.89921784, 0)
+bus = &"SFX"
+
+[editable path="mailbox"]

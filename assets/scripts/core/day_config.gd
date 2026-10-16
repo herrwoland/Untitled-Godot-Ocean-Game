@@ -3,6 +3,8 @@ extends Resource
 
 @export var day: int = 1
 @export_multiline var letter_text: String = ""
+## What the cabin printer types out the moment the package is delivered.
+@export_multiline var printout_text: String = ""
 @export var pickup_position: Vector3
 @export var delivery_position: Vector3
 ## How far below the surface the package rests at the pickup point.
