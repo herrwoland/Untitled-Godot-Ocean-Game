@@ -221,7 +221,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		camera.rotation.x -= event.relative.y * mouse_sensitivity
 		camera.rotation.x = clampf(camera.rotation.x, -PI / 2.0, PI / 2.0)
 	elif event.is_action_pressed(&'interact') and not captured:
-		_try_interact()
+		_try_interact(event is InputEventKey)
 
 ## While captured the body is dragged by the creature: controls and collisions
 ## are off, but the head is free to look around on the way down.
@@ -607,12 +607,16 @@ func _play_splash(surface_y: float) -> void:
 	if splash_player and splash_player.stream:
 		splash_player.play()
 
-func _try_interact() -> void:
+## from_key: pressed on the keyboard (E), not the mouse button.
+func _try_interact(from_key := false) -> void:
 	if state == State.PILOT:
-		# Piloting is only exited via the jump (space) key; the only thing in reach is a
-		# control beside the wheel (see _update_interact_hover).
+		# At the helm the only thing in reach is a control beside the wheel (see
+		# _update_interact_hover); looking at none, the E key lets go of the
+		# wheel, the same as the jump (space) key.
 		if hovered_interactable and hovered_interactable.get(&'usable_from_helm') == true:
 			hovered_interactable.interact(self)
+		elif from_key:
+			exit_pilot()
 		return
 	if Time.get_ticks_msec() < interact_cooldown_until_msec:
 		return # eg. the press that just closed an inspection
