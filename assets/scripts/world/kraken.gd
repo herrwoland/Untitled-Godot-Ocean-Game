@@ -79,6 +79,16 @@ enum FishPhase { CHASE, REEL, DRAG, SETTLE, FEED } # a giant fish in its waters:
 @export var stroke_peak := 1.0
 @export var settle_pulls := 3 # hauls of the arms that bring it home onto the rock
 
+@export_group("Crawling")
+## Over the rock it walks on its arms, the way a spider walks: the arm tips are
+## feet, planted and held; the body only sits where the planted feet carry it.
+@export var crawl_speed := 2.0 # m/s the way ahead creeps on (the body follows the feet)
+@export var crawl_lead := 8.0 # m the way ahead may get in front of the body
+@export var crawl_reach := 0.85 # fraction of an arm's length along the rock (round it, if need be) from body to foot
+@export var crawl_step := 0.22 # fraction of that: a foot this far behind its place steps
+@export var crawl_step_time := 2.4 # s one step takes
+@export var crawl_lift := 6.0 # m a stepping foot lifts off the rock (model units)
+@export var crawl_body_follow := 1.5 # 1/s how quickly the body settles over its feet
 ## Within this distance of the prey it rears up for the attack (otherwise it
 ## swims mantle first with the arms trailing).
 @export var face_range := 90.0
@@ -258,6 +268,13 @@ var boat_phase := BoatPhase.REACH
 var _skeleton: Skeleton3D
 var _scale := 1.0 # the model's scale in this scene: body-size distances are multiplied by it
 var _breach: BreachSplash # splashes where its body or arms go through the surface
+var _crawling := false
+var _crawl_target := Vector2.ZERO # (height on the column, angle round it) where it is going
+var _crawl_intent := Vector2.ZERO # the way ahead, creeping toward the target
+var _crawl_body := Vector2.ZERO # where the body sits, over its planted feet
+var _crawl_dir := Vector2(0.0, 1.0) # way of travel on the rock, (dh, d-arc), unit
+var _feet: Array = [] # per arm: {at: Vector2 (h, a), from, to, t, stepping: bool, held: bool (has stepped: carries the body)}
+var _crawl_group := -1 # the group of arms (0 even, 1 odd) stepping now, -1 none
 var _breach_points := PackedVector3Array()
 var _breach_radii := PackedFloat32Array()
 var _attacking := false # reared up and closing on a swimming prey
@@ -466,13 +483,16 @@ func _physics_process(delta: float) -> void:
 	_stroke = fmod(_stroke + delta / maxf(stroke_period, 0.5), 1.0)
 	_cooldown = maxf(_cooldown - delta, 0.0)
 
-	match state:
-		State.PERCHED: _process_perched(delta)
-		State.WAKING: _process_waking(delta)
-		State.HUNT: _process_hunt(delta)
-		State.BOAT: _process_boat(delta)
-		State.RETURN: _process_return(delta)
-		State.FISH: _process_fish(delta)
+	if _crawling:
+		_process_crawl(delta)
+	else:
+		match state:
+			State.PERCHED: _process_perched(delta)
+			State.WAKING: _process_waking(delta)
+			State.HUNT: _process_hunt(delta)
+			State.BOAT: _process_boat(delta)
+			State.RETURN: _process_return(delta)
+			State.FISH: _process_fish(delta)
 
 	if state == State.HUNT or state == State.BOAT:
 		_update_reaching(delta)
@@ -752,6 +772,201 @@ func _process_return(delta: float) -> void:
 		_settle_from = Transform3D()
 		_stop(_presence_loop)
 		_set_state(State.PERCHED)
+
+## ---- crawling over the rock ---------------------------------------------------------
+##
+## On the rock it walks, the way games make a spider walk: each arm tip is a
+## foot planted on the stone; "the way ahead" creeps toward where it is going,
+## and every foot has its place in a star around it, turned the way it goes.
+## A foot that falls too far behind its place lifts, arcs over and plants
+## ahead — the arms in two groups (even, odd), one group stepping only while
+## the other stands. The body is never pushed: it sits over the middle of its
+## planted feet, so it only gets anywhere as its feet step on.
+## Places on the rock are (height up the column from the perch, angle round it).
+
+## Start walking over the rock to (height, angle).
+func begin_crawl(height: float, angle: float) -> void:
+	var on_rock := _feet.size() == _arms.size() and _arms[0].role == KrakenArm.Role.CRAWL
+	if not on_rock:
+		_crawl_body = _rock_coords(global_position)
+		_crawl_intent = _crawl_body
+		_feet.clear()
+		for arm in _arms:
+			arm.set_role(KrakenArm.Role.CRAWL)
+			var at := _rock_coords(arm.tip())
+			at.y = _near_angle(at.y, _crawl_body.y)
+			# where the arm happens to be: held, but it does not carry the body
+			# until it has made a step of its own
+			_feet.append({at = at, from = at, to = at, t = 1.0, stepping = false, held = false})
+			arm.gripped = true
+			arm.tip_target = _rock_point(at, arm.radius_at(arm.points.size() - 1))
+		_crawl_group = -1
+	_crawl_target = Vector2(height, _near_angle(angle, _crawl_body.y))
+	_crawling = true
+
+## Done walking: let go of the rock (the arms go back to whatever they were).
+func end_crawl() -> void:
+	_crawling = false
+	for arm in _arms:
+		if arm.role == KrakenArm.Role.CRAWL:
+			arm.set_role(KrakenArm.Role.FREE)
+
+func is_crawling() -> bool:
+	return _crawling
+
+func _process_crawl(delta: float) -> void:
+	var r := _rock_r(_crawl_body)
+	# the way ahead creeps on — but never far in front of the body
+	var to := _rock_delta(_crawl_intent, _crawl_target, r)
+	var lead := _rock_delta(_crawl_body, _crawl_intent, r).length()
+	if to.length() > 0.05 and lead < crawl_lead * _scale:
+		_crawl_dir = to.normalized()
+		var step := minf(to.length(), crawl_speed * _scale * delta)
+		_crawl_intent += Vector2(_crawl_dir.x * step, _crawl_dir.y * step / maxf(r, 1.0))
+	# the feet: a group steps only while the other group all stands
+	var reach := _arms[0].length * crawl_reach
+	if _crawl_group >= 0:
+		var done := true
+		for i in _arms.size():
+			if i % 2 == _crawl_group and _feet[i].stepping:
+				done = false
+		if done:
+			_crawl_group = -1
+	if _crawl_group < 0:
+		# whichever group has the foot farthest behind its place goes
+		var worst := [0.0, 0.0]
+		for i in _arms.size():
+			var behind := _rock_delta(_feet[i].at, _foot_place(i, reach), r).length()
+			worst[i % 2] = maxf(worst[i % 2], behind)
+		var g := 0 if worst[0] >= worst[1] else 1
+		# on the way, a foot steps once it is well behind; arrived, small
+		# settling steps bring the feet (and so the body) right in
+		var arrived := _rock_delta(_crawl_intent, _crawl_target, r).length() < 0.1
+		var threshold := reach * crawl_step if not arrived else 2.0 * _scale
+		if worst[g] > threshold:
+			_crawl_group = g
+			for i in _arms.size():
+				if i % 2 == g and _rock_delta(_feet[i].at, _foot_place(i, reach), r).length() > threshold * 0.5:
+					# it steps to where its place will be when the step is done
+					# while it travels it steps a little ahead of the place; arrived, onto it
+					var ahead := _crawl_dir * crawl_speed * _scale * crawl_step_time * 0.8 if not arrived else Vector2.ZERO
+					var to_place := _foot_place(i, reach) + Vector2(ahead.x, ahead.y / maxf(r, 1.0))
+					_feet[i] = {at = _feet[i].at, from = _feet[i].at, to = to_place, t = 0.0, stepping = true, held = false}
+					_arms[i].gripped = false
+	for i in _arms.size():
+		var f: Dictionary = _feet[i]
+		if f.stepping:
+			f.t = minf(f.t + delta / crawl_step_time, 1.0)
+			var e: float = f.t * f.t * (3.0 - 2.0 * f.t)
+			f.at = (f.from as Vector2).lerp(f.to, e)
+			if f.t >= 1.0:
+				f.stepping = false
+				f.held = true # planted where it chose: it carries the body now
+				_arms[i].gripped = true # held right there
+		var lift := sin(PI * f.t) * crawl_lift * _scale if f.stepping else 0.0
+		_arms[i].tip_target = _rock_point(f.at, _arms[i].radius_at(_arms[i].points.size() - 1) + lift)
+	# the body: over the middle of the planted feet, settling there
+	var sum := Vector2.ZERO
+	var n := 0
+	for i in _arms.size():
+		if not _feet[i].stepping and _feet[i].held:
+			sum += (_feet[i].at as Vector2) - _foot_offset(i, reach)
+			n += 1
+	if n >= 2:
+		var over := sum / n
+		var k := 1.0 - exp(-crawl_body_follow * delta)
+		var move := _rock_delta(_crawl_body, _crawl_body.lerp(over, k), r)
+		move = move.limit_length(crawl_speed * _scale * 1.5 * delta) # carried by its arms, never flung
+		_crawl_body += Vector2(move.x, move.y / maxf(r, 1.0))
+	# it turns into its crawling pose over a moment, it does not snap
+	var pose := _crawl_pose(_crawl_body)
+	var q := global_basis.get_rotation_quaternion().slerp(pose.basis.get_rotation_quaternion(), 1.0 - exp(-1.2 * delta))
+	global_transform = Transform3D(Basis(q), pose.origin)
+	if _rock_delta(_crawl_body, _crawl_target, r).length() < 1.0 * _scale and _crawl_group < 0:
+		_crawling = false # arrived; the feet stay on the rock until end_crawl()
+
+## A foot's place on the rock: its point of the star round the way ahead.
+func _foot_place(i: int, reach: float) -> Vector2:
+	return _crawl_intent + _foot_offset(i, reach)
+
+## Its point of the star (dh, da): each arm reaches out on its own side — the
+## way its root leaves the body, over the rock — a little farther ahead than
+## behind. (An arm never reaches across its own body.)
+func _foot_offset(i: int, reach: float) -> Vector2:
+	var r := _rock_r(_crawl_intent)
+	var spin := atan2(_crawl_dir.y, _crawl_dir.x)
+	var root := _rock_coords(_arms[i].root())
+	root.y = _near_angle(root.y, _crawl_body.y)
+	var side := _rock_delta(_crawl_body, root, r)
+	var theta := atan2(side.y, side.x) if side.length() > 0.01 else spin + TAU * float(i) / _arms.size()
+	var d := reach * (1.0 + 0.15 * cos(theta - spin))
+	return Vector2(cos(theta) * d, sin(theta) * d / maxf(r, 1.0))
+
+## Its arm along the rock: from where the arm leaves the body, over the stone
+## (just off its skin) out to the foot — lifted in an arc while it steps.
+func _crawl_goals(arm: KrakenArm) -> void:
+	if _feet.size() != _arms.size():
+		return
+	var f: Dictionary = _feet[arm.index]
+	var start := _rock_coords(arm.root())
+	start.y = _near_angle(start.y, _crawl_body.y)
+	var end: Vector2 = f.at
+	var lift := sin(PI * f.t) * crawl_lift * _scale if f.stepping else 0.0
+	var path := PackedVector3Array()
+	var steps := 24
+	for j in range(steps, -1, -1):
+		var u := float(j) / steps # 1 at the body .. 0 at the foot: root first
+		var p := end.lerp(start, u)
+		var off := arm.radius_at(int((1.0 - u) * (arm.points.size() - 1))) + 0.6 * _scale
+		off += lift * pow(1.0 - u, 0.7) # the foot end lifts most
+		off += 1.5 * _scale * u * u # the root rises off the stone into the crown
+		path.append(_rock_point(p, off))
+	arm.goals_follow(path) # the whole arm round the rock, root first
+
+## Where it sits for a place on the rock, as an octopus on a wall: its crown
+## — the mouth and the ring the arms leave from — turned flat onto the stone,
+## so the arms spread out over it every way; head and mantle stand off the
+## rock, tipped back a little against the way it goes.
+func _crawl_pose(at: Vector2) -> Transform3D:
+	var up := perch.global_basis.y.normalized()
+	var out := _rock_dir(at.y)
+	var tangent := (_rock_dir(at.y + 0.01) - out).normalized()
+	var travel := (up * _crawl_dir.x + tangent * _crawl_dir.y).normalized()
+	var z := (-out + travel * 0.3).normalized() # crown onto the rock, leaning into the way it goes
+	var y := travel - z * travel.dot(z) # its back (the top of its head) toward the way it goes
+	y = y.normalized() if y.length() > 0.01 else up
+	var x := y.cross(z).normalized()
+	return Transform3D(Basis(x, x.cross(z) * -1.0, z).orthonormalized(), _rock_point(at, 2.5 * _scale))
+
+## (height, angle) of a point, round the column.
+func _rock_coords(p: Vector3) -> Vector2:
+	var up := perch.global_basis.y.normalized()
+	var rel := p - perch.global_position
+	var h := rel.dot(up)
+	var flat := rel - up * h
+	return Vector2(h, atan2(flat.dot(_rock_e2), flat.dot(_rock_e1)))
+
+## The point `off` meters out from the rock's skin at (height, angle).
+func _rock_point(at: Vector2, off: float) -> Vector3:
+	var up := perch.global_basis.y.normalized()
+	var h := clampf(at.x, ROCK_BELOW, ROCK_BELOW + ROCK_STEP * (ROCK_LEVELS - 1))
+	return perch.global_position + up * at.x + _rock_dir(at.y) * (float(_rock_radius.call(h, at.y)) + off)
+
+func _rock_dir(angle: float) -> Vector3:
+	return (_rock_e1 * cos(angle) + _rock_e2 * sin(angle)).normalized()
+
+func _rock_r(at: Vector2) -> float:
+	var h := clampf(at.x, ROCK_BELOW, ROCK_BELOW + ROCK_STEP * (ROCK_LEVELS - 1))
+	return float(_rock_radius.call(h, at.y))
+
+## From one place on the rock to another, in meters: (up, along round). The
+## angles run on unwrapped (an arm may wind more than once round the column).
+func _rock_delta(a: Vector2, b: Vector2, r: float) -> Vector2:
+	return Vector2(b.x - a.x, (b.y - a.y) * r)
+
+## angle, turned by whole turns to lie within half a turn of ref
+func _near_angle(angle: float, ref: float) -> float:
+	return ref + wrapf(angle - ref, -PI, PI)
 
 ## Coming home onto the rock (t 0..1 of the settle): the arms reach the rock
 ## first and take hold (the body barely moves), then haul it in, settle_pulls
@@ -2104,9 +2319,24 @@ func _update_arms(delta: float) -> void:
 			arm.smooth_passes = 0 if arm.gripped else 2
 		# a grip holds on: the tip is kept on its spot on the hull / the fish
 		arm.pin_tip = (arm.role == KrakenArm.Role.BOAT or arm.role == KrakenArm.Role.FISH) and arm.gripped
-		arm.pin_joints = 20 if arm.role == KrakenArm.Role.FISH else 7
+		arm.pin_joints = 20 if arm.role == KrakenArm.Role.FISH or arm.role == KrakenArm.Role.CRAWL else 7
 		arm.lay_on_path = arm.role == KrakenArm.Role.BOAT and arm.gripped
-		arm.set_tight(arm.role == KrakenArm.Role.BOAT and arm.gripped)
+		if arm.role == KrakenArm.Role.CRAWL:
+			arm.set_tight(true, 4.0) # crawling it coils right round the stone
+		else:
+			arm.set_tight(arm.role == KrakenArm.Role.BOAT and arm.gripped)
+		if arm.role == KrakenArm.Role.CRAWL:
+			arm.set_spread(deg_to_rad(85.0))
+			# a foot: it lies along the rock out to its foothold and holds it
+			arm.response = arm_response * 2.0
+			arm.max_joint_speed = deg_to_rad(arm_max_joint_speed) * 1.5
+			arm.max_tip_speed = arm_max_tip_speed * 1.5
+			arm.smooth_passes = 1
+			arm.pin_tip = arm.gripped
+			arm.pin_rate = 12.0 # it settles onto its foothold, it does not snap there
+			arm.pin_max_turn = deg_to_rad(2.0)
+			arm.limit_whole_arm = true
+			arm.seek_tip = 0.0 if arm.gripped else 6.0
 		arm.simulate(delta)
 		if not far:
 			arm.apply_to_skeleton()
@@ -2169,6 +2399,8 @@ func _set_arm_goals(_delta: float) -> void:
 							break
 						route.append(w)
 					arm.goals_path(route)
+			KrakenArm.Role.CRAWL:
+				_crawl_goals(arm)
 			KrakenArm.Role.FISH:
 				if arm.gripped and is_instance_valid(_fish):
 					var ring := _fish_ring(arm)
@@ -2533,7 +2765,7 @@ func _mantle_follow(delta: float) -> void:
 	var root := xf * rest.origin
 	# where the body would carry it, wandering slowly off line on its own
 	var sway := deg_to_rad(mantle_sway_angle)
-	if state == State.PERCHED:
+	if state == State.PERCHED or _crawling:
 		sway *= 0.5 # on the rock: its back is to the stone
 	var ph := _time * TAU / maxf(mantle_sway_period, 1.0)
 	var drift := Basis(rest.basis.x.normalized(), sway * sin(ph)) * Basis(rest.basis.z.normalized(), sway * 0.8 * sin(ph * 0.61 + 1.3))

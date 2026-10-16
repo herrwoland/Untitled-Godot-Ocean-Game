@@ -27,7 +27,7 @@ class_name KrakenArm extends RefCounted
 ## the tip, bones shortening toward the tip (see
 ## kraken/source/build_kraken_placeholder.py for the convention).
 
-enum Role { FREE, REACH, HOLD, BOAT, RECOIL, FISH }
+enum Role { FREE, REACH, HOLD, BOAT, RECOIL, FISH, CRAWL } # CRAWL: a foot on the rock (gripped = planted)
 
 var skeleton: Skeleton3D
 var index := 0 # which arm round the crown, 0..
@@ -69,6 +69,11 @@ var smooth_passes := 2
 var role := Role.FREE
 var pin_tip := false # BOAT, gripped: the tip is held exactly on tip_target
 var pin_joints := 7 # how many of the last joints turn to keep a pinned tip on
+## 1/s how quickly a pinned tip is brought onto its spot (0 = at once). Eased,
+## the arm never jumps in a frame when it takes hold.
+var pin_rate := 0.0
+var pin_max_turn := 0.0 # radians a pinning joint may turn in one frame at most (0 = no limit)
+var limit_whole_arm := false # cap every point's speed, not only the tip's
 ## Holding on along a route (goals_path), the part of the arm on the route is
 ## laid exactly onto it every frame instead of chasing it on its springs: an
 ## arm wrapped round a rolling hull goes with her, never through her.
@@ -146,7 +151,7 @@ func configure() -> void:
 	_limit.resize(_n)
 	for k in _n:
 		if k == 0:
-			_limit[k] = swing_limit
+			_limit[k] = maxf(swing_limit, _spread_swing) # spread flat from the web, crawling
 		else:
 			var t := (along[k] + _segments[k] * _world * 0.5) / length
 			_limit[k] = lerpf(bend_root, bend_tip, pow(t, bend_exponent))
@@ -157,6 +162,13 @@ func configure() -> void:
 ## wraps tightly round what it holds instead of cutting across its corners.
 const TIGHT_FACTOR := 2.0
 var _tight := 1.0
+var _spread_swing := 0.0
+## Crawling with its crown on the rock, the arms leave the web flat out over
+## the stone: the joint at the crown may swing this far (radians, 0 = as usual).
+func set_spread(swing: float) -> void:
+	if not is_equal_approx(swing, _spread_swing):
+		_spread_swing = swing
+		configure()
 func set_tight(on: bool, factor := TIGHT_FACTOR) -> void:
 	var f := factor if on else 1.0
 	if not is_equal_approx(f, _tight):
@@ -178,9 +190,13 @@ func set_role(new_role: Role) -> void:
 	timer = 0.0
 	gripped = false
 	pin_tip = false
+	pin_rate = 0.0
+	pin_max_turn = 0.0
+	limit_whole_arm = false
 	lay_on_path = false
 	climb = -1.0
 	set_tight(false)
+	set_spread(0.0)
 	seek_tip = 0.0
 	curl_from = -1.0
 	reach_front = 1.0
@@ -289,6 +305,16 @@ func goals_path(path: PackedVector3Array) -> void:
 			_path_from = i
 		goals[i] = _point_on(path, walked, from_tip) if from_tip <= wrap else start.lerp(join, along[i] / s0)
 
+## The whole arm along a path, root first: every point of the arm at the same
+## fraction of the path as of its own length (no straight stretch from the
+## body: round a thin pillar the arm winds from where it leaves the body).
+func goals_follow(path: PackedVector3Array) -> void:
+	var walked := PackedFloat32Array([0.0])
+	for j in range(1, path.size()):
+		walked.append(walked[-1] + path[j].distance_to(path[j - 1]))
+	for i in points.size():
+		goals[i] = _point_on(path, walked, along[i] / length * walked[-1])
+
 static func _point_on(path: PackedVector3Array, walked: PackedFloat32Array, distance: float) -> Vector3:
 	for j in range(1, path.size()):
 		if walked[j] >= distance:
@@ -312,6 +338,7 @@ func simulate(delta: float) -> void:
 	_lay_over_shapes()
 	var before_bend := _bend.duplicate()
 	var tip_before := _pos[_n]
+	var pos_before := _pos.duplicate()
 	# Critically damped springs: ease in, ease out, never overshoot. The
 	# lighter tip answers a little quicker than the heavy base.
 	for k in _n:
@@ -335,7 +362,20 @@ func simulate(delta: float) -> void:
 	if lay_on_path and _path_from > 0:
 		_lay_on_goals(_path_from - 1)
 	if pin_tip: # a grip holds on whatever the hull does
-		_pin_tip_to(tip_target, 1.0)
+		_pin_tip_to(tip_target, 1.0 if pin_rate <= 0.0 else 1.0 - exp(-pin_rate * delta))
+	if limit_whole_arm:
+		# no point of the arm moves faster than max_tip_speed, whatever moved it
+		# (springs, a hold taking or letting go): the joints' speeds add up down
+		# a long arm, so its middle could whip round while its tip barely moves
+		var fastest := 0.0
+		for i in range(1, _n + 1):
+			fastest = maxf(fastest, _pos[i].distance_to(pos_before[i]))
+		if fastest * _world > max_tip_speed * delta:
+			var scale := max_tip_speed * delta / (fastest * _world)
+			for k in _n:
+				_bend[k] = before_bend[k].lerp(_bend[k], scale)
+				_vel[k] *= scale
+			_rebuild()
 
 ## From joint `from` on, each joint turns straight at its next goal point, from
 ## where the arm really is (within its limits): that part lies on the goals now.
@@ -433,6 +473,12 @@ func _turn_tip_toward(k: int, t: Vector3, amount: float) -> void:
 	var turn := Quaternion(to_tip.normalized(), to_target.normalized())
 	if amount < 1.0:
 		turn = Quaternion.IDENTITY.slerp(turn, amount)
+	if pin_max_turn > 0.0:
+		# a long arm swings far for a small turn near its root: never more than
+		# this much a frame at any joint, so it never jumps
+		var angle := turn.get_angle()
+		if angle > pin_max_turn:
+			turn = Quaternion.IDENTITY.slerp(turn, pin_max_turn / angle)
 	var turned := Basis(turn) * _frames[k]
 	var before := _base if k == 0 else _frames[k - 1] * _rest_local[k]
 	_bend[k] = _swing((before.transposed() * turned.y).normalized()).limit_length(_limit[k])
