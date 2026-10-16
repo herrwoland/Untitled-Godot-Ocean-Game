@@ -67,6 +67,17 @@ enum FishPhase { CHASE, REEL, DRAG, SETTLE, FEED } # a giant fish in its waters:
 ## shut and push the body on.
 @export var stroke_period := 7.0
 @export_range(0.0, 2.0, 0.05) var jet_boost := 0.8 # extra speed at the push, as a fraction
+## The body moves only as its arms move it: speed comes from the arms snapping
+## shut (the power stroke) and bleeds away into the water while they open;
+## leaving the rock it shoves off with its arms; coming home the arms take hold
+## of the rock first and haul the body in. Off: the older smooth glide.
+@export var arm_driven_body := true
+## 1/s the water slows the body between strokes (arm_driven_body).
+@export var swim_drag := 0.25
+## Peak speed of a stroke, as a fraction of the speed asked for: the coast
+## after it brings the average back down to about that speed.
+@export var stroke_peak := 1.0
+@export var settle_pulls := 3 # hauls of the arms that bring it home onto the rock
 ## Within this distance of the prey it rears up for the attack (otherwise it
 ## swims mantle first with the arms trailing).
 @export var face_range := 90.0
@@ -517,7 +528,14 @@ func _process_waking(delta: float) -> void:
 			return
 	_shake_near(wake_rumble * (1.0 - clampf(_state_time / maxf(wake_time, 0.1), 0.0, 1.0)), wake_shake_reach)
 	var away := perch.global_basis.z.normalized() if perch_column_radius > 0.0 else perch.global_basis.y.normalized()
-	_velocity = _velocity.move_toward(away * 1.2, acceleration * delta)
+	if arm_driven_body:
+		# it shoves off the rock with its arms, twice, and drifts between
+		var k := fmod(_state_time / maxf(wake_time, 0.1) * 2.0, 1.0)
+		var shove := sin(PI * clampf((k - 0.35) / 0.4, 0.0, 1.0))
+		_velocity = _velocity.move_toward(away * 2.6, acceleration * 3.0 * shove * delta)
+		_velocity *= exp(-swim_drag * (1.0 - shove) * delta)
+	else:
+		_velocity = _velocity.move_toward(away * 1.2, acceleration * delta)
 	_move_body(global_position + _velocity * delta)
 	if _state_time >= wake_time:
 		_set_state(State.HUNT)
@@ -688,6 +706,8 @@ func _process_return(delta: float) -> void:
 		return
 	var t := clampf(_state_time / maxf(_settle_duration, 0.1), 0.0, 1.0)
 	var s := t * t * (3.0 - 2.0 * t)
+	if arm_driven_body:
+		s = _haul(t)
 	global_transform = Transform3D(
 		Basis(_settle_from.basis.get_rotation_quaternion().slerp(pose.basis.get_rotation_quaternion(), s)),
 		_settle_from.origin.lerp(pose.origin, s))
@@ -696,6 +716,21 @@ func _process_return(delta: float) -> void:
 		_settle_from = Transform3D()
 		_stop(_presence_loop)
 		_set_state(State.PERCHED)
+
+## Coming home onto the rock (t 0..1 of the settle): the arms reach the rock
+## first and take hold (the body barely moves), then haul it in, settle_pulls
+## times: a pull, a rest while they take a new grip, another pull.
+func _haul(t: float) -> float:
+	var reach := 0.2 # this much of the settle the arms spend getting hold
+	if t <= reach:
+		return 0.0
+	var u := (t - reach) / (1.0 - reach) * settle_pulls
+	var pull := floorf(u)
+	var f := u - pull
+	# each pull: a quick haul in the first 60 % of its time, then held still
+	var g := clampf(f / 0.6, 0.0, 1.0)
+	var eased := g * g * (3.0 - 2.0 * g)
+	return clampf((pull + eased) / settle_pulls, 0.0, 1.0)
 
 ## Home the way an octopus travels: one jet stroke. It turns its mantle
 ## toward home while the arms open wide (the umbrella opening), then snaps
@@ -2145,6 +2180,12 @@ func _stroke_open() -> float:
 		return smoothstep(0.0, 0.75, _stroke)
 	return 1.0 - smoothstep(0.75, 1.0, _stroke)
 
+## 0..1: how hard the arms are pushing right now (only while they snap shut).
+func _stroke_push() -> float:
+	if _stroke < 0.75:
+		return 0.0
+	return sin(PI * (_stroke - 0.75) / 0.25)
+
 ## Speed through the stroke: coasting while the arms open, a surge as they shut.
 func _stroke_thrust() -> float:
 	var push := 0.0
@@ -2161,9 +2202,19 @@ func _stroke_thrust() -> float:
 func _swim_toward(target: Vector3, max_speed: float, face: Variant, delta: float, accel_scale := 1.0) -> void:
 	var to := target - global_position
 	var dist := to.length()
-	var speed := minf(max_speed * _stroke_thrust(), dist * 0.4)
-	var desired := to.normalized() * speed if dist > 0.01 else Vector3.ZERO
-	_velocity = _velocity.move_toward(desired, acceleration * accel_scale * delta)
+	if arm_driven_body and accel_scale <= 1.0:
+		# the arms are its only engine: a surge while they snap shut, a coast
+		# slowing in the water while they open again (a lunge, accel_scale > 1,
+		# is one burst of its own and stays as it is)
+		var push := _stroke_push()
+		var peak := minf(max_speed * stroke_peak, dist * 0.5)
+		var want := to.normalized() * peak if dist > 0.01 else Vector3.ZERO
+		_velocity = _velocity.move_toward(want, acceleration * (0.25 + 5.0 * push) * delta)
+		_velocity *= exp(-swim_drag * (1.0 - push) * delta)
+	else:
+		var speed := minf(max_speed * _stroke_thrust(), dist * 0.4)
+		var desired := to.normalized() * speed if dist > 0.01 else Vector3.ZERO
+		_velocity = _velocity.move_toward(desired, acceleration * accel_scale * delta)
 	var pos := global_position + _velocity * delta
 	pos.y = minf(pos.y, _surface_y(pos) - surface_clearance * _scale)
 	pos.y = maxf(pos.y, _floor_height(delta) + floor_clearance * _scale)
