@@ -78,6 +78,13 @@ var limit_whole_arm := false # cap every point's speed, not only the tip's
 ## laid exactly onto it every frame instead of chasing it on its springs: an
 ## arm wrapped round a rolling hull goes with her, never through her.
 var lay_on_path := false
+## 1/s the joints ease onto the laid path (0 = exactly, at once).
+var lay_rate := 0.0
+## Optional: (world point, thickness) -> how far it must move to be clear of
+## the stone (ZERO = clear). Last thing each frame, a joint whose next point
+## would lie in the stone turns out of it, within its limit.
+var keep_out := Callable()
+const STONE_GIVE := 3.0
 ## BOAT, not yet holding: meters its tip has climbed up its route from the
 ## bottom (under her keel) toward the grip spot; < 0 = still coming up to it.
 var climb := -1.0
@@ -225,6 +232,9 @@ func snap_to_goals() -> void:
 		_bend[k] = _target[k]
 		_vel[k] = Vector2.ZERO
 	_rebuild()
+	if lay_on_path and _path_from > 0:
+		_lay_on_goals(_path_from - 1)
+	_clear_of_stone()
 
 ## ---- goal shapes (all world space) -------------------------------------------
 
@@ -243,6 +253,10 @@ func goals_spread(axis: Vector3, out: Vector3, spread: float, wave_amp: float, p
 			g += (out - dir * 0.5) * curl * pow((t - 0.6) / 0.4, 2.0) * length * 0.2
 		goals[i] = g
 
+## m the wrapped shape is held off the stone: on a lumpy rock the measured
+## shape rounds off the bumps.
+const WRAP_CLEARANCE := 0.8
+
 ## Wrapped round a vertical-ish column. The base runs down along the rock
 ## (root_pitch, nearly straight) and the distal part winds round it at pitch
 ## (radians up + / down -), turn = +1/-1 for the direction. rock_radius
@@ -254,15 +268,22 @@ func goals_wrap_column(center: Vector3, up: Vector3, e1: Vector3, e2: Vector3, r
 	var a := atan2(rel.dot(e2), rel.dot(e1)) + angle_offset
 	var h := rel.dot(up)
 	goals[0] = start
+	# From a body resting off the rock's face the arm runs alongside the stone,
+	# the gap closing over three times its width: its stiff base cannot turn in
+	# any sharper, and aimed straight at the skin it would carry on into it.
+	var skin := center + up * h + (e1 * cos(a) + e2 * sin(a)) * (float(rock_radius.call(h, a)) + radius_at(0) * 0.9)
+	var off := start - skin
+	var settle := maxf(7.0, off.length() * 3.0)
+	_path_from = 1 # laid (lay_on_path): the whole arm, the gentle approach included
 	for i in range(1, points.size()):
 		var seg := along[i] - along[i - 1]
-		var p := lerpf(root_pitch, pitch, smoothstep(0.1, 0.55, along[i] / length))
+		var p := lerpf(root_pitch, pitch, smoothstep(0.1, 0.9, along[i] / length)) # turned gently: the stiff base bends only a few degrees a joint
 		var r_here: float = rock_radius.call(h, a) + radius_at(i)
 		a += turn * seg * cos(p) / maxf(r_here, 1.0)
 		h += seg * sin(p)
-		var r: float = rock_radius.call(h, a) + radius_at(i) * 0.9
+		var r: float = rock_radius.call(h, a) + radius_at(i) * 0.9 + WRAP_CLEARANCE
 		var on_rock := center + up * h + (e1 * cos(a) + e2 * sin(a)) * r
-		goals[i] = start.lerp(on_rock, smoothstep(0.0, 7.0, along[i]))
+		goals[i] = on_rock + off * (1.0 - smoothstep(0.0, settle, along[i]))
 
 ## Lying on a flat surface (the sea floor, a rock shelf): spirals outward from
 ## the root along the plane, the tip curling round.
@@ -360,7 +381,7 @@ func simulate(delta: float) -> void:
 			_vel[k] *= scale
 		_rebuild()
 	if lay_on_path and _path_from > 0:
-		_lay_on_goals(_path_from - 1)
+		_lay_on_goals(_path_from - 1, 1.0 if lay_rate <= 0.0 else 1.0 - exp(-lay_rate * delta))
 	if pin_tip: # a grip holds on whatever the hull does
 		_pin_tip_to(tip_target, 1.0 if pin_rate <= 0.0 else 1.0 - exp(-pin_rate * delta))
 	if limit_whole_arm:
@@ -376,10 +397,39 @@ func simulate(delta: float) -> void:
 				_bend[k] = before_bend[k].lerp(_bend[k], scale)
 				_vel[k] *= scale
 			_rebuild()
+	_clear_of_stone()
+
+## Root to tip: a joint whose next point lies in the stone (keep_out) turns to
+## aim at where that point would be clear, and the rest of the arm follows.
+func _clear_of_stone() -> void:
+	if not keep_out.is_valid():
+		return
+	var xf := skeleton.global_transform
+	var inv := xf.affine_inverse()
+	var moved := false
+	for k in _n:
+		var at := xf * _pos[k + 1]
+		var push: Vector3 = keep_out.call(at, radius_at(k + 1))
+		if push.length_squared() < 0.0001:
+			continue
+		var before := _base if k == 0 else _frames[k - 1] * _rest_local[k]
+		var want := inv * (at + push) - _pos[k]
+		if want.length_squared() < 1e-8:
+			continue
+		# against the stone a joint gives more than its usual bend
+		_bend[k] = _swing(before.transposed() * want.normalized()).limit_length(minf(_limit[k] * STONE_GIVE, PI * 0.6))
+		for j in range(k, _n):
+			var b := _base if j == 0 else _frames[j - 1] * _rest_local[j]
+			_frames[j] = b * _bend_basis(_bend[j])
+			_pos[j + 1] = _pos[j] + _frames[j].y * _segments[j]
+		moved = true
+	if moved:
+		for k in _n + 1:
+			points[k] = xf * _pos[k]
 
 ## From joint `from` on, each joint turns straight at its next goal point, from
 ## where the arm really is (within its limits): that part lies on the goals now.
-func _lay_on_goals(from: int) -> void:
+func _lay_on_goals(from: int, amount := 1.0) -> void:
 	var inv := skeleton.global_transform.affine_inverse()
 	for k in range(maxi(from, 0), _n):
 		var before := _base if k == 0 else _frames[k - 1] * _rest_local[k]
@@ -387,9 +437,9 @@ func _lay_on_goals(from: int) -> void:
 		if want.length_squared() < 1e-8:
 			continue
 		var b := _swing(before.transposed() * want.normalized()).limit_length(_limit[k])
-		_bend[k] = b
+		_bend[k] = _bend[k].lerp(b, amount)
 		_vel[k] = Vector2.ZERO
-		_frames[k] = before * _bend_basis(b)
+		_frames[k] = before * _bend_basis(_bend[k])
 		_pos[k + 1] = _pos[k] + _frames[k].y * _segments[k]
 	var xf := skeleton.global_transform
 	for k in range(maxi(from, 0), _n + 1):

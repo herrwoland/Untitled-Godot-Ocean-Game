@@ -33,6 +33,10 @@ enum FishPhase { CHASE, REEL, DRAG, SETTLE, FEED } # a giant fish in its waters:
 ## it sits on. On a flat surface (perch_column_radius 0): on the surface, Y
 ## along the surface normal.
 @export var perch: Node3D
+## Optional: where its body rests (a marker just off the rock's face). Set, it
+## sits right there, facing out from the perch toward it — the perch then only
+## gives the rock's center line and the height.
+@export var rest_point: Node3D
 ## Radius of the column at the perch (m). 0 = no column: it lies on a flat
 ## surface, arms spread across it, instead of wrapping round.
 @export var perch_column_radius := 10.0
@@ -347,15 +351,20 @@ var _body_shape := SphereShape3D.new()
 var _fish_rids: Array[RID] = []
 
 # The rock's measured shape (see _measure_rock).
-const ROCK_LEVELS := 26
+const ROCK_LEVELS := 46
 const SHIP_CLEARANCE := 0.4 # m between an arm's skin and her plating on its route
 const HULL_BUDGET_USEC := 2000 # time a frame may spend measuring a ship
 const ROCK_PUSH_SPEED := 35.0 # m/s a held fish is moved out of the rock at most
-const ROCK_ANGLES := 16
+const ROCK_ANGLES := 48
 const ROCK_STEP := 4.0 # m between measured heights...
-const ROCK_BELOW := -70.0 # ...from this far below the perch (arms mostly wind downward)
+const ROCK_BELOW := -60.0 # ...from this far below the perch (arms mostly wind downward) up to ~the surface
+const STONE_MARGIN := 1.0 # m an arm keeps off the measured rock: the bumps between samples
+const ROCK_REACH := 160.0 # m out from the center line the measuring rays start, at least: wider than any rock
 var _rock_measured := false
 var _rock_grid := PackedFloat32Array()
+var _rock_widest := PackedFloat32Array() # m per height, the most any direction reaches out (a level either side)
+var _perch_cache := Transform3D()
+var _perch_cached := false
 var _rock_e1 := Vector3.RIGHT
 var _rock_e2 := Vector3.BACK
 var _rock_radius: Callable = func(_h: float, _a: float) -> float: return perch_column_radius
@@ -443,6 +452,7 @@ func _reset() -> void:
 	_pick_loose_arms()
 	_set_arm_goals(0.0)
 	for arm in _arms:
+		arm.lay_on_path = _laid_on_rock(arm)
 		arm.snap_to_goals()
 		arm.apply_to_skeleton()
 
@@ -563,7 +573,7 @@ func _process_waking(delta: float) -> void:
 			_begin_fish(fish)
 			return
 	_shake_near(wake_rumble * (1.0 - clampf(_state_time / maxf(wake_time, 0.1), 0.0, 1.0)), wake_shake_reach)
-	var away := perch.global_basis.z.normalized() if perch_column_radius > 0.0 else perch.global_basis.y.normalized()
+	var away := _perch_out()
 	if arm_driven_body:
 		# it shoves off the rock with its arms, twice, and drifts between
 		var k := fmod(_state_time / maxf(wake_time, 0.1) * 2.0, 1.0)
@@ -753,7 +763,7 @@ func _process_return(delta: float) -> void:
 	if _ship_kept:
 		_carry_kept_ship()
 	if _settle_from == Transform3D():
-		_jet_home(approach, delta)
+		_jet_home(_around_rock(approach), delta)
 		if global_position.distance_to(approach) < 10.0 * _scale:
 			_settle_from = global_transform
 			# never faster than ~2 m/s onto the rock (smoothstep peaks at 1.5x the average)
@@ -2282,6 +2292,8 @@ func _update_arms(delta: float) -> void:
 		_pick_loose_arms()
 	_set_arm_goals(delta)
 	for arm in _arms:
+		if _resting_frame(arm):
+			continue
 		var response := arm_response
 		arm.inertia = 0.0
 		match arm.role:
@@ -2320,7 +2332,9 @@ func _update_arms(delta: float) -> void:
 		# a grip holds on: the tip is kept on its spot on the hull / the fish
 		arm.pin_tip = (arm.role == KrakenArm.Role.BOAT or arm.role == KrakenArm.Role.FISH) and arm.gripped
 		arm.pin_joints = 20 if arm.role == KrakenArm.Role.FISH or arm.role == KrakenArm.Role.CRAWL else 7
-		arm.lay_on_path = arm.role == KrakenArm.Role.BOAT and arm.gripped
+		arm.lay_on_path = (arm.role == KrakenArm.Role.BOAT and arm.gripped) or _laid_on_rock(arm)
+		arm.keep_out = _stone_push if _keeps_off_stone(arm) and _stone_check_due(arm) else Callable()
+		arm.lay_rate = 0.5 if _laid_on_rock(arm) else 0.0 # settled home, it eases onto the stone
 		if arm.role == KrakenArm.Role.CRAWL:
 			arm.set_tight(true, 4.0) # crawling it coils right round the stone
 		else:
@@ -2337,9 +2351,14 @@ func _update_arms(delta: float) -> void:
 			arm.pin_max_turn = deg_to_rad(2.0)
 			arm.limit_whole_arm = true
 			arm.seek_tip = 0.0 if arm.gripped else 6.0
-		arm.simulate(delta)
+		arm.simulate(delta * 2.0 if _laid_on_rock(arm) else delta)
 		if not far:
 			arm.apply_to_skeleton()
+
+## Perched, the wrapped arms lie right on the stone: their joints alone, aiming
+## at the wrap's goals, settle a few meters off it (in or out).
+func _laid_on_rock(arm: KrakenArm) -> bool:
+	return state == State.PERCHED and perch_column_radius > 0.0 and arm.role == KrakenArm.Role.FREE and not _loose.has(arm.index)
 
 func _perched_pose_wanted() -> bool:
 	return state == State.PERCHED or (state == State.RETURN and _settle_from != Transform3D()) \
@@ -2353,6 +2372,8 @@ func _set_arm_goals(_delta: float) -> void:
 	var open := _stroke_open()
 	var surface_y := _surface_y(crown)
 	for arm in _arms:
+		if _resting_frame(arm):
+			continue
 		var out := arm.root() - crown
 		out = (out - axis * out.dot(axis)).normalized()
 		var phase := _time * 0.45 + arm.index * 0.8
@@ -2456,6 +2477,68 @@ func _keep_under_surface(arm: KrakenArm, surface_y: float) -> void:
 	for i in arm.goals.size():
 		arm.goals[i].y = minf(arm.goals[i].y, surface_y - 1.5)
 
+## Arms that keep off the stone: all but those already laid on something
+## (crawling feet on the rock, grips on a hull or a fish).
+func _keeps_off_stone(arm: KrakenArm) -> bool:
+	return perch_column_radius > 0.0 and _rock_measured and arm.role != KrakenArm.Role.CRAWL \
+		and not ((arm.role == KrakenArm.Role.BOAT or arm.role == KrakenArm.Role.FISH) and arm.gripped)
+
+## Out of the rock's reach, an arm need not check it; swimming, the arms take
+## turns, every other frame (one frame's drift into the stone is centimeters).
+func _stone_check_due(arm: KrakenArm) -> bool:
+	if _rock_gap(arm.root()) > arm.length + STONE_MARGIN:
+		return false
+	return _laid_on_rock(arm) or (Engine.get_physics_frames() + arm.index) % 2 == 0
+
+## A wrapped arm on the rock is all but still: it is worked every other frame
+## (the arms take turns), with twice the time step.
+func _resting_frame(arm: KrakenArm) -> bool:
+	return _laid_on_rock(arm) and (Engine.get_physics_frames() + arm.index) % 2 == 1
+
+## How far a point of an arm (this thick) must move out to be clear of the rock.
+func _stone_push(p: Vector3, thickness: float) -> Vector3:
+	var up := perch.global_basis.y.normalized()
+	var rel := p - perch.global_position
+	var h := rel.dot(up)
+	var flat := rel - up * h
+	var d := flat.length()
+	var l := clampi(int(roundf((h - ROCK_BELOW) / ROCK_STEP)), 0, ROCK_LEVELS - 1)
+	if d > _rock_widest[l] + thickness + STONE_MARGIN:
+		return Vector3.ZERO # clear of the rock at its widest round there
+	var a := atan2(flat.dot(_rock_e2), flat.dot(_rock_e1))
+	var into: float = _rock_radius_at(h, a) + thickness + STONE_MARGIN - d
+	if into <= 0.0:
+		return Vector3.ZERO
+	return (flat / d if d > 0.01 else _perch_out()) * into
+
+## The way to a target with the rock standing in between: round its side, the
+## shorter way, rather than into the stone (the move check would only slide it
+## along the face, and straight behind the rock it would stick there).
+func _around_rock(target: Vector3) -> Vector3:
+	if perch == null or perch_column_radius <= 0.0 or not _rock_measured:
+		return target
+	var from := global_position
+	var clear := body_radius * _scale + 4.0 * _scale
+	var blocked := false
+	for k in range(1, 13):
+		if _rock_gap(from.lerp(target, k / 12.0)) < clear:
+			blocked = true
+			break
+	if not blocked:
+		return target
+	var up := perch.global_basis.y.normalized()
+	var me := from - perch.global_position
+	var it := target - perch.global_position
+	var a_me := atan2(me.dot(_rock_e2), me.dot(_rock_e1))
+	var a_it := atan2(it.dot(_rock_e2), it.dot(_rock_e1))
+	var turn := wrapf(a_it - a_me, -PI, PI)
+	var a := a_me + signf(turn) * minf(absf(turn), 0.6)
+	var h := lerpf(me.dot(up), it.dot(up), 0.3)
+	# going round it, wide enough that the arms trailing behind do not cut the
+	# corner through it (just passing along its face, a little off it)
+	var wide := clear * 1.5 + (_arms[0].length * 0.3 * smoothstep(0.2, 0.8, absf(turn)) if not _arms.is_empty() else 0.0)
+	return perch.global_position + up * h + _rock_dir(a) * (float(_rock_radius.call(h, a)) + wide)
+
 ## While it wrestles a fish, up to fish_anchor_arms of its free arms that can
 ## reach the rock take hold of it — the nearest first. Kept while still in
 ## reach (with some slack), so they do not let go and grab again.
@@ -2540,7 +2623,7 @@ func _measure_rock() -> void:
 	_rock_e2 = up.cross(_rock_e1).normalized()
 	_rock_grid.resize(ROCK_LEVELS * ROCK_ANGLES)
 	var space := get_world_3d().direct_space_state
-	var reach := perch_column_radius * 3.0 + 30.0
+	var reach := maxf(perch_column_radius * 3.0 + 30.0, ROCK_REACH)
 	for l in ROCK_LEVELS:
 		var h := ROCK_BELOW + l * ROCK_STEP
 		var axis_point := perch.global_position + up * h
@@ -2551,6 +2634,23 @@ func _measure_rock() -> void:
 			var hit := space.intersect_ray(query)
 			_rock_grid[l * ROCK_ANGLES + k] = (hit.position - axis_point).dot(dir) if hit else perch_column_radius
 	_rock_radius = _rock_radius_at
+	_rock_widest.resize(ROCK_LEVELS)
+	for l in ROCK_LEVELS:
+		var widest := 0.0
+		for n in range(maxi(l - 1, 0), mini(l + 2, ROCK_LEVELS)):
+			for k in ROCK_ANGLES:
+				widest = maxf(widest, _rock_grid[n * ROCK_ANGLES + k])
+		_rock_widest[l] = widest
+	if state == State.PERCHED:
+		global_transform = _perch_pose()
+		# the morning's wrap was laid round a guess of the rock: lay it on the real
+		# stone now (a far camera leaves a perched kraken's arms as they are)
+		_set_arm_goals(0.0)
+		for arm in _arms:
+			arm.lay_on_path = _laid_on_rock(arm)
+			arm.keep_out = _stone_push if _keeps_off_stone(arm) else Callable()
+			arm.snap_to_goals()
+			arm.apply_to_skeleton()
 
 ## The rock's radius at a height along the column (from the perch) and an
 ## angle round it (from _rock_e1), blended between the measured samples.
@@ -2607,6 +2707,7 @@ func _stroke_thrust() -> float:
 ## null to swim mantle first along the way it is going, or false to leave
 ## the body's turning to someone else (the look at a held prey).
 func _swim_toward(target: Vector3, max_speed: float, face: Variant, delta: float, accel_scale := 1.0) -> void:
+	target = _around_rock(target)
 	var to := target - global_position
 	var dist := to.length()
 	if arm_driven_body and accel_scale <= 1.0:
@@ -2687,12 +2788,30 @@ func _turn_crown_toward(dir: Vector3, delta: float) -> void:
 ## Its pose on the rock: against the column's side, back to the sea, mantle
 ## up, arms down the column; or lying on a flat perch, crown to the ground.
 func _perch_pose() -> Transform3D:
+	if _perch_cached:
+		return _perch_cache # the rock and its perch do not move
 	var up := perch.global_basis.y.normalized()
 	if perch_column_radius > 0.0:
 		var out := _perch_out()
 		var z := -up
+		if _rock_measured:
+			# lying along the face, arms down it: a rock that flares out below would
+			# otherwise take arms hanging straight down into the stone
+			var flare := (float(_rock_radius.call(-20.0, 0.0)) - float(_rock_radius.call(0.0, 0.0))) / 20.0
+			z = (-up + out * clampf(flare, -1.0, 1.0)).normalized()
+			out = (out - z * out.dot(z)).normalized()
 		var x := out.cross(z).normalized()
-		return Transform3D(Basis(x, out, z), perch.global_position + out * (float(_rock_radius.call(0.0, 0.0)) + 3.6 * _scale))
+		var at := rest_point.global_position if rest_point else perch.global_position + out * (float(_rock_radius.call(0.0, 0.0)) + 3.6 * _scale)
+		var pose := Transform3D(Basis(x, out, z), at)
+		if _rock_measured and _skeleton:
+			# lying along a face that leans, the mantle must not sink into it
+			var body := global_transform.affine_inverse() * (_skeleton.global_transform * body_center)
+			var into := body_radius * _scale - _rock_gap(pose * body)
+			if into > 0.0:
+				pose.origin += _perch_out() * into
+			_perch_cache = pose
+			_perch_cached = true
+		return pose
 	var fwd := -perch.global_basis.z.normalized()
 	var z := (-up * 0.8 - fwd * 0.6).normalized() # crown to the ground, mantle tipped back
 	var y := (up - z * up.dot(z)).normalized()
@@ -2704,7 +2823,7 @@ func _perch_out() -> Vector3:
 	var up := perch.global_basis.y.normalized()
 	if perch_column_radius <= 0.0:
 		return up
-	var out := perch.global_basis.z
+	var out := rest_point.global_position - perch.global_position if rest_point else perch.global_basis.z
 	return (out - up * out.dot(up)).normalized()
 
 func _surface_y(at: Vector3) -> float:
