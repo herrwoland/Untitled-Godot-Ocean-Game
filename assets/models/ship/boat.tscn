@@ -368,6 +368,7 @@ transform = Transform3D(-1.8783762, 0, -1.6421286e-07, 0, 1.8783762, 0, 1.642128
 
 [node name="printer" parent="controls" unique_id=1475392048 instance=ExtResource("24_printer")]
 transform = Transform3D(-1.4525503, 0, -0.5762197, 0, 1.5626681, 0, 0.5762197, 0, -1.4525503, -1.1075709, 3.7767, -2.2465892)
+debug_test_pages = true
 
 [node name="boat_navigation" type="Node3D" parent="." unique_id=280909978]
 transform = Transform3D(-1.7022328e-08, -0.60759866, 0.38942546, -2.6558967e-08, 0.38942564, 0.6075983, -0.721684, -4.7416227e-16, -3.1545806e-08, -3.3524253, 5.549798, 0.07668352)

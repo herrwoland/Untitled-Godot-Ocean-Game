@@ -14,8 +14,8 @@ metallic = 0.4
 roughness = 0.7
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_5s6u7"]
-radius = 0.21044922
-height = 0.87786865
+radius = 0.2836914
+height = 0.9736023
 
 [node name="fuel" type="RigidBody3D" unique_id=1066468725 groups=["fuel"]]
 collision_layer = 12
@@ -30,5 +30,5 @@ mesh = SubResource("CapsuleMesh_dly7x")
 surface_material_override/0 = SubResource("StandardMaterial3D_fuel")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1352280723]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, -1.4420174e-09, 0.032989502)
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 6.503078e-10, -0.014877319)
 shape = SubResource("CapsuleShape3D_5s6u7")
