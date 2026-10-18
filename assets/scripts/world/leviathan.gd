@@ -2,42 +2,52 @@ class_name Leviathan extends Node3D
 ## Something ancient and colossal, shaped like a basking shark, that swims half out of the sea with
 ## its mouth always open. It eats lit ships. LeviathanEncounter brings it: begin() places it deep
 ## below the surface (it never pops into view) and it plays out one encounter, then frees itself.
+## Too big to turn on the spot, it always swims on a curve (tuned in
+## backups/leviathan_replays/leviathan_tuning.html, which these defaults come from):
 ##
-##  - RISE: swims up from the deep toward the ship, climbing like a swimmer, not a balloon. Shortly
-##    before it breaks the surface its call is heard (call_lead s ahead), then silence, then it
-##    surfaces ~surface_distance from the ship. Its WaterDeformers swell, break and calm the sea.
-##  - APPROACH: comes on at the surface, half out of the water, until its mouth is judge_distance
-##    from the ship. Then it judges her:
-##      lit  -> HUNT: comes at her mouth first. Cut the power and it GLIDEs: holds its heading and
-##              no longer steers for her (she is still eaten if she is in its way); power on again
-##              and it hunts again. A lure (group "leviathan_lure") within lure_range draws a
-##              gliding body to it instead.
-##      dark -> TURN_AWAY (turn_time s), WANDER (wander_time s), LEAVE.
-##  - LEAVE: sinks away to despawn_depth and is gone.
+##  - RISE: swims up from the deep on a gentle drifting curve. Shortly before it breaks the surface
+##    its call is heard (call_lead s ahead), then silence; it surfaces ~surface_distance off. Its
+##    WaterDeformers swell, break and calm the sea.
+##  - DRIFT: the ship is dark, it does not know she is there. Its curve was aimed at spawn to pass
+##    dark_gap_min..max off her flank; it passes, then goes down (PASSED, DIVE).
+##  - HUNT: the ship is lit: it curves in on her at chase_speed. If she gets inside the circle it
+##    can turn, it swims straight out (RUNUP) until she is run_up_margin outside it, then turns in
+##    again. Within lunge_distance its head swings round as tight as lunge_turn_radius and the sea
+##    flows into its mouth (suction_*), faster than she can sail.
+##  - COMMIT: lit inside judge_distance: it comes for her at hunt_speed. Cut the power now and it
+##    is too late: it holds its course.
+##  - MISS: the power was cut before judge_distance: it carries on past her, cut_gap off its
+##    flank, and goes down dive_after_min..max m past her. Lights on again before it goes down: it
+##    comes round for her (return_multiplier faster, return_judge_distance, return_turn_radius);
+##    cut again in time and it passes return_gap off. A lit ship it missed is hunted again.
+##  - DIVE: sinks away to despawn_depth and is gone.
+## A lure (group "leviathan_lure") within lure_range draws it while the ship is dark.
 ## Anything in its MouthZone is swallowed: the player can only look around while they are drawn
 ## down the gullet (the Gullet markers) for swallow_time s, the last fade_time s fading to black,
 ## then they die. The ship goes in with them, carried in the mouth.
 ##
-## Body axes: the mouth points along -Z, the root is the middle of the body on its long axis.
-## The scene is built at MODEL_LENGTH; body_length scales the whole creature.
+## Body: the Head (mouth at the origin, the body toward +Z) is rigid; the Body's segments are laid
+## along the path the head swam, so the long body bends through the curves behind it. The scene is
+## built at MODEL_LENGTH; body_length scales the whole creature.
 
-enum State { RISE, APPROACH, HUNT, GLIDE, TURN_AWAY, WANDER, LEAVE, SWALLOW }
+enum State { RISE, DRIFT, HUNT, RUNUP, COMMIT, MISS, PASSED, DIVE, SWALLOW }
 
 const MODEL_LENGTH := 500.0 # m: the length the scene is built at
 const TAKEN_META := &'leviathan_taken' # on a ship it carried off: the encounter gives her back at dawn
+const TRAIL_STEP := 4.0 # m (model units) between remembered head positions
+const MOUTH_REACH := 35.0 # m: the ship this far past the mouth has slipped by
+const HEAD_LENGTH := 160.0 # m (model units) from the mouth to where the Body's segments begin
 
-## Length of the body (m). Everything (mouth, water, turns, gullet) scales with it.
+## Length of the body (m). Everything (mouth, turns, water, gullet) scales with it.
 @export_range(50.0, 2000.0, 1.0, 'or_greater') var body_length := 500.0
 ## Body axis height above sea level while at the surface (m). 0 = half out of the water.
 @export var surface_offset := 0.0
 
 @export_group('Rising')
-## How deep it starts and ends (m below sea level, body middle).
+## How deep it starts and ends (m below sea level).
 @export var despawn_depth := 250.0
-## Forward speed while rising (m/s).
-@export var rise_speed := 12.0
-## Fastest climb while rising (m/s). It eases off as it nears the surface.
-@export var rise_climb := 5.0
+@export var rise_speed := 12.0 # m/s forward while rising
+@export var rise_climb := 5.0 # m/s fastest climb; it eases off near the surface
 ## Seconds to ease out of the climb: higher = a slower, gentler surfacing.
 @export var rise_ease := 6.0
 ## How far from the ship it breaks the surface (m). Used to place it.
@@ -46,48 +56,53 @@ const TAKEN_META := &'leviathan_taken' # on a ship it carried off: the encounter
 @export var call_lead := 10.0
 
 @export_group('Swimming')
-@export var cruise_speed := 9.0 # m/s at the surface, coming on
-@export var hunt_speed := 13.0 # m/s mouth first at a lit ship
-@export var acceleration := 0.6 # m/s² -- a body this size gathers way slowly
-@export var vertical_acceleration := 1.0 # m/s² change of climb or sink
-## Tightest circle it can swim (m, at body_length 500). Turn rate = speed / radius.
-@export var turn_radius := 350.0
-## Tighter, while hunting.
-@export var hunt_turn_radius := 250.0
-## Where the turns pivot, from the middle (0) to the mouth (1): the head goes where it is aimed and
-## the body trails round behind.
-@export_range(0.0, 1.0, 0.05) var turn_pivot := 0.6
-## Most the body tilts nose up or down (degrees) as it climbs or sinks.
+@export var cruise_speed := 9.0 # m/s when it is not after anything
+@export var chase_speed := 17.0 # m/s chasing a lit ship
+@export var hunt_speed := 20.0 # m/s inside the safe distance
+## Speed (and safe distance, turn) once it came back for a ship that lit up again.
+@export var return_multiplier := 1.5
+@export var acceleration := 0.6 # m/s²
+@export var vertical_acceleration := 1.0 # m/s²
+## Its gentle drifting curve (m radius) when it is after nothing.
+@export var drift_radius := 3000.0
+@export var hunt_turn_radius := 500.0 # m, tightest whole-body turn while hunting
+@export var return_turn_radius := 600.0 # m, ... coming back
+## Seconds to go from straight to its tightest turn.
+@export var steer_ease := 8.0
+## Most the head tilts nose up or down (degrees) as it climbs or sinks.
 @export var max_pitch := 15.0
-## Tail beat: degrees and seconds.
-@export var tail_sway := 8.0
-@export var tail_period := 9.0
+@export var tail_sway := 8.0 # degrees
+@export var tail_period := 9.0 # s
+
+@export_group('Passing by')
+## Gaps between its flank and the ship as it passes (m).
+@export var dark_gap_min := 100.0 # dark from the start: it never knew she was there
+@export var dark_gap_max := 200.0
+@export var cut_gap := 50.0 # lights cut in time
+@export var return_gap := 30.0 # cut again after it came back
+## How far past the ship it goes down (m).
+@export var dive_after_min := 200.0
+@export var dive_after_max := 500.0
+@export var sink_speed := 5.0 # m/s
+
+@export_group('The lunge')
+## Within this distance of the ship its head swings round tighter than the body can turn.
+@export var lunge_distance := 450.0
+@export var lunge_turn_radius := 100.0
+## She is inside the circle it can turn: it swims straight until she is this far outside it (m).
+@export var run_up_margin := 150.0
+## Hunting, the sea flows into its mouth from up to suction_range m ahead (within ±suction_cone
+## degrees), at up to suction_flow m/s at the mouth. The ship does 10 m/s flat out.
+@export var suction_range := 250.0
+@export var suction_flow := 20.0
+@export var suction_cone := 60.0
 
 @export_group('Judging the ship')
-## Mouth to ship distance (m) at which it decides whether the ship is lit.
+## Mouth to ship distance (m) inside which cutting the lights is too late.
 @export var judge_distance := 200.0
-## Seconds it takes to turn away from a dark ship.
-@export var turn_time := 15.0
-@export var turn_speed := 3.0 # m/s while it turns away
-## Seconds it swims off in a random direction after turning away.
-@export var wander_time := 20.0
-@export var wander_speed := 7.0
-## Missed a lit ship: it comes round again, at most this many passes, then leaves.
-@export var max_passes := 2
-## The ship this far behind its mouth (m) counts as a miss.
-@export var pass_distance := 150.0
-## Gliding (power cut while hunting) this long at most before it leaves (s).
-@export var glide_time := 40.0
-## A lure (group "leviathan_lure") within this distance of its mouth draws it while the ship is dark.
+@export var return_judge_distance := 300.0
+## A lure (group "leviathan_lure") this close draws it while the ship is dark (m).
 @export var lure_range := 400.0
-## Within this distance of its mouth a hunted ship is drawn in (m), at up to suction_accel m/s².
-@export var suction_range := 120.0
-@export var suction_accel := 1.5
-
-@export_group('Leaving')
-@export var leave_speed := 8.0 # m/s forward while it sinks away
-## Sink speed while leaving (m/s): sized so the body is gone from the surface in about 20 s.
-@export var leave_sink := 5.0
 
 @export_group('Swallowing')
 ## Seconds the swallowed player is drawn down the gullet before they die.
@@ -102,102 +117,160 @@ var ship: RigidBody3D
 var player: Node3D
 var water: Node3D
 
-@onready var _model: Node3D = $Model
-@onready var _tail: Node3D = get_node_or_null(^'Model/Tail')
-@onready var _mouth_zone: Area3D = $MouthZone
-@onready var _call_sound: AudioStreamPlayer3D = get_node_or_null(^'CallSound')
-@onready var _surface_sound: AudioStreamPlayer3D = get_node_or_null(^'SurfaceSound')
-@onready var _suction_sound: AudioStreamPlayer3D = get_node_or_null(^'SuctionSound')
+@onready var _head: Node3D = $Head
+@onready var _mouth_zone: Area3D = $Head/MouthZone
+@onready var _call_sound: AudioStreamPlayer3D = get_node_or_null(^'Head/CallSound')
+@onready var _surface_sound: AudioStreamPlayer3D = get_node_or_null(^'Head/SurfaceSound')
+@onready var _suction_sound: AudioStreamPlayer3D = get_node_or_null(^'Head/SuctionSound')
 
 var _k := 1.0 # body_length / MODEL_LENGTH
 var _yaw := 0.0
 var _pitch := 0.0
 var _speed := 0.0
 var _vy := 0.0
-var _time := 0.0 # in the current state
+var _curve := 0.0 # its turn: yaw change per m swum (1 / radius); + = yaw increasing
+var _curve_target := 0.0
+var _lit := true
+var _returned := false # came back for a ship that lit up again
 var _called := false
 var _surfaced := false
-var _passes := 0
-var _away_yaw := 0.0
-var _from_yaw := 0.0
+var _min_d := INF # closest it has been to her on this pass
+var _swum := 0.0 # m swum so far
+var _passed_at := 0.0
+var _dive_after := 0.0
+var _drift_passed := false
+var _ship_vel := Vector3.ZERO # her velocity, averaged over a few seconds
+var _drift := Vector3.ZERO # the current its suction moves her with
+var _trail := PackedVector3Array() # where the head has been, newest first, TRAIL_STEP apart
+var _segments: Array[Node3D] = []
+var _seg_offsets: Array[float] = [] # m behind the mouth (model units)
+var _tail: Node3D
+var _tail_rest := Basis.IDENTITY
 var _rng := RandomNumberGenerator.new()
 var _gullet: Array[Node3D] = []
 var _swallow_t := -1.0 # s since the player was swallowed (< 0: not yet)
-var _path: Array[Vector3] = [] # the swallowed player's way down, in the body's (unscaled) space
-var _ship_local := Transform3D.IDENTITY # a carried ship, in the body's (unscaled) space
+var _path: Array[Vector3] = [] # the swallowed player's way down, in the head's (unscaled) space
+var _ship_local := Transform3D.IDENTITY # a carried ship, in the head's (unscaled) space
 var _ship_held := false
 var _died := false
 var _fade: ColorRect
-var _tail_rest := Basis.IDENTITY
 
 func _ready() -> void:
 	_k = body_length / MODEL_LENGTH
 	scale = Vector3.ONE * _k
 	_rng.randomize()
 	for name in ['Gullet0', 'Gullet1', 'Gullet2', 'Gullet3']:
-		var m := get_node_or_null(NodePath(name)) as Node3D
+		var m := _head.get_node_or_null(NodePath(name)) as Node3D
 		if m:
 			_gullet.append(m)
-	for d in find_children('*', 'WaterDeformer', true, false):
-		_scale_deformer(d)
+	var body := get_node_or_null(^'Body')
+	if body:
+		for seg in body.get_children():
+			if seg is Node3D:
+				_segments.append(seg)
+				_seg_offsets.append(seg.position.z)
+				seg.top_level = true # laid on the path by _place_body
+	_head.top_level = true # so is the head
+	_tail = find_child('Tail', true, false) as Node3D
 	if _tail:
 		_tail_rest = _tail.basis
+	for d in find_children('*', 'WaterDeformer', true, false):
+		_scale_deformer(d)
 	_mouth_zone.body_entered.connect(_on_mouth_body_entered)
 	_fill_sounds()
 	EventBus.day_started.connect(_on_day_started)
 
 ## Places it despawn_depth under the sea, far enough off that it surfaces ~surface_distance from
-## the ship, `bearing` (a flat direction from the ship), and starts it rising toward her.
+## the ship along `bearing` (a flat direction from the ship), on a curve that would carry it past
+## her dark_gap off its flank.
 func begin(p_ship: RigidBody3D, p_player: Node3D, p_water: Node3D, bearing: Vector3) -> void:
 	ship = p_ship
 	player = p_player
 	water = p_water
 	bearing.y = 0.0
 	bearing = bearing.normalized()
-	# the run it swims climbing up until its back breaks the surface (the mouth leads by half a body)
+	# the run it swims climbing up until its back breaks the surface
 	var run := maxf(despawn_depth - _radius(), 0.0) / maxf(rise_climb, 0.1) * rise_speed
-	var origin := ship.global_position + bearing * (surface_distance + run + body_length * 0.5)
+	var origin := ship.global_position + bearing * (surface_distance + run)
 	origin.y = _sea() - despawn_depth
-	_yaw = _yaw_of(-bearing)
+	_curve = (1.0 if _rng.randf() < 0.5 else -1.0) / (drift_radius * _k)
+	_curve_target = _curve
+	# aim the drifting curve so that, unseen, it passes her dark_gap off its flank
+	var gap := _rng.randf_range(dark_gap_min, dark_gap_max)
+	var at := Vector2(origin.x, origin.z)
+	var toward := _yaw_of(-bearing)
+	var best_err := INF
+	_yaw = toward
+	for i in range(-60, 61):
+		var yaw := toward + deg_to_rad(i)
+		var c := _closest(at, yaw, _curve, _ship2(), 9000.0)
+		var err := absf(c.x - (gap + _radius()))
+		if c.y > run and err < best_err:
+			best_err = err
+			_yaw = yaw
 	_speed = rise_speed
 	_vy = rise_climb
-	global_transform = Transform3D(Basis.from_euler(Vector3(0.0, _yaw, 0.0)).scaled(Vector3.ONE * _k), origin)
+	global_transform = Transform3D(_basis(), origin)
+	_lit = _ship_lit()
+	# the body lies straight out behind the head
+	_trail.clear()
+	var back := -_flat_dir(_yaw) * TRAIL_STEP * _k
+	for i in int(ceil(_trail_length() / (TRAIL_STEP * _k))) + 2:
+		_trail.append(origin + back * i)
+	_place_body()
 	_set_state(State.RISE)
 
 ## Where its mouth is.
 func mouth_position() -> Vector3:
-	return _mouth_zone.global_position
+	return global_position
 
 func is_swallowing() -> bool:
 	return state == State.SWALLOW
 
 func _physics_process(delta: float) -> void:
-	if ship == null or water == null:
+	if ship == null or water == null or delta <= 0.0:
 		return
-	_time += delta
+	var d := _mouth_to_ship()
+	var flat_vel := Vector3(ship.linear_velocity.x, 0.0, ship.linear_velocity.z)
+	_ship_vel = _ship_vel.lerp(flat_vel, minf(1.0, delta / 5.0))
+	var lit := _ship_lit()
+	if lit != _lit:
+		_lit = lit
+		_on_lights()
+	var target_speed := cruise_speed * _mult()
 	match state:
-		State.RISE: _process_rise(delta)
-		State.APPROACH: _process_approach(delta)
-		State.HUNT: _process_hunt(delta)
-		State.GLIDE: _process_glide(delta)
-		State.TURN_AWAY: _process_turn_away(delta)
-		State.WANDER: _process_wander(delta)
-		State.LEAVE: _process_leave(delta)
-		State.SWALLOW: _process_swallow(delta)
+		State.RISE: target_speed = _process_rise(delta)
+		State.DRIFT: _process_drift(d)
+		State.HUNT, State.COMMIT: target_speed = _process_hunt(d)
+		State.RUNUP: target_speed = _process_runup()
+		State.MISS: _process_miss(d)
+		State.PASSED: _process_passed()
+		State.DIVE:
+			if _process_dive(delta):
+				return
+		State.SWALLOW: target_speed = _process_swallow(delta)
+	if state != State.RISE and state != State.DIVE:
+		_hold_surface(delta)
+	# its turn eases toward the one it wants
+	var mk := _max_curve()
+	_curve += clampf(_curve_target - _curve, -mk * delta / steer_ease, mk * delta / steer_ease)
+	_speed = move_toward(_speed, target_speed, acceleration * delta)
 	_move(delta)
+	if state != State.RISE:
+		_min_d = minf(_min_d, _mouth_to_ship())
+	_suck(d, delta)
+	_place_body()
 	_sway_tail()
 	if _ship_held:
 		_carry_ship(delta)
 
 ## ---- states --------------------------------------------------------------------
 
-func _process_rise(delta: float) -> void:
-	_steer_at(_ship_ahead(), turn_radius, delta)
-	_speed_to(rise_speed, delta)
+func _process_rise(delta: float) -> float:
 	var gap := _surface_y() - global_position.y
 	_climb_to(clampf(gap / rise_ease, 0.0, rise_climb), delta)
 	# the call, heard a little before it breaks the surface
-	var top := mouth_position().y + _radius()
+	var top := global_position.y + _radius()
 	var eta := (_sea() - top) / maxf(_vy, 0.5)
 	if not _called and eta <= call_lead:
 		_called = true
@@ -206,73 +279,62 @@ func _process_rise(delta: float) -> void:
 		_surfaced = true
 		_play(_surface_sound)
 	if gap < 2.0:
-		_set_state(State.APPROACH)
+		_set_state(State.HUNT if _lit else State.DRIFT)
+	return rise_speed
 
-func _process_approach(delta: float) -> void:
-	_hold_surface(delta)
-	_steer_at(_ship_ahead(), turn_radius, delta)
-	_speed_to(cruise_speed, delta)
-	if _mouth_to_ship() <= judge_distance:
-		if _ship_lit():
-			_set_state(State.HUNT)
-		elif _lure():
-			_set_state(State.GLIDE)
-		else:
-			_begin_turn_away()
+## Never knowing she is there, it holds its curve and passes her.
+func _process_drift(d: float) -> void:
+	_steer_at_lure()
+	if not _drift_passed and not _ahead() and d > _min_d + 2.0:
+		_drift_passed = true
+		_begin_passed()
 
-func _process_hunt(delta: float) -> void:
-	_hold_surface(delta)
-	if not _ship_lit():
-		_set_state(State.GLIDE)
-		return
-	_steer_at(_ship_ahead(), hunt_turn_radius, delta)
-	_speed_to(hunt_speed, delta)
-	_suck_ship()
-	_shake_with_closeness()
-	if _missed():
-		_passes += 1
-		if _passes >= max_passes:
-			_set_state(State.LEAVE)
+func _process_hunt(d: float) -> float:
+	var speed := (hunt_speed if state == State.COMMIT else chase_speed) * _mult()
+	if not _lit:
+		return maxf(_speed * 0.999, cruise_speed * _mult()) # too late: it holds its course
+	# she is inside the circle it can turn: out, then back at her in a line
+	if state == State.HUNT and d > lunge_distance and _facing() > PI / 6.0 and _turn_circle_gap() < 0.0:
+		_set_state(State.RUNUP)
+		return speed
+	# steer for where she will be by the time it gets there
+	var t := minf(d / maxf(_speed, 1.0), 20.0)
+	var to := ship.global_position + _ship_vel * t - global_position
+	var angle := wrapf(_yaw_of(to) - _yaw, -PI, PI)
+	var mk := _max_curve()
+	_curve_target = clampf(angle / (4.0 * maxf(_speed, 1.0)), -mk, mk)
+	var jd := return_judge_distance if _returned else judge_distance
+	if state == State.HUNT and d <= jd and _facing() < PI / 4.0:
+		_set_state(State.COMMIT)
+	elif state == State.COMMIT and not _ahead() and d > MOUTH_REACH * 3.0:
+		_min_d = d
+		_begin_passed() # she slipped past its mouth: while lit it comes round for her
+	_shake_with_closeness(d)
+	return speed
 
-func _process_glide(delta: float) -> void:
-	_hold_surface(delta)
-	if _ship_lit():
+func _process_runup() -> float:
+	_curve_target = 0.0
+	if _turn_circle_gap() > run_up_margin * _k:
 		_set_state(State.HUNT)
-		return
-	var lure := _lure()
-	if lure:
-		_steer_at(lure.global_position, hunt_turn_radius, delta)
-	if _time > glide_time or (lure == null and _missed()):
-		_set_state(State.LEAVE)
+	return chase_speed * _mult()
 
-func _begin_turn_away() -> void:
-	var away := mouth_position() - ship.global_position
-	away.y = 0.0
-	_from_yaw = _yaw
-	_away_yaw = _from_yaw + wrapf(_yaw_of(away) + _rng.randf_range(-0.5, 0.5) - _from_yaw, -PI, PI)
-	_set_state(State.TURN_AWAY)
+func _process_miss(d: float) -> void:
+	_steer_at_lure()
+	if not _ahead() and d > _min_d + 2.0:
+		_begin_passed()
 
-## A slow, heavy turn about its middle, away from the dark ship.
-func _process_turn_away(delta: float) -> void:
-	_hold_surface(delta)
-	_speed_to(turn_speed, delta)
-	var t := clampf(_time / turn_time, 0.0, 1.0)
-	var target := lerpf(_from_yaw, _away_yaw, smoothstep(0.0, 1.0, t))
-	_turn_about(target - _yaw, 0.0)
-	if t >= 1.0:
-		_away_yaw = _yaw + _rng.randf_range(-1.0, 1.0)
-		_set_state(State.WANDER)
+func _process_passed() -> void:
+	if _lit:
+		_returned = true # lit after it went by: it comes round for her
+		_set_state(State.HUNT)
+	elif _swum - _passed_at >= _dive_after:
+		_set_state(State.DIVE)
+	else:
+		_steer_at_lure()
 
-func _process_wander(delta: float) -> void:
-	_hold_surface(delta)
-	_speed_to(wander_speed, delta)
-	_steer_at(global_position + _flat_dir(_away_yaw) * 1000.0, turn_radius, delta)
-	if _time > wander_time:
-		_set_state(State.LEAVE)
-
-func _process_leave(delta: float) -> void:
-	_speed_to(leave_speed, delta)
-	_climb_to(-leave_sink, delta)
+## Returns true once it is gone.
+func _process_dive(delta: float) -> bool:
+	_climb_to(-sink_speed, delta, 0.6)
 	_set_suction(false)
 	if global_position.y < _sea() - despawn_depth:
 		if _ship_held:
@@ -280,10 +342,11 @@ func _process_leave(delta: float) -> void:
 			ship.visible = false
 			ship.set_meta(TAKEN_META, true)
 		queue_free()
+		return true
+	return false
 
-func _process_swallow(delta: float) -> void:
-	_hold_surface(delta)
-	_speed_to(swallow_speed, delta)
+func _process_swallow(delta: float) -> float:
+	_curve_target = 0.0
 	_swallow_t += delta
 	var t := clampf(_swallow_t / swallow_time, 0.0, 1.0)
 	player.global_position = _frame() * _along_path(smoothstep(0.0, 1.0, t))
@@ -293,6 +356,31 @@ func _process_swallow(delta: float) -> void:
 	if t >= 1.0 and not _died:
 		_died = true
 		EventBus.player_died.emit() # the mission controller restages the morning
+	return swallow_speed
+
+## The ship's power changed.
+func _on_lights() -> void:
+	if not _lit and (state == State.HUNT or state == State.RUNUP):
+		# in time: it no longer steers for her and carries on past
+		_curve_target = _plan_pass(return_gap if _returned else cut_gap)
+		_min_d = INF
+		_set_state(State.MISS)
+	elif _lit and (state == State.DRIFT or state == State.MISS or state == State.PASSED):
+		if state != State.DRIFT:
+			_returned = true # it had gone by her: it comes round faster
+		_set_state(State.HUNT)
+
+func _begin_passed() -> void:
+	_passed_at = _swum
+	_dive_after = _rng.randf_range(dive_after_min, dive_after_max)
+	_set_state(State.PASSED)
+
+func _steer_at_lure() -> void:
+	var lure := _lure()
+	if lure:
+		var angle := wrapf(_yaw_of(lure.global_position - global_position) - _yaw, -PI, PI)
+		var mk := _max_curve()
+		_curve_target = clampf(angle / (4.0 * maxf(_speed, 1.0)), -mk, mk)
 
 ## ---- swallowing ----------------------------------------------------------------
 
@@ -320,6 +408,7 @@ func _swallow_player() -> void:
 ## anyone still aboard her swallowed along with her.
 func _take_ship() -> void:
 	_ship_held = true
+	_drift = Vector3.ZERO
 	ship.freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	ship.freeze = true
 	ship.linear_velocity = Vector3.ZERO
@@ -329,7 +418,7 @@ func _take_ship() -> void:
 	if player.has_method(&'ship_aboard') and player.ship_aboard() == ship and _swallow_t < 0.0:
 		_swallow_player()
 	elif state != State.SWALLOW:
-		_set_state(State.LEAVE)
+		_set_state(State.DIVE)
 
 func _carry_ship(delta: float) -> void:
 	if not is_instance_valid(ship):
@@ -341,7 +430,7 @@ func _carry_ship(delta: float) -> void:
 		_ship_local.origin = _ship_local.origin.move_toward(goal, delta * maxf(body_length * 0.01, 1.0))
 	ship.global_transform = _frame() * _ship_local
 
-## A point along the swallowed player's way down, t 0..1, in body space.
+## A point along the swallowed player's way down, t 0..1, in head space.
 func _along_path(t: float) -> Vector3:
 	if _path.size() < 2:
 		return _path[0] if _path.size() > 0 else Vector3.ZERO
@@ -369,18 +458,21 @@ func _make_fade() -> void:
 	layer.add_child(_fade)
 	add_child(layer)
 
-## Draws a hunted ship toward the mouth once she is close.
-func _suck_ship() -> void:
-	if _ship_held or ship.freeze:
-		return
-	var to_mouth := mouth_position() - ship.global_position
-	to_mouth.y = 0.0
-	var d := to_mouth.length()
+## Hunting, the sea runs into its mouth: a current that carries her toward it, faster than she can
+## sail near the mouth.
+func _suck(d: float, delta: float) -> void:
+	var flow := Vector3.ZERO
 	var reach := suction_range * _k
-	_set_suction(d < reach * 2.0)
-	if d < reach and d > 0.1:
-		var pull := suction_accel * (1.0 - d / reach)
-		ship.apply_central_force(to_mouth / d * pull * ship.mass)
+	var hunting := state == State.HUNT or state == State.COMMIT
+	if _lit and hunting and not _ship_held and not ship.freeze and d < reach and d > 1.0 \
+			and global_position.y > _sea() - _radius() and _facing() < deg_to_rad(suction_cone):
+		var to := global_position - ship.global_position
+		to.y = 0.0
+		flow = to.normalized() * suction_flow * (1.0 - d / reach)
+	_drift = _drift.lerp(flow, minf(1.0, delta / 1.5))
+	if _drift.length() > 0.01 and not ship.freeze:
+		ship.global_position += _drift * delta
+	_set_suction(flow.length() > 0.5 or state == State.SWALLOW)
 
 ## A new morning puts everything back: the ship, the player's body, the view.
 func _on_day_started(_day: int) -> void:
@@ -393,41 +485,77 @@ func _on_day_started(_day: int) -> void:
 
 ## ---- movement ------------------------------------------------------------------
 
-## Forward along its heading, plus its climb or sink; the body tilts with the climb.
+## Forward along its heading, turning by its curve, plus its climb or sink. The head is laid down
+## on the trail the body follows.
 func _move(delta: float) -> void:
-	var fwd := _flat_dir(_yaw)
-	global_position += fwd * _speed * delta + Vector3.UP * _vy * delta
+	_yaw += _curve * _speed * delta
+	global_position += _flat_dir(_yaw) * _speed * delta + Vector3.UP * _vy * delta
+	_swum += _speed * delta
 	var climb := atan2(_vy, maxf(_speed, 1.0))
 	var limit := deg_to_rad(max_pitch)
 	_pitch = lerpf(_pitch, clampf(climb, -limit, limit), 1.0 - exp(-0.5 * delta))
-	global_basis = Basis.from_euler(Vector3(_pitch, _yaw, 0.0)).scaled(Vector3.ONE * _k)
+	global_basis = _basis()
+	if _trail.is_empty() or _trail[0].distance_to(global_position) >= TRAIL_STEP * _k:
+		_trail.insert(0, global_position)
+		var keep := int(ceil(_trail_length() / (TRAIL_STEP * _k))) + 3
+		if _trail.size() > keep:
+			_trail.resize(keep)
 
-## Radius-limited turn toward a point: turn rate = speed / radius.
-func _steer_at(point: Vector3, radius_m: float, delta: float) -> void:
-	var to := point - _pivot(turn_pivot)
-	to.y = 0.0
-	if to.length() < 1.0:
-		return
-	var want := wrapf(_yaw_of(to) - _yaw, -PI, PI)
-	var rate := maxf(_speed, 1.0) / maxf(radius_m * _k, 1.0)
-	_turn_about(clampf(want, -rate * delta, rate * delta), turn_pivot)
+## Each body segment where the head was, that far back along its path, facing along it.
+func _place_body() -> void:
+	# for each segment: a little ahead of it, where it is, a little behind it (all in order down the
+	# body, so one walk along the trail finds them all)
+	var wants := PackedFloat32Array([HEAD_LENGTH * _k])
+	for o in _seg_offsets:
+		var back := o * _k
+		wants.append(maxf(back - 6.0 * _k, 0.0))
+		wants.append(back)
+		wants.append(back + 6.0 * _k)
+	var pts := _trail_points(wants)
+	var s := Vector3.ONE * _k
+	# the head lies from the mouth back to its neck on the path, so it meets the body on a bend
+	var head_dir := global_position - pts[0]
+	if head_dir.length() > 0.01:
+		_head.global_transform = Transform3D(Basis.looking_at(head_dir.normalized(), Vector3.UP).scaled(s), global_position)
+	for i in _segments.size():
+		var dir := pts[1 + i * 3] - pts[1 + i * 3 + 2]
+		if dir.length() < 0.01:
+			dir = _flat_dir(_yaw)
+		_segments[i].global_transform = Transform3D(Basis.looking_at(dir.normalized(), Vector3.UP).scaled(s), pts[1 + i * 3 + 1])
 
-## Turns the heading by `angle`, pivoting at `pivot` (0 middle .. 1 mouth).
-func _turn_about(angle: float, pivot: float) -> void:
-	if absf(angle) < 0.00001:
-		return
-	var p := _pivot(pivot)
-	global_position = p + (global_position - p).rotated(Vector3.UP, angle)
-	_yaw += angle
+## The points `wants` m (ascending) behind the mouth along the path it swam.
+func _trail_points(wants: PackedFloat32Array) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var prev := global_position
+	var walked := 0.0
+	var j := 0
+	var w := 0
+	while w < wants.size():
+		if j < _trail.size():
+			var l := prev.distance_to(_trail[j])
+			if walked + l >= wants[w] and l > 0.0001:
+				out.append(prev.lerp(_trail[j], (wants[w] - walked) / l))
+				w += 1
+				continue
+			walked += l
+			prev = _trail[j]
+			j += 1
+		else:
+			out.append(prev - _flat_dir(_yaw) * (wants[w] - walked)) # past the end: straight on
+			w += 1
+	return out
 
-func _pivot(f: float) -> Vector3:
-	return global_position + _flat_dir(_yaw) * body_length * 0.5 * f
+func _trail_length() -> float:
+	var longest := MODEL_LENGTH
+	for o in _seg_offsets:
+		longest = maxf(longest, o + 40.0)
+	return longest * _k
 
-func _speed_to(target: float, delta: float) -> void:
-	_speed = move_toward(_speed, target, acceleration * delta)
+func _basis() -> Basis:
+	return Basis.from_euler(Vector3(_pitch, _yaw, 0.0)).scaled(Vector3.ONE * _k)
 
-func _climb_to(target: float, delta: float) -> void:
-	_vy = move_toward(_vy, target, vertical_acceleration * delta)
+func _climb_to(target: float, delta: float, accel := -1.0) -> void:
+	_vy = move_toward(_vy, target, (vertical_acceleration if accel < 0.0 else accel) * delta)
 
 func _hold_surface(delta: float) -> void:
 	_climb_to(clampf((_surface_y() - global_position.y) / 4.0, -2.0, 2.0), delta)
@@ -436,6 +564,62 @@ func _sway_tail() -> void:
 	if _tail:
 		var a := deg_to_rad(tail_sway) * sin(TAU * Time.get_ticks_msec() / 1000.0 / tail_period)
 		_tail.basis = _tail_rest.rotated(Vector3.UP, a)
+
+## Tightest turn it can make right now, as a curve (1 / radius).
+func _max_curve() -> float:
+	var r := (return_turn_radius if _returned else hunt_turn_radius) * _k
+	var hunting := state == State.HUNT or state == State.COMMIT
+	if _lit and hunting and _mouth_to_ship() < lunge_distance:
+		r = minf(r, lunge_turn_radius * _k)
+	return 1.0 / maxf(r, 1.0)
+
+## How far she is outside the circle it can turn toward her (m; negative = inside: it cannot reach
+## her by turning).
+func _turn_circle_gap() -> float:
+	var r := 1.0 / _max_curve()
+	var to := _ship2() - _pos2()
+	var f := _flat2(_yaw)
+	var n := to - f * to.dot(f)
+	n = n.normalized() if n.length() > 0.01 else Vector2(-f.y, f.x)
+	return _ship2().distance_to(_pos2() + n * r) - r
+
+## Closest a path of constant curve passes `target`: (distance, m along the path to it).
+func _closest(at: Vector2, yaw: float, curve: float, target: Vector2, max_s: float) -> Vector2:
+	var best := INF
+	var best_s := 0.0
+	var s := 0.0
+	var step := 16.0
+	while s < max_s:
+		var d := at.distance_to(target)
+		if d < best:
+			best = d
+			best_s = s
+		elif d > best + 400.0:
+			break
+		if absf(curve * s) > PI * 1.2:
+			break
+		yaw += curve * step
+		at += _flat2(yaw) * step
+		s += step
+	return Vector2(best, best_s)
+
+## A curve (within its tightest turn) that carries it past her `gap` m off its flank, changing its
+## turn as little as it can.
+func _plan_pass(gap: float) -> float:
+	var want := gap + _radius()
+	var mk := _max_curve()
+	var best := _curve
+	var best_err := INF
+	for i in range(-40, 41):
+		var c := mk * i / 40.0
+		var r := _closest(_pos2(), _yaw, c, _ship2(), 6000.0)
+		if r.y < 1.0:
+			continue
+		var err := absf(r.x - want) + absf(c - _curve) * 2000.0
+		if err < best_err:
+			best_err = err
+			best = c
+	return best
 
 ## ---- reading the world ---------------------------------------------------------
 
@@ -446,44 +630,48 @@ func _surface_y() -> float:
 	return _sea() + surface_offset * _k
 
 func _radius() -> float:
-	return body_length * 0.11
+	return body_length * 0.1
 
-## The body's own frame, without its scale: what carried things are held in.
+func _mult() -> float:
+	return return_multiplier if _returned else 1.0
+
+## The head's own frame, without its scale: what carried things are held in.
 func _frame() -> Transform3D:
-	return Transform3D(global_basis.orthonormalized(), global_position)
+	return Transform3D(_head.global_basis.orthonormalized(), _head.global_position)
 
 func _ship_lit() -> bool:
 	return ship.get(&'powered') != false
 
+func _pos2() -> Vector2:
+	return Vector2(global_position.x, global_position.z)
+
+func _ship2() -> Vector2:
+	return Vector2(ship.global_position.x, ship.global_position.z)
+
 func _mouth_to_ship() -> float:
-	var d := ship.global_position - mouth_position()
-	d.y = 0.0
-	return d.length()
+	return _pos2().distance_to(_ship2())
 
-## Where the ship will be by the time the mouth gets there (her velocity, a few seconds ahead).
-func _ship_ahead() -> Vector3:
-	var t := minf(_mouth_to_ship() / maxf(_speed, 1.0), 20.0)
-	return ship.global_position + ship.linear_velocity * t
+## She is in front of its mouth.
+func _ahead() -> bool:
+	return (_ship2() - _pos2()).dot(_flat2(_yaw)) > 0.0
 
-## The ship is behind the mouth and well clear of it.
-func _missed() -> bool:
-	var to := ship.global_position - mouth_position()
-	to.y = 0.0
-	return to.dot(_flat_dir(_yaw)) < 0.0 and to.length() > pass_distance * _k
+## Angle between its heading and the way to her (radians).
+func _facing() -> float:
+	var to := _ship2() - _pos2()
+	return absf(wrapf(_yaw_of(Vector3(to.x, 0.0, to.y)) - _yaw, -PI, PI))
 
 func _lure() -> Node3D:
 	var best: Node3D = null
-	var best_d := lure_range * _k
+	var best_d := lure_range
 	for n in get_tree().get_nodes_in_group(&'leviathan_lure'):
-		var d := (n as Node3D).global_position.distance_to(mouth_position())
+		var d := (n as Node3D).global_position.distance_to(global_position)
 		if d < best_d:
 			best_d = d
 			best = n
 	return best
 
-func _shake_with_closeness() -> void:
-	var d := _mouth_to_ship()
-	var reach := judge_distance
+func _shake_with_closeness(d: float) -> void:
+	var reach := return_judge_distance if _returned else judge_distance
 	if d < reach:
 		EventBus.camera_shake_requested.emit(lerpf(0.05, 0.4, 1.0 - d / reach))
 
@@ -493,9 +681,11 @@ static func _yaw_of(dir: Vector3) -> float:
 static func _flat_dir(yaw: float) -> Vector3:
 	return Vector3(-sin(yaw), 0.0, -cos(yaw))
 
+static func _flat2(yaw: float) -> Vector2:
+	return Vector2(-sin(yaw), -cos(yaw))
+
 func _set_state(s: State) -> void:
 	state = s
-	_time = 0.0
 
 ## ---- set-up --------------------------------------------------------------------
 

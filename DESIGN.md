@@ -128,20 +128,30 @@ of the sea with its mouth always open. Why the power panel exists. Code: `leviat
 `leviathan_encounter.gd` + `scenes/world/leviathan_waters.tscn` (EncounterArea, user-sized).
 - **Comes** only at night (sun dimmer than `night_sun_energy`, until there is a clock), when the
   player swims or sails into the EncounterArea; once per entry, 240 s cooldown. Debug builds: F8.
-- **Never pops in:** made 250 m down ~1.7 km off, ahead of the ship (±70°), it swims up. Its call
-  is heard ~10 s before it breaks the surface (5 s moan, 5 s silence), ~1-1.2 km off; the water
-  domes, breaks and rings (two WaterDeformers). Then it comes on at the surface at 9 m/s.
-- **Judges at 200 m:** lights on → it comes for her (13 m/s, the ship is drawn into the last
-  120 m). Power cut after that → it holds its heading, no longer steering for her (she can still
-  be in its way); power on again → it steers again. A node in group `leviathan_lure` within 400 m
-  draws it while the ship is dark (hook for throwable distractions, nothing uses it yet).
-  Lights off at 200 m → it turns away for 15 s, swims off 20 s, sinks to 250 m (out of sight in
-  ~20 s) and is gone. A lit ship it misses twice is left.
+- **Never pops in:** made 250 m down ~1.5 km off, ahead of the ship (±60°), it swims up. Its call
+  is heard ~10 s before it breaks the surface (5 s moan, 5 s silence), ~1 km off; the water domes,
+  breaks and rings (two WaterDeformers).
+- **Always on a curve:** far too big to turn on the spot. Its body follows the path its head swam
+  (the Head is rigid, the Body's segments are laid along the trail), so it bends through curves.
+  Tuned in `backups/leviathan_replays/leviathan_tuning.html` (interactive preview + escape test).
+- **Dark from the start:** it never knows she is there; its drifting curve (3 km radius) carries it
+  past her 100-200 m off its flank, and 200-500 m later it sinks away (out of sight in ~20 s).
+- **Lit:** it curves in on her at 17 m/s; inside the 200 m safe distance it comes for her at 20 m/s.
+  Cutting the lights before 200 m: it carries on past her (~50 m off its flank) and goes down
+  200-500 m later. Lights back on before it goes down: it comes round 1.5× faster, the safe distance
+  is now 300 m; cut again in time and it passes very close (~30 m) and goes down. Cutting inside the
+  safe distance is too late: it holds its course. A lit ship it misses is hunted again.
+- **No escaping by sailing** (ship: 10 m/s, 18°/s): faster than her; if she gets inside the circle
+  it can turn it swims straight out and comes back in a line; in its last 450 m its head swings round
+  as tight as 100 m and the sea flows into its mouth (20 m/s at the mouth, from 250 m ahead). Fleeing,
+  sidestepping, zigzags, circles and crossing its line all fail in the preview (210/210) and in game.
+- A node in group `leviathan_lure` within 400 m draws it while the ship is dark (hook for throwable
+  distractions, nothing uses it yet).
 - **Swallowed:** anything in its MouthZone. The player can only look round while drawn down the
   gullet for 15 s, the last 3 s fading to black, then dies (same morning). The ship is carried in
   the mouth; taken without the player aboard, she is kept until the morning gives her back.
-- Placeholder model built from primitives (`leviathan.tscn` → Model); the real one replaces it:
-  mouth toward -Z, root at the middle of the body on its long axis, a `Tail` node to sway.
+- Placeholder built from primitives (`leviathan.tscn`: Head + Body/Seg00..08). The real model needs
+  to bend: a rigid head piece and a body cut in segments (or bones) along +Z, see §7.
 
 ## 5. Code Architecture
 
@@ -222,9 +232,11 @@ Later (milestones 4–7):
   and sounds: presence loop, wake, arm grab, grip breaking, hull creak.
 - The leviathan: ~500 m basking-shark-like body, mouth always open (pale gill rakers inside), a
   long dark throat the player is drawn down (the camera goes inside it: model the inside too).
-  Replaces the Model node in `assets/models/creatures/leviathan/leviathan.tscn`: mouth toward -Z,
-  root at the middle of the body, axis at the waterline when it swims half out; a `Tail` node is
-  swayed. Sounds: call, surfacing, suction.
+  It bends along its path, so it is not one rigid mesh: a rigid head (mouth at the origin, body
+  toward +Z, the first ~160 m) and the body in pieces or a bone chain behind it, each laid on the
+  path by the code (`leviathan.tscn`: Head, Body/Seg00..08 at their distance behind the mouth; a
+  `Tail` node is swayed). Axis at the waterline when it swims half out. Sounds: call, surfacing,
+  suction.
 
 ## 8. Open Questions (decide when relevant)
 
