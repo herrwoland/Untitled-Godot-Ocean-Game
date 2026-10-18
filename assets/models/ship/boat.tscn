@@ -364,7 +364,7 @@ transform = Transform3D(1.8757025e-07, 0, -1.4303691, 0, 1.4303691, 0, 1.4303691
 transform = Transform3D(-0.073518366, 0, -1.5874966, 0, 1.589198, 0, 1.5874966, 0, -0.073518366, 5.45639, 5.283303, 3.238004)
 
 [node name="radar" parent="controls" unique_id=1828085955 instance=ExtResource("8_pf22c")]
-transform = Transform3D(-1.5626681, 0, -1.3661278e-07, 0, 1.5626681, 0, 1.3661278e-07, 0, -1.5626681, -1.4005388, 4.7520876, 2.0524437)
+transform = Transform3D(-1.8783762, 0, -1.6421286e-07, 0, 1.8783762, 0, 1.6421286e-07, 0, -1.8783762, -1.4005388, 4.951695, 2.118299)
 
 [node name="printer" parent="controls" unique_id=1475392048 instance=ExtResource("24_printer")]
 transform = Transform3D(-1.4525503, 0, -0.5762197, 0, 1.5626681, 0, 0.5762197, 0, -1.4525503, -1.1075709, 3.7767, -2.2465892)
@@ -594,7 +594,7 @@ far = 12000.0
 script = ExtResource("3_camera")
 
 [node name="HelmPosition" type="Marker3D" parent="." unique_id=1679096902]
-transform = Transform3D(1, 8.881784e-16, 0, -1.5543122e-15, 1, 3.5527137e-15, 0, 0, 1, -2.082514, 4.1498795, 0.0023938417)
+transform = Transform3D(1, 8.881784e-16, 0, -1.5543122e-15, 1, 3.5527137e-15, 0, 0, 1, -2.082514, 4.033562, 0.0023938417)
 
 [node name="HelmInteractable" type="Area3D" parent="." unique_id=646670221 node_paths=PackedStringArray("ship", "helm_marker")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5875483, 4.885566, 0.0027356148)
