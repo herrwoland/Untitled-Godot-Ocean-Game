@@ -50,6 +50,7 @@
 [ext_resource type="Script" uid="uid://5j2rqum415rn" path="res://assets/weather/weather.gd" id="70_weather"]
 [ext_resource type="PackedScene" uid="uid://cnp3jjyjpjamw" path="res://assets/models/creatures/kraken_lair.tscn" id="80_kraken_lair"]
 [ext_resource type="Texture2D" path="res://assets/textures/Ground057_1K-PNG_Normal.res" id="99_gnorm"]
+[ext_resource type="PackedScene" path="res://scenes/world/leviathan_waters.tscn" id="90_leviathan"]
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_d13ii"]
 seed = 666
@@ -754,6 +755,10 @@ transform = Transform3D(-0.9902683, 0.065872595, -0.122594856, 0, 0.8808907, 0.4
 
 [node name="vortex_mouth" parent="." unique_id=827155423 instance=ExtResource("54_4w656")]
 transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 3278.989, 3.0122223, 95.900246)
+
+[node name="LeviathanWaters" parent="." node_paths=PackedStringArray("sun") instance=ExtResource("90_leviathan")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 650, 0, -150)
+sun = NodePath("../Sun")
 
 [editable path="shore/House_01"]
 [editable path="StonyBeach/Light_House_0_1"]

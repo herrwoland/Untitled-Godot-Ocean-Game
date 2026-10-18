@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://assets/scripts/world/leviathan_encounter.gd" id="main_script"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_mfuu5"]
+height = 120.0
+radius = 400.0
+
+[node name="LeviathanWaters" type="Node3D" unique_id=2134943945 node_paths=PackedStringArray("encounter_area")]
+script = ExtResource("main_script")
+encounter_area = NodePath("EncounterArea")
+
+[node name="EncounterArea" type="Area3D" parent="." unique_id=681071646]
+collision_layer = 0
+collision_mask = 6
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="EncounterArea" unique_id=1797575436]
+shape = SubResource("CylinderShape3D_mfuu5")

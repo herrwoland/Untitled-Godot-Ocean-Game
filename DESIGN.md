@@ -122,6 +122,27 @@ marker, GuardArea, Kraken). Code: `kraken.gd` (behaviour) + `kraken_arm.gd` (pro
   Hunters stand down while it is awake. A new morning resets it and gives the ship back.
 - Open: the kept ship strands the player at sea until they drown or the day resets — see §8.
 
+### The leviathan (eats lit ships)
+An ancient, colossal (~500 m, one `body_length` dial) basking-shark-like creature that swims half out
+of the sea with its mouth always open. Why the power panel exists. Code: `leviathan.gd` (behaviour),
+`leviathan_encounter.gd` + `scenes/world/leviathan_waters.tscn` (EncounterArea, user-sized).
+- **Comes** only at night (sun dimmer than `night_sun_energy`, until there is a clock), when the
+  player swims or sails into the EncounterArea; once per entry, 240 s cooldown. Debug builds: F8.
+- **Never pops in:** made 250 m down ~1.7 km off, ahead of the ship (±70°), it swims up. Its call
+  is heard ~10 s before it breaks the surface (5 s moan, 5 s silence), ~1-1.2 km off; the water
+  domes, breaks and rings (two WaterDeformers). Then it comes on at the surface at 9 m/s.
+- **Judges at 200 m:** lights on → it comes for her (13 m/s, the ship is drawn into the last
+  120 m). Power cut after that → it holds its heading, no longer steering for her (she can still
+  be in its way); power on again → it steers again. A node in group `leviathan_lure` within 400 m
+  draws it while the ship is dark (hook for throwable distractions, nothing uses it yet).
+  Lights off at 200 m → it turns away for 15 s, swims off 20 s, sinks to 250 m (out of sight in
+  ~20 s) and is gone. A lit ship it misses twice is left.
+- **Swallowed:** anything in its MouthZone. The player can only look round while drawn down the
+  gullet for 15 s, the last 3 s fading to black, then dies (same morning). The ship is carried in
+  the mouth; taken without the player aboard, she is kept until the morning gives her back.
+- Placeholder model built from primitives (`leviathan.tscn` → Model); the real one replaces it:
+  mouth toward -Z, root at the middle of the body on its long axis, a `Tail` node to sway.
+
 ## 5. Code Architecture
 
 Existing foundation to build on: FFT ocean + `get_wave_height()`, buoyancy ship + helm piloting,
@@ -199,6 +220,11 @@ Later (milestones 4–7):
   Mantle toward -Z, arms toward +Z, eyes up. Script that built the placeholder (and documents the
   rig): `kraken/source/build_kraken_placeholder.py`. Plus its rock column (with a collider, layer 1)
   and sounds: presence loop, wake, arm grab, grip breaking, hull creak.
+- The leviathan: ~500 m basking-shark-like body, mouth always open (pale gill rakers inside), a
+  long dark throat the player is drawn down (the camera goes inside it: model the inside too).
+  Replaces the Model node in `assets/models/creatures/leviathan/leviathan.tscn`: mouth toward -Z,
+  root at the middle of the body, axis at the waterline when it swims half out; a `Tail` node is
+  swayed. Sounds: call, surfacing, suction.
 
 ## 8. Open Questions (decide when relevant)
 

@@ -65,6 +65,13 @@ and drag the file into its **Stream**.
 - [ ] **hunter_fish.tscn → ChargeSound**: the rush, at the start of each charge
   (plays again on every pass). Cut off by the bite. *One-shot, 3D.*
 - [ ] **hunter_fish.tscn → BiteSound**: the jaws closing on you. *One-shot, 3D.*
+- [ ] **leviathan.tscn → CallSound**: its call, far off, ~5 s: a long, low moan through the
+  water, like whale song slowed right down. *One-shot, 3D, heard 1.5 km+ away.* (A stand-in is
+  made in code while this is empty.)
+- [ ] **leviathan.tscn → SurfaceSound**: a sea's worth of water pouring off it as it breaks the
+  surface. *One-shot, 3D, heard 1 km+ away.* (Stand-in made in code.)
+- [ ] **leviathan.tscn → SuctionSound**: the roar of water rushing into its mouth, from when it is
+  close to a lit ship until you are swallowed. *Loop, 3D.* (Stand-in made in code.)
 - [ ] **eel.tscn → EelLoop**: the eel's presence (slithering, a wet hum). *Loop, 3D.*
 
 ## World (`main.tscn`)
