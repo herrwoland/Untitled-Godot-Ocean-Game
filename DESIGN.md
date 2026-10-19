@@ -237,7 +237,7 @@ Later (milestones 4–7):
   long dark throat the player is drawn down (the camera goes inside it: model the inside too).
   It bends along its path: one skinned mesh with a spine bone chain from `body_center` (at the
   head) down to the tail; the code turns each spine bone to follow the path the head swam, plus a
-  slow tail beat (`tail_sway`, `tail_period`, `tail_wave`). Bones with "obsolete" in the name (the
+  tail beat tied to its speed (one beat per `tail_stride` body lengths; `tail_sway`, `head_recoil`). Bones with "obsolete" in the name (the
   jaw) are left alone. Done: `leviathan_fish.glb` (2026-10-19). Its collision does not bend (it is
   the rest shape). Axis at the waterline when it swims half out. Sounds: call, surfacing, suction.
 

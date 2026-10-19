@@ -76,8 +76,15 @@ const HEAD_LENGTH := 160.0 # m (model units) from the mouth to where the Body's 
 @export var steer_ease := 8.0
 ## Most the head tilts nose up or down (degrees) as it climbs or sinks.
 @export var max_pitch := 15.0
-@export var tail_sway := 8.0 # degrees the tail beats to each side
-@export var tail_period := 9.0 # s for one beat
+## Swimming: degrees the tail tip beats to each side at cruise speed (less when slow, a little more
+## flat out). The rear of the body bends most, the head swings back a little the other way.
+@export var tail_sway := 18.0
+## Body lengths it swims per tail beat: the faster it swims, the faster it beats.
+@export var tail_stride := 0.35
+## Seconds per beat when it barely moves (it never stops beating).
+@export var tail_period := 20.0
+## How much the head swings against the tail (fraction of the tail's swing).
+@export_range(0.0, 1.0, 0.01) var head_recoil := 0.12
 ## m down the body the beat travels per radian: lower = more of an S-wave along the body.
 @export var tail_wave := 120.0
 
@@ -157,6 +164,7 @@ var _segments: Array[Node3D] = []
 var _seg_offsets: Array[float] = [] # m behind the mouth (model units)
 var _tail: Node3D
 var _tail_rest := Basis.IDENTITY
+var _beat := 0.0 # the tail beat's phase (radians)
 var _skel: Skeleton3D # a rigged model's skeleton (null for the placeholder)
 var _spine: Array[int] = [] # its spine bones, head to tail
 var _spine_s: Array[float] = [] # m behind the mouth of each (model units, at rest)
@@ -275,6 +283,8 @@ func _physics_process(delta: float) -> void:
 	_curve += clampf(_curve_target - _curve, -mk * delta / steer_ease, mk * delta / steer_ease)
 	_speed = move_toward(_speed, target_speed, acceleration * delta)
 	_move(delta)
+	# one beat per tail_stride body lengths swum, never slower than tail_period
+	_beat += TAU * maxf(_speed / (body_length * tail_stride), 1.0 / tail_period) * delta
 	if state != State.RISE:
 		_min_d = minf(_min_d, _mouth_to_ship())
 	_suck(d)
@@ -355,7 +365,6 @@ func _process_passed() -> void:
 ## Returns true once it is gone.
 func _process_dive(delta: float) -> bool:
 	_climb_to(-sink_speed, delta, 0.6)
-	_set_suction(false)
 	if global_position.y < _sea() - despawn_depth and (_fade_t < 0.0 or _died):
 		if _ship_held:
 			# she stays down there with it, out of sight, until the morning gives her back
@@ -555,13 +564,15 @@ func _pose_spine() -> void:
 	var ahead := -global_basis.z.normalized() # the way the head faces
 	var sk_rot := _skel.global_basis.orthonormalized().get_rotation_quaternion()
 	var sk_inv := sk_rot.inverse()
-	var beat := TAU * Time.get_ticks_msec() / 1000.0 / tail_period
+	var swing := deg_to_rad(tail_sway) * clampf(0.4 + 0.6 * _speed / maxf(cruise_speed, 0.1), 0.4, 1.25)
 	var placed := {}
 	for i in _spine.size():
 		var along := pts[i * 2] - pts[i * 2 + 1] # the path here, toward the head
 		var turn := Quaternion(ahead, along.normalized()) if along.length() > 0.01 else Quaternion.IDENTITY
-		var reach := pow(clampf(_spine_s[i] / MODEL_LENGTH, 0.0, 1.0), 1.5)
-		turn = Quaternion(Vector3.UP, deg_to_rad(tail_sway) * reach * sin(beat - _spine_s[i] / tail_wave)) * turn
+		# a shark's beat: the rear of the body bends most, the head swings back a little against it
+		var t := clampf(_spine_s[i] / MODEL_LENGTH, 0.0, 1.0)
+		var reach := t * t - head_recoil * (1.0 - t) * (1.0 - t)
+		turn = Quaternion(Vector3.UP, swing * reach * sin(_beat - _spine_s[i] / tail_wave)) * turn
 		var g := (sk_inv * turn * sk_rot) * _spine_rest[i] # its turn in the skeleton's space
 		var b := _spine[i]
 		var parent := _skel.get_bone_parent(b)
@@ -635,7 +646,7 @@ func _hold_surface(delta: float) -> void:
 
 func _sway_tail() -> void:
 	if _tail:
-		var a := deg_to_rad(tail_sway) * sin(TAU * Time.get_ticks_msec() / 1000.0 / tail_period)
+		var a := deg_to_rad(tail_sway) * sin(_beat)
 		_tail.basis = _tail_rest.rotated(Vector3.UP, a)
 
 ## Tightest turn it can make right now, as a curve (1 / radius).
@@ -829,6 +840,8 @@ func _scale_deformer(d: WaterDeformer) -> void:
 	d.ring_width *= _k
 	d.ring_speed *= sqrt(_k)
 
+## The suction's roar. Decided once a frame (in _suck): two callers that disagree would restart it
+## every frame, a buzz.
 func _set_suction(on: bool) -> void:
 	if _suction_sound == null or _suction_sound.stream == null:
 		return
