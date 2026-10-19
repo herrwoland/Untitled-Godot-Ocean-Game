@@ -238,7 +238,9 @@ Later (milestones 4–7):
   It bends along its path: one skinned mesh with a spine bone chain from `body_center` (at the
   head) down to the tail; the code turns each spine bone to follow the path the head swam, plus a
   tail beat tied to its speed (one beat per `tail_stride` body lengths; `tail_sway`, `head_recoil`). Bones with "obsolete" in the name (the
-  jaw) are left alone. Done: `leviathan_fish.glb` (2026-10-19). Its collision does not bend (it is
+  jaw) are left out of the spine; they tremble on noise against the water pressure (`jaw_shake`,
+  harder with speed). Done: `leviathan_fish.glb` (2026-10-19). Later: big swim splashes along its
+  body at the waterline (the user makes the splash effects, then we hook them up). Its collision does not bend (it is
   the rest shape). Axis at the waterline when it swims half out. Sounds: call, surfacing, suction.
 
 ## 8. Open Questions (decide when relevant)

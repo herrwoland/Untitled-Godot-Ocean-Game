@@ -85,6 +85,20 @@ const HEAD_LENGTH := 160.0 # m (model units) from the mouth to where the Body's 
 @export var tail_period := 20.0
 ## How much the head swings against the tail (fraction of the tail's swing).
 @export_range(0.0, 1.0, 0.01) var head_recoil := 0.12
+
+@export_group('Jaw tremble')
+## The jaw shakes against the sea pushing into its open mouth (a rigged model's jaw bones).
+@export var jaw_shake := true
+## The jaw bones (by name). Left out of the spine; only this moves them.
+@export var jaw_bones := PackedStringArray(['bone_mouth_top_obsolete', 'bone_mouth_bottom_obsolete'])
+## Degrees the jaw shakes at most, at hunting speed.
+@export_range(0.0, 15.0, 0.05) var jaw_shake_angle := 1.5
+## How much of that is left when it barely moves (0 = still, 1 = as strong as at full speed).
+@export_range(0.0, 1.0, 0.01) var jaw_shake_idle := 0.25
+## How fast the shaking flickers: higher = a quicker, buzzier tremble.
+@export_range(0.1, 40.0, 0.1) var jaw_shake_rate := 6.0
+## Share of the shake that opens and closes the jaw (the rest twists it side to side).
+@export_range(0.0, 1.0, 0.01) var jaw_shake_hinge := 0.7
 ## m down the body the beat travels per radian: lower = more of an S-wave along the body.
 @export var tail_wave := 120.0
 
@@ -169,6 +183,10 @@ var _skel: Skeleton3D # a rigged model's skeleton (null for the placeholder)
 var _spine: Array[int] = [] # its spine bones, head to tail
 var _spine_s: Array[float] = [] # m behind the mouth of each (model units, at rest)
 var _spine_rest: Array[Quaternion] = [] # their rest turn, in the skeleton's space
+var _jaw: Array[int] = [] # the jaw bones
+var _jaw_rest: Array[Quaternion] = []
+var _jaw_noise := FastNoiseLite.new()
+var _jaw_t := 0.0
 var _rng := RandomNumberGenerator.new()
 var _fed := false # it caught the ship or the player is in its mouth
 var _ship_held := false
@@ -289,6 +307,7 @@ func _physics_process(delta: float) -> void:
 		_min_d = minf(_min_d, _mouth_to_ship())
 	_suck(d)
 	_place_body()
+	_shake_jaw(delta)
 	_sway_tail()
 	if _ship_held:
 		ship.global_transform = _frame() * _ship_local
@@ -580,6 +599,23 @@ func _pose_spine() -> void:
 		_skel.set_bone_pose_rotation(b, (pg.inverse() * g).normalized())
 		placed[b] = g
 
+## The jaw trembles on smooth noise, harder the faster it swims: each jaw bone turned a little from
+## its rest pose, mostly about its hinge (its own X), the rest a side-to-side twist.
+func _shake_jaw(delta: float) -> void:
+	if _jaw.is_empty():
+		return
+	if not jaw_shake:
+		for i in _jaw.size():
+			_skel.set_bone_pose_rotation(_jaw[i], _jaw_rest[i])
+		return
+	_jaw_t += delta * jaw_shake_rate
+	var effort := clampf(_speed / maxf(hunt_speed, 0.1), 0.0, 1.0)
+	var amount := deg_to_rad(jaw_shake_angle) * lerpf(jaw_shake_idle, 1.0, effort)
+	for i in _jaw.size():
+		var hinge := _jaw_noise.get_noise_2d(_jaw_t, i * 97.0) * amount * jaw_shake_hinge
+		var twist := _jaw_noise.get_noise_2d(_jaw_t, i * 97.0 + 41.0) * amount * (1.0 - jaw_shake_hinge)
+		_skel.set_bone_pose_rotation(_jaw[i], _jaw_rest[i] * Quaternion(Vector3.RIGHT, hinge) * Quaternion(Vector3.UP, twist))
+
 ## A rigged model: its spine is the chain from the bone named body_center down to the tail (bones
 ## named *obsolete*, the jaw, are left alone).
 func _find_spine() -> void:
@@ -588,6 +624,14 @@ func _find_spine() -> void:
 		if b < 0:
 			continue
 		_skel = sk
+		for jaw_name in jaw_bones:
+			var j := sk.find_bone(jaw_name)
+			if j >= 0:
+				_jaw.append(j)
+				_jaw_rest.append(sk.get_bone_rest(j).basis.get_rotation_quaternion())
+		_jaw_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		_jaw_noise.frequency = 1.0
+		_jaw_noise.seed = _rng.randi()
 		var to_root := global_transform.affine_inverse() * sk.global_transform
 		while b >= 0:
 			_spine.append(b)
