@@ -61,13 +61,17 @@ water_material = {
 &"contact_foam_strength": 0.85,
 &"contact_foam_tile_size": 7.3,
 &"contact_foam_width": 2.50999994575914,
+&"contact_shore_depth": 20.0,
 &"contact_tint_color": Color(0.49052882, 0.69566745, 0.6872876, 1),
 &"contact_tint_strength": 0.5,
 &"contact_tint_width": 6.839999850837639,
 &"depth_color_consumption": Vector3(2.5, 8, 14),
+&"foam_texture_strength": 1.0,
+&"foam_texture_tile_size": 6.0,
 &"glow_above_water": 1.0,
 &"ior_dispersion": 0.01,
 &"light_reflection": 0.10999999754128,
+&"metallic": 0.73999998345952,
 &"normal_strength": 1.0,
 &"rain_flatten": 0.25,
 &"rain_matte": 0.6,
@@ -108,13 +112,20 @@ water_material = {
 &"window_refraction_strength": 0.6
 }
 sky_material = {
+&"billow": 0.8,
+&"cloud_base": 1.1,
 &"cloud_dark_color": Color(0.03, 0.035, 0.05, 1),
+&"cloud_detail": 0.6,
+&"cloud_erosion": 0.45,
 &"cloud_lit_color": Color(0.8, 0.85, 0.95, 1),
-&"cloud_scale": 0.12,
+&"cloud_size": 10.0,
+&"cloud_thickness": 1.6,
 &"coverage": 0.6,
 &"density": 6.0,
+&"detail_size": 2.0,
 &"exposure": 1.0,
 &"ground_color": Color(0.005, 0.007, 0.01, 1),
+&"haze_distance": 40.0,
 &"horizon_color": Color(0.03, 0.035, 0.05, 1),
 &"lightning_strength": 0.0,
 &"moon_amount": 1.0,
@@ -123,7 +134,10 @@ sky_material = {
 &"moon_halo": 0.9090000431775,
 &"moon_phase": 0.25,
 &"moon_size": 6.57200030891012,
+&"planet_radius": 2000.0,
+&"rain_shafts": 0.0,
 &"scud_speed_mult": 2.2,
+&"silver_lining": 1.5,
 &"sun_corona": 0.8,
 &"sun_disc_energy": 14.0,
 &"sun_glow": 0.25,
@@ -131,19 +145,11 @@ sky_material = {
 &"sunset_color": Color(0.9, 0.45, 0.2, 1),
 &"sunset_spread": 2.5,
 &"sunset_strength": 0.0,
+&"underside_contrast": 0.9,
 &"warp_strength": 0.3,
 &"wind_direction": Vector2(1, 0.35),
 &"wind_speed": 0.005,
-&"zenith_color": Color(0.008, 0.01, 0.02, 1),
-&"billow": 0.8,
-&"cloud_detail": 0.6,
-&"cloud_base": 1.1,
-&"cloud_thickness": 1.6,
-&"cloud_size": 10.0,
-&"rain_shafts": 0.0,
-&"haze_distance": 40.0,
-&"planet_radius": 2000.0,
-&"silver_lining": 1.5
+&"zenith_color": Color(0.008, 0.01, 0.02, 1)
 }
 environment = {
 &"ambient_light_color": Color(0, 0, 0, 1),
@@ -167,12 +173,12 @@ environment = {
 &"tonemap_exposure": 1.0,
 &"volumetric_fog_albedo": Color(1, 1, 1, 1),
 &"volumetric_fog_ambient_inject": 0.0,
-&"volumetric_fog_anisotropy": 0.2,
+&"volumetric_fog_anisotropy": 0.01,
 &"volumetric_fog_density": 0.004,
 &"volumetric_fog_emission": Color(0, 0, 0, 1),
 &"volumetric_fog_emission_energy": 1.0,
-&"volumetric_fog_enabled": false,
-&"volumetric_fog_length": 500.0,
+&"volumetric_fog_enabled": true,
+&"volumetric_fog_length": 140.89,
 &"volumetric_fog_sky_affect": 1.0
 }
 sun = {
@@ -180,15 +186,8 @@ sun = {
 &"light_energy": 0.3,
 &"light_indirect_energy": 0.5,
 &"light_volumetric_fog_energy": 0.3,
-&"quaternion": Quaternion(-0.09130374, 0.1645547, 0.011019157, 0.9820713),
+&"quaternion": Quaternion(-0.09130374, 0.16455473, 0.011019157, 0.9820713),
 &"shadow_opacity": 0.8
-}
-world_fog = {
-&"albedo": Color(0.218936, 0.365236, 0.525464, 1),
-&"density": 8.0,
-&"edge_fade": 1.75,
-&"emission": Color(0, 0, 0, 1),
-&"height_falloff": 0.176
 }
 rain = {
 &"gustiness": 0.4,

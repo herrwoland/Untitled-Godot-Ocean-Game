@@ -22,9 +22,12 @@ class_name Leviathan extends Node3D
 ##    cut again in time and it passes return_gap off. A lit ship it missed is hunted again.
 ##  - DIVE: sinks away to despawn_depth and is gone.
 ## A lure (group "leviathan_lure") within lure_range draws it while the ship is dark.
-## Anything in its MouthZone is swallowed: the player can only look around while they are drawn
-## down the gullet (the Gullet markers) for swallow_time s, the last fade_time s fading to black,
-## then they die. The ship goes in with them, carried in the mouth.
+## Swallowing: the ship touching its MouthZone (at the end of the throat) is caught there and
+## carried with it from then on; nothing ever moves the player, who stays aboard her like on any
+## moving deck. The player inside its MouthInside (the mouth cavity) for mouth_time s straight is
+## lost: the view fades to black over fade_time s and they die (the same morning restages). Once it
+## has caught the ship or the player is in its mouth it swims on slowly dive_delay_min..max s and
+## goes down (SWALLOW, then DIVE). A ship it took down without the player is kept until morning.
 ##
 ## Body: the Head (mouth at the origin, the body toward +Z) is rigid; the Body's segments are laid
 ## along the path the head swam, so the long body bends through the curves behind it. The scene is
@@ -33,7 +36,7 @@ class_name Leviathan extends Node3D
 enum State { RISE, DRIFT, HUNT, RUNUP, COMMIT, MISS, PASSED, DIVE, SWALLOW }
 
 const MODEL_LENGTH := 500.0 # m: the length the scene is built at
-const TAKEN_META := &'leviathan_taken' # on a ship it carried off: the encounter gives her back at dawn
+const TAKEN_META := &'leviathan_taken' # on a ship it took down: the encounter gives her back at dawn
 const TRAIL_STEP := 4.0 # m (model units) between remembered head positions
 const MOUTH_REACH := 35.0 # m: the ship this far past the mouth has slipped by
 const HEAD_LENGTH := 160.0 # m (model units) from the mouth to where the Body's segments begin
@@ -105,12 +108,16 @@ const HEAD_LENGTH := 160.0 # m (model units) from the mouth to where the Body's 
 @export var lure_range := 400.0
 
 @export_group('Swallowing')
-## Seconds the swallowed player is drawn down the gullet before they die.
-@export var swallow_time := 15.0
-## The last seconds of it fade to black.
+## Seconds the player must be inside its mouth (without getting out) before the dark comes.
+@export var mouth_time := 10.0
+## Seconds the view takes to fade to black after that; then they die.
 @export var fade_time := 3.0
-@export var swallow_speed := 2.0 # m/s it swims on while swallowing
-@export var swallow_shake := 0.3 # camera trauma held while swallowed
+## Seconds after the ship or the player got into its mouth before it goes back down.
+@export var dive_delay_min := 3.0
+@export var dive_delay_max := 4.0
+## m/s it slows to meanwhile, so the walls of its mouth don't sweep through a player aboard.
+@export var swallow_speed := 3.0
+@export var swallow_shake := 0.3 # camera trauma while the player is in its mouth
 
 var state := State.RISE
 var ship: RigidBody3D
@@ -118,7 +125,8 @@ var player: Node3D
 var water: Node3D
 
 @onready var _head: Node3D = $Head
-@onready var _mouth_zone: Area3D = $Head/MouthZone
+@onready var _mouth_zone: Area3D = $Head/MouthZone # the end of the throat: catches the ship
+@onready var _mouth_inside: Area3D = get_node_or_null(^'Head/MouthInside') # the mouth: the player's countdown
 @onready var _call_sound: AudioStreamPlayer3D = get_node_or_null(^'Head/CallSound')
 @onready var _surface_sound: AudioStreamPlayer3D = get_node_or_null(^'Head/SurfaceSound')
 @onready var _suction_sound: AudioStreamPlayer3D = get_node_or_null(^'Head/SuctionSound')
@@ -140,18 +148,18 @@ var _passed_at := 0.0
 var _dive_after := 0.0
 var _drift_passed := false
 var _ship_vel := Vector3.ZERO # her velocity, averaged over a few seconds
-var _drift := Vector3.ZERO # the current its suction moves her with
 var _trail := PackedVector3Array() # where the head has been, newest first, TRAIL_STEP apart
 var _segments: Array[Node3D] = []
 var _seg_offsets: Array[float] = [] # m behind the mouth (model units)
 var _tail: Node3D
 var _tail_rest := Basis.IDENTITY
 var _rng := RandomNumberGenerator.new()
-var _gullet: Array[Node3D] = []
-var _swallow_t := -1.0 # s since the player was swallowed (< 0: not yet)
-var _path: Array[Vector3] = [] # the swallowed player's way down, in the head's (unscaled) space
-var _ship_local := Transform3D.IDENTITY # a carried ship, in the head's (unscaled) space
+var _fed := false # it caught the ship or the player is in its mouth
 var _ship_held := false
+var _ship_local := Transform3D.IDENTITY # the caught ship, in the head's (unscaled) space
+var _dive_in := 0.0 # s left before it goes down after feeding
+var _mouth_t := 0.0 # s the player has been inside its mouth, straight
+var _fade_t := -1.0 # s into the fade to black (< 0: not started)
 var _died := false
 var _fade: ColorRect
 
@@ -159,10 +167,6 @@ func _ready() -> void:
 	_k = body_length / MODEL_LENGTH
 	scale = Vector3.ONE * _k
 	_rng.randomize()
-	for name in ['Gullet0', 'Gullet1', 'Gullet2', 'Gullet3']:
-		var m := _head.get_node_or_null(NodePath(name)) as Node3D
-		if m:
-			_gullet.append(m)
 	var body := get_node_or_null(^'Body')
 	if body:
 		for seg in body.get_children():
@@ -176,7 +180,8 @@ func _ready() -> void:
 		_tail_rest = _tail.basis
 	for d in find_children('*', 'WaterDeformer', true, false):
 		_scale_deformer(d)
-	_mouth_zone.body_entered.connect(_on_mouth_body_entered)
+	_make_bodies_move()
+	_mouth_zone.body_entered.connect(_on_throat_body_entered)
 	_fill_sounds()
 	EventBus.day_started.connect(_on_day_started)
 
@@ -248,7 +253,12 @@ func _physics_process(delta: float) -> void:
 		State.DIVE:
 			if _process_dive(delta):
 				return
-		State.SWALLOW: target_speed = _process_swallow(delta)
+		State.SWALLOW:
+			target_speed = swallow_speed
+			_curve_target = 0.0
+			_dive_in -= delta
+			if _dive_in <= 0.0:
+				_set_state(State.DIVE)
 	if state != State.RISE and state != State.DIVE:
 		_hold_surface(delta)
 	# its turn eases toward the one it wants
@@ -258,11 +268,12 @@ func _physics_process(delta: float) -> void:
 	_move(delta)
 	if state != State.RISE:
 		_min_d = minf(_min_d, _mouth_to_ship())
-	_suck(d, delta)
+	_suck(d)
 	_place_body()
 	_sway_tail()
 	if _ship_held:
-		_carry_ship(delta)
+		ship.global_transform = _frame() * _ship_local
+	_watch_mouth(delta)
 
 ## ---- states --------------------------------------------------------------------
 
@@ -336,7 +347,7 @@ func _process_passed() -> void:
 func _process_dive(delta: float) -> bool:
 	_climb_to(-sink_speed, delta, 0.6)
 	_set_suction(false)
-	if global_position.y < _sea() - despawn_depth:
+	if global_position.y < _sea() - despawn_depth and (_fade_t < 0.0 or _died):
 		if _ship_held:
 			# she stays down there with it, out of sight, until the morning gives her back
 			ship.visible = false
@@ -344,19 +355,6 @@ func _process_dive(delta: float) -> bool:
 		queue_free()
 		return true
 	return false
-
-func _process_swallow(delta: float) -> float:
-	_curve_target = 0.0
-	_swallow_t += delta
-	var t := clampf(_swallow_t / swallow_time, 0.0, 1.0)
-	player.global_position = _frame() * _along_path(smoothstep(0.0, 1.0, t))
-	EventBus.camera_shake_requested.emit(swallow_shake * (1.0 - t * 0.5))
-	if _fade:
-		_fade.modulate.a = smoothstep(swallow_time - fade_time, swallow_time, _swallow_t)
-	if t >= 1.0 and not _died:
-		_died = true
-		EventBus.player_died.emit() # the mission controller restages the morning
-	return swallow_speed
 
 ## The ship's power changed.
 func _on_lights() -> void:
@@ -384,68 +382,70 @@ func _steer_at_lure() -> void:
 
 ## ---- swallowing ----------------------------------------------------------------
 
-func _on_mouth_body_entered(body: Node3D) -> void:
-	if body == player and _swallow_t < 0.0:
-		_swallow_player()
-	elif body == ship and not _ship_held and not ship.freeze:
-		_take_ship()
-
-func _swallow_player() -> void:
-	if player.has_method(&'release_controls'):
-		player.release_controls()
-	if player.has_method(&'set_captured'):
-		player.set_captured(true)
-	_swallow_t = 0.0
-	var inv := _frame().affine_inverse()
-	_path = [inv * player.global_position]
-	for m in _gullet:
-		_path.append(inv * m.global_position)
-	_make_fade()
-	_set_suction(true)
-	_set_state(State.SWALLOW)
-
-## Carried in the mouth from now on, drawn in toward the gullet. Fed, it goes back down -- with
-## anyone still aboard her swallowed along with her.
-func _take_ship() -> void:
+## The ship touched the end of its throat: caught. From now on she moves with it (nothing touches
+## the player: aboard, the deck carries them).
+func _on_throat_body_entered(body: Node3D) -> void:
+	if body != ship or _ship_held or ship.freeze:
+		return
 	_ship_held = true
-	_drift = Vector3.ZERO
 	ship.freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	ship.freeze = true
 	ship.linear_velocity = Vector3.ZERO
 	ship.angular_velocity = Vector3.ZERO
 	_ship_local = _frame().affine_inverse() * ship.global_transform
-	_set_suction(true)
-	if player.has_method(&'ship_aboard') and player.ship_aboard() == ship and _swallow_t < 0.0:
-		_swallow_player()
-	elif state != State.SWALLOW:
-		_set_state(State.DIVE)
+	_feed()
 
-func _carry_ship(delta: float) -> void:
-	if not is_instance_valid(ship):
-		_ship_held = false
+## Caught the ship or has the player in its mouth: it swims on slowly a moment, then goes down.
+func _feed() -> void:
+	if _fed:
 		return
-	if _gullet.size() > 1:
-		var goal := _frame().affine_inverse() * _gullet[1].global_position
-		goal.y = _ship_local.origin.y # she floats in on the water it takes in
-		_ship_local.origin = _ship_local.origin.move_toward(goal, delta * maxf(body_length * 0.01, 1.0))
-	ship.global_transform = _frame() * _ship_local
+	_fed = true
+	_dive_in = _rng.randf_range(dive_delay_min, dive_delay_max)
+	if state != State.DIVE:
+		_set_state(State.SWALLOW)
 
-## A point along the swallowed player's way down, t 0..1, in head space.
-func _along_path(t: float) -> Vector3:
-	if _path.size() < 2:
-		return _path[0] if _path.size() > 0 else Vector3.ZERO
-	var lengths: Array[float] = []
-	var total := 0.0
-	for i in _path.size() - 1:
-		var l := _path[i].distance_to(_path[i + 1])
-		lengths.append(l)
-		total += l
-	var d := t * total
-	for i in lengths.size():
-		if d <= lengths[i] or i == lengths.size() - 1:
-			return _path[i].lerp(_path[i + 1], clampf(d / maxf(lengths[i], 0.001), 0.0, 1.0))
-		d -= lengths[i]
-	return _path[-1]
+## The player in its mouth: the countdown runs (it starts over if they get out); at mouth_time s
+## the dark comes, then death. Tested by position, not by the area's signals: at the helm the
+## player's own collider is switched off.
+func _watch_mouth(delta: float) -> void:
+	if _died:
+		return
+	var player_in := _in_area(_mouth_inside if _mouth_inside else _mouth_zone, player.global_position)
+	if player_in:
+		_feed()
+	if _fade_t < 0.0:
+		_mouth_t = _mouth_t + delta if player_in else 0.0
+		if player_in:
+			EventBus.camera_shake_requested.emit(swallow_shake)
+		if _mouth_t >= mouth_time:
+			_fade_t = 0.0
+			_make_fade()
+	else:
+		_fade_t += delta
+		_fade.modulate.a = clampf(_fade_t / maxf(fade_time, 0.01), 0.0, 1.0)
+		if _fade_t >= fade_time:
+			_died = true
+			EventBus.player_died.emit() # the mission controller restages the morning
+
+## The point is inside one of the area's shapes.
+func _in_area(area: Area3D, p: Vector3) -> bool:
+	for c in area.get_children():
+		var cs := c as CollisionShape3D
+		if cs == null or cs.disabled or cs.shape == null:
+			continue
+		var l := cs.global_transform.affine_inverse() * p
+		var sh := cs.shape
+		if sh is BoxShape3D:
+			var h: Vector3 = (sh as BoxShape3D).size * 0.5
+			if absf(l.x) <= h.x and absf(l.y) <= h.y and absf(l.z) <= h.z:
+				return true
+		elif sh is SphereShape3D:
+			if l.length() <= (sh as SphereShape3D).radius:
+				return true
+		elif sh is CylinderShape3D or sh is CapsuleShape3D:
+			if Vector2(l.x, l.z).length() <= sh.radius and absf(l.y) <= sh.height * 0.5:
+				return true
+	return false
 
 func _make_fade() -> void:
 	var layer := CanvasLayer.new()
@@ -458,29 +458,28 @@ func _make_fade() -> void:
 	layer.add_child(_fade)
 	add_child(layer)
 
-## Hunting, the sea runs into its mouth: a current that carries her toward it, faster than she can
-## sail near the mouth.
-func _suck(d: float, delta: float) -> void:
-	var flow := Vector3.ZERO
+## Hunting, the sea runs into its mouth: a current that pushes her toward it (a force: physics
+## moves her), up to suction_flow m/s near the mouth.
+func _suck(d: float) -> void:
 	var reach := suction_range * _k
 	var hunting := state == State.HUNT or state == State.COMMIT
-	if _lit and hunting and not _ship_held and not ship.freeze and d < reach and d > 1.0 \
-			and global_position.y > _sea() - _radius() and _facing() < deg_to_rad(suction_cone):
+	var on := _lit and hunting and not _ship_held and d < reach and d > 1.0 \
+			and global_position.y > _sea() - _radius() and _facing() < deg_to_rad(suction_cone)
+	if on:
 		var to := global_position - ship.global_position
 		to.y = 0.0
-		flow = to.normalized() * suction_flow * (1.0 - d / reach)
-	_drift = _drift.lerp(flow, minf(1.0, delta / 1.5))
-	if _drift.length() > 0.01 and not ship.freeze:
-		ship.global_position += _drift * delta
-	_set_suction(flow.length() > 0.5 or state == State.SWALLOW)
+		to = to.normalized()
+		var flow := suction_flow * (1.0 - d / reach)
+		var along := ship.linear_velocity.dot(to)
+		if flow > along:
+			ship.apply_central_force(to * (flow - along) / 1.5 * ship.mass)
+	_set_suction(on or _mouth_t > 0.0)
 
-## A new morning puts everything back: the ship, the player's body, the view.
+## A new morning: it is gone, and its fade with it; a ship it was holding floats free again.
 func _on_day_started(_day: int) -> void:
 	if _ship_held and is_instance_valid(ship):
 		ship.freeze = false
 		ship.visible = true
-	if _swallow_t >= 0.0 and player and player.has_method(&'set_captured'):
-		player.set_captured(false)
 	queue_free()
 
 ## ---- movement ------------------------------------------------------------------
@@ -635,10 +634,6 @@ func _radius() -> float:
 func _mult() -> float:
 	return return_multiplier if _returned else 1.0
 
-## The head's own frame, without its scale: what carried things are held in.
-func _frame() -> Transform3D:
-	return Transform3D(_head.global_basis.orthonormalized(), _head.global_position)
-
 func _ship_lit() -> bool:
 	return ship.get(&'powered') != false
 
@@ -689,6 +684,66 @@ func _set_state(s: State) -> void:
 
 ## ---- set-up --------------------------------------------------------------------
 
+## A model's collision usually imports as StaticBody3D, which is meant to stand still: moved with the
+## creature it jumps from place to place and throws whatever it lands on. AnimatableBody3D is the
+## moving kind: it pushes and carries what it touches. Swapped here, so a re-imported model needs
+## nothing done to it.
+## The physics engine can't stretch a collision shape unevenly (a model whose scale was never
+## applied): it would fall back to an even scale, and the collision would no longer match what is
+## seen. So the shapes are rebuilt with the stretch baked in, on a body with no stretch at all.
+func _make_bodies_move() -> void:
+	for body: StaticBody3D in find_children('*', 'StaticBody3D', true, false):
+		var mover := AnimatableBody3D.new()
+		mover.name = body.name
+		mover.collision_layer = body.collision_layer
+		mover.collision_mask = body.collision_mask
+		mover.physics_material_override = body.physics_material_override
+		mover.sync_to_physics = false # moved from our _physics_process
+		add_child(mover) # under the root: its scale is even
+		var at := body.global_transform
+		mover.global_transform = Transform3D(at.basis.orthonormalized(), at.origin)
+		for c in body.get_children():
+			var cs := c as CollisionShape3D
+			if cs == null or cs.shape == null:
+				continue
+			var xf := mover.global_transform.affine_inverse() * cs.global_transform
+			var copy := CollisionShape3D.new()
+			copy.name = cs.name
+			copy.disabled = cs.disabled
+			var baked := _bake_shape(cs.shape, xf)
+			if baked:
+				copy.shape = baked
+			else:
+				copy.shape = cs.shape
+				copy.transform = xf
+			mover.add_child(copy)
+		body.get_parent().remove_child(body)
+		body.free()
+
+## The shape with `xf` (position, turn and any stretch) built into its points; null for shapes
+## made of no points (box, sphere...), which keep a transform instead.
+func _bake_shape(shape: Shape3D, xf: Transform3D) -> Shape3D:
+	if shape is ConcavePolygonShape3D:
+		var faces := (shape as ConcavePolygonShape3D).get_faces()
+		for i in faces.size():
+			faces[i] = xf * faces[i]
+		var concave := ConcavePolygonShape3D.new()
+		concave.backface_collision = true # solid from both sides: nothing slips through its walls
+		concave.set_faces(faces)
+		return concave
+	if shape is ConvexPolygonShape3D:
+		var points := (shape as ConvexPolygonShape3D).points
+		for i in points.size():
+			points[i] = xf * points[i]
+		var convex := ConvexPolygonShape3D.new()
+		convex.points = points
+		return convex
+	return null
+
+## The head's own frame, without its scale: what the caught ship is held in.
+func _frame() -> Transform3D:
+	return Transform3D(_head.global_basis.orthonormalized(), _head.global_position)
+
 ## The water shapes are in world meters: grow them with the body.
 func _scale_deformer(d: WaterDeformer) -> void:
 	d.radius *= _k
@@ -705,7 +760,7 @@ func _set_suction(on: bool) -> void:
 		return
 	if on and not _suction_sound.playing:
 		_suction_sound.play()
-	elif not on and _suction_sound.playing and state != State.SWALLOW:
+	elif not on and _suction_sound.playing:
 		_suction_sound.stop()
 
 func _play(p: AudioStreamPlayer3D) -> void:

@@ -1,9 +1,8 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://c6molmehbe0x6"]
 
-[ext_resource type="Script" path="res://assets/scripts/world/leviathan.gd" id="main_script"]
-
-[ext_resource type="Script" path="res://assets/scripts/world/dry_volume.gd" id="1_frpy1"]
-[ext_resource type="Script" path="res://assets/scripts/world/water_deformer.gd" id="2_23be2"]
+[ext_resource type="Script" uid="uid://ddm71i1yfjrbw" path="res://assets/scripts/world/water_deformer.gd" id="2_23be2"]
+[ext_resource type="PackedScene" uid="uid://dgx8n3bqdrwve" path="res://assets/models/creatures/leviathan/leviathan_fish.glb" id="4_3b8bd"]
+[ext_resource type="Script" uid="uid://doax2jxcestwf" path="res://assets/scripts/world/leviathan.gd" id="main_script"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3b8bd"]
 shading_mode = 2
@@ -176,14 +175,7 @@ left_to_right = 0.2
 size = Vector3(70, 80, 5)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_qpvu1"]
-size = Vector3(70, 60, 60)
-
-[sub_resource type="CylinderMesh" id="CylinderMesh_xcrfi"]
-top_radius = 27.0
-bottom_radius = 27.0
-height = 220.0
-radial_segments = 16
-rings = 2
+size = Vector3(85.66391, 52.368896, 89.47363)
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_2ax84"]
 top_radius = 54.0
@@ -343,145 +335,165 @@ size = Vector3(45, 120, 5)
 left_to_right = 0.85
 size = Vector3(40, 80, 5)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_mouthin"]
+size = Vector3(120, 80, 170)
+
 [node name="Leviathan" type="Node3D" unique_id=800797773]
 script = ExtResource("main_script")
+cruise_speed = 15.0
+chase_speed = 20.0
+hunt_speed = 25.0
 
 [node name="Head" type="Node3D" parent="." unique_id=2082841984]
 
-[node name="Shell" type="MeshInstance3D" parent="Head" unique_id=615420938]
+[node name="Node3D" type="Node3D" parent="Head" unique_id=2136393300]
+visible = false
+
+[node name="Shell" type="MeshInstance3D" parent="Head/Node3D" unique_id=615420938]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 45)
 material_override = SubResource("StandardMaterial3D_3b8bd")
 cast_shadow = 0
 mesh = SubResource("CylinderMesh_uaybq")
 
-[node name="Neck" type="MeshInstance3D" parent="Head" unique_id=1304170383]
+[node name="Neck" type="MeshInstance3D" parent="Head/Node3D" unique_id=1304170383]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 127.5)
 material_override = SubResource("StandardMaterial3D_3b8bd")
 cast_shadow = 0
 mesh = SubResource("CylinderMesh_hr4yq")
 
-[node name="Belly" type="MeshInstance3D" parent="Head" unique_id=1702460211]
+[node name="Belly" type="MeshInstance3D" parent="Head/Node3D" unique_id=1702460211]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, -18, 100)
 material_override = SubResource("StandardMaterial3D_rurlu")
 cast_shadow = 0
 mesh = SubResource("CylinderMesh_wb1bc")
 
-[node name="Lips" type="MeshInstance3D" parent="Head" unique_id=1758811082]
+[node name="Lips" type="MeshInstance3D" parent="Head/Node3D" unique_id=1758811082]
 transform = Transform3D(1, 0, 0, 0, -5.0268095e-08, -1.15, 0, 1, -4.371139e-08, 0, 0, 0)
 material_override = SubResource("StandardMaterial3D_0xlnw")
 cast_shadow = 0
 mesh = SubResource("TorusMesh_pw2f5")
 
-[node name="Snout" type="MeshInstance3D" parent="Head" unique_id=509772154]
+[node name="Snout" type="MeshInstance3D" parent="Head/Node3D" unique_id=509772154]
 transform = Transform3D(44, 0, 0, 0, 20, 0, 0, 0, 30, 0, 40, 7)
 material_override = SubResource("StandardMaterial3D_3b8bd")
 cast_shadow = 0
 mesh = SubResource("SphereMesh_n7mov")
 
-[node name="Throat" type="MeshInstance3D" parent="Head" unique_id=236432158]
+[node name="Throat" type="MeshInstance3D" parent="Head/Node3D" unique_id=236432158]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 115.5)
 material_override = SubResource("StandardMaterial3D_iynbd")
 cast_shadow = 0
 mesh = SubResource("CylinderMesh_pjkrl")
 
-[node name="Raker0" type="MeshInstance3D" parent="Head" unique_id=673936298]
+[node name="Raker0" type="MeshInstance3D" parent="Head/Node3D" unique_id=673936298]
 transform = Transform3D(1, 0, 0, 0, -4.8082526e-08, -1.1, 0, 1, -4.371139e-08, 0, 0, 13)
 material_override = SubResource("StandardMaterial3D_m2fjt")
 cast_shadow = 0
 mesh = SubResource("TorusMesh_1ab6f")
 
-[node name="Raker1" type="MeshInstance3D" parent="Head" unique_id=779353152]
+[node name="Raker1" type="MeshInstance3D" parent="Head/Node3D" unique_id=779353152]
 transform = Transform3D(1, 0, 0, 0, -4.8082526e-08, -1.1, 0, 1, -4.371139e-08, 0, 0, 27)
 material_override = SubResource("StandardMaterial3D_m2fjt")
 cast_shadow = 0
 mesh = SubResource("TorusMesh_ywmb6")
 
-[node name="Raker2" type="MeshInstance3D" parent="Head" unique_id=672351666]
+[node name="Raker2" type="MeshInstance3D" parent="Head/Node3D" unique_id=672351666]
 transform = Transform3D(1, 0, 0, 0, -4.8082526e-08, -1.1, 0, 1, -4.371139e-08, 0, 0, 41)
 material_override = SubResource("StandardMaterial3D_m2fjt")
 cast_shadow = 0
 mesh = SubResource("TorusMesh_3yoky")
 
-[node name="Raker3" type="MeshInstance3D" parent="Head" unique_id=1736735375]
+[node name="Raker3" type="MeshInstance3D" parent="Head/Node3D" unique_id=1736735375]
 transform = Transform3D(1, 0, 0, 0, -4.8082526e-08, -1.1, 0, 1, -4.371139e-08, 0, 0, 55)
 material_override = SubResource("StandardMaterial3D_m2fjt")
 cast_shadow = 0
 mesh = SubResource("TorusMesh_jt0ky")
 
-[node name="Raker4" type="MeshInstance3D" parent="Head" unique_id=633094251]
+[node name="Raker4" type="MeshInstance3D" parent="Head/Node3D" unique_id=633094251]
 transform = Transform3D(1, 0, 0, 0, -4.8082526e-08, -1.1, 0, 1, -4.371139e-08, 0, 0, 69)
 material_override = SubResource("StandardMaterial3D_m2fjt")
 cast_shadow = 0
 mesh = SubResource("TorusMesh_5deoe")
 
-[node name="Raker5" type="MeshInstance3D" parent="Head" unique_id=1075123142]
+[node name="Raker5" type="MeshInstance3D" parent="Head/Node3D" unique_id=1075123142]
 transform = Transform3D(1, 0, 0, 0, -4.8082526e-08, -1.1, 0, 1, -4.371139e-08, 0, 0, 83)
 material_override = SubResource("StandardMaterial3D_m2fjt")
 cast_shadow = 0
 mesh = SubResource("TorusMesh_e6qij")
 
-[node name="Gill0" type="MeshInstance3D" parent="Head" unique_id=948601942]
+[node name="Gill0" type="MeshInstance3D" parent="Head/Node3D" unique_id=948601942]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 95)
 material_override = SubResource("StandardMaterial3D_s40vk")
 cast_shadow = 0
 mesh = SubResource("TorusMesh_nfx4y")
 
-[node name="Gill1" type="MeshInstance3D" parent="Head" unique_id=609566532]
+[node name="Gill1" type="MeshInstance3D" parent="Head/Node3D" unique_id=609566532]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 106)
 material_override = SubResource("StandardMaterial3D_s40vk")
 cast_shadow = 0
 mesh = SubResource("TorusMesh_0xl4n")
 
-[node name="Gill2" type="MeshInstance3D" parent="Head" unique_id=1192519325]
+[node name="Gill2" type="MeshInstance3D" parent="Head/Node3D" unique_id=1192519325]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 117)
 material_override = SubResource("StandardMaterial3D_s40vk")
 cast_shadow = 0
 mesh = SubResource("TorusMesh_o54wl")
 
-[node name="Gill3" type="MeshInstance3D" parent="Head" unique_id=1691909522]
+[node name="Gill3" type="MeshInstance3D" parent="Head/Node3D" unique_id=1691909522]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 128)
 material_override = SubResource("StandardMaterial3D_s40vk")
 cast_shadow = 0
 mesh = SubResource("TorusMesh_qydsg")
 
-[node name="Gill4" type="MeshInstance3D" parent="Head" unique_id=113398018]
+[node name="Gill4" type="MeshInstance3D" parent="Head/Node3D" unique_id=113398018]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 139)
 material_override = SubResource("StandardMaterial3D_s40vk")
 cast_shadow = 0
 mesh = SubResource("TorusMesh_bd0r3")
 
-[node name="EyeL" type="MeshInstance3D" parent="Head" unique_id=1591096853]
+[node name="EyeL" type="MeshInstance3D" parent="Head/Node3D" unique_id=1591096853]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -41, 20, 30)
 material_override = SubResource("StandardMaterial3D_0nq3p")
 cast_shadow = 0
 mesh = SubResource("SphereMesh_xn624")
 
-[node name="PectoralL" type="MeshInstance3D" parent="Head" unique_id=503171342]
+[node name="PectoralL" type="MeshInstance3D" parent="Head/Node3D" unique_id=503171342]
 transform = Transform3D(-0.15038374, -0.8528685, 0.5, 0.9848077, -0.1736482, 0, 0.0868241, 0.49240386, 0.8660254, -75, -30, 140)
 material_override = SubResource("StandardMaterial3D_3b8bd")
 cast_shadow = 0
 mesh = SubResource("PrismMesh_yxiwt")
 
-[node name="EyeR" type="MeshInstance3D" parent="Head" unique_id=663486233]
+[node name="EyeR" type="MeshInstance3D" parent="Head/Node3D" unique_id=663486233]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41, 20, 30)
 material_override = SubResource("StandardMaterial3D_0nq3p")
 cast_shadow = 0
 mesh = SubResource("SphereMesh_m7bh6")
 
-[node name="PectoralR" type="MeshInstance3D" parent="Head" unique_id=380122151]
+[node name="PectoralR" type="MeshInstance3D" parent="Head/Node3D" unique_id=380122151]
 transform = Transform3D(-0.15038374, 0.8528685, -0.5, -0.9848077, -0.1736482, 0, -0.0868241, 0.49240386, 0.8660254, 75, -30, 140)
 material_override = SubResource("StandardMaterial3D_3b8bd")
 cast_shadow = 0
 mesh = SubResource("PrismMesh_1wboc")
 
 [node name="MouthZone" type="Area3D" parent="Head" unique_id=103999942]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 25)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 80)
 collision_layer = 0
 collision_mask = 6
 monitorable = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Head/MouthZone" unique_id=1395261262]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0001373291, 7.109741, 40.263184)
 shape = SubResource("BoxShape3D_qpvu1")
+
+[node name="MouthInside" type="Area3D" parent="Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 80)
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Head/MouthInside"]
+shape = SubResource("BoxShape3D_mouthin")
+debug_color = Color(0.9, 0.2, 0.3, 0.42)
 
 [node name="Gullet0" type="Marker3D" parent="Head" unique_id=878604390]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 35)
@@ -495,17 +507,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 145)
 [node name="Gullet3" type="Marker3D" parent="Head" unique_id=1726111971]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 200)
 
-[node name="ThroatDry" type="MeshInstance3D" parent="Head" unique_id=1328128351]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 113)
-visible = false
-mesh = SubResource("CylinderMesh_xcrfi")
-script = ExtResource("1_frpy1")
-
 [node name="HeadWater" type="Node3D" parent="Head" unique_id=317559169]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 65)
 script = ExtResource("2_23be2")
-radius = 50.0
-max_lift = 14.0
+radius = 98.1
+strength = 3.0
+max_lift = 15.0
 influence_depth = 80.0
 settled_lift = 0.2
 drain_time = 10.0
@@ -515,12 +522,11 @@ drawdown_speed = 5.0
 rebound_height = 8.0
 rebound_time = 6.0
 boil_time = 20.0
-ring_amplitude = 3.0
+ring_amplitude = 5.7
 ring_speed = 14.0
 ring_width = 25.0
 ring_fade_in = 1.5
 ring_lifetime = 25.0
-show_reach = false
 
 [node name="CallSound" type="AudioStreamPlayer3D" parent="Head" unique_id=1843566639]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 35)
@@ -538,6 +544,7 @@ unit_size = 80.0
 max_distance = 1500.0
 
 [node name="Body" type="Node3D" parent="." unique_id=1163469622]
+visible = false
 
 [node name="Seg00" type="Node3D" parent="Body" unique_id=732294909]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 185)
@@ -687,3 +694,12 @@ transform = Transform3D(-4.371139e-08, 0, -1, -0.57357645, -0.81915206, 2.507182
 material_override = SubResource("StandardMaterial3D_3b8bd")
 cast_shadow = 0
 mesh = SubResource("PrismMesh_3guqm")
+
+[node name="leviathan_fish" parent="." unique_id=749777099 instance=ExtResource("4_3b8bd")]
+transform = Transform3D(-1.163483, 0, -1.0171491e-07, 0, 1.163483, 0, 1.0171491e-07, 0, -1.163483, 0, 0, 276.97253)
+
+[node name="OmniLight3D" type="OmniLight3D" parent="leviathan_fish" unique_id=33270278]
+transform = Transform3D(0.8594883, 0, 7.1054274e-15, 0, 0.8594883, 0, -7.1054274e-15, 0, 0.8594883, -2.3777013e-05, 49.294327, 271.97733)
+light_color = Color(0.96, 0.416, 0, 1)
+light_energy = 100.0
+omni_range = 285.821

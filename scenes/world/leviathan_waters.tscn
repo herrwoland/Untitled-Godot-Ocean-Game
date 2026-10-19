@@ -1,10 +1,15 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://4qgamwgve5v3"]
 
-[ext_resource type="Script" path="res://assets/scripts/world/leviathan_encounter.gd" id="main_script"]
+[ext_resource type="Script" uid="uid://cq625o3xlla7m" path="res://assets/scripts/world/leviathan_encounter.gd" id="main_script"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_mfuu5"]
 height = 120.0
 radius = 400.0
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_5s6u7"]
+top_radius = 400.0
+bottom_radius = 400.0
+height = 120.0
 
 [node name="LeviathanWaters" type="Node3D" unique_id=2134943945 node_paths=PackedStringArray("encounter_area")]
 script = ExtResource("main_script")
@@ -17,3 +22,8 @@ monitorable = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="EncounterArea" unique_id=1797575436]
 shape = SubResource("CylinderShape3D_mfuu5")
+debug_color = Color(0.71, 0.34316668, 0, 0.85490197)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1237140656]
+visible = false
+mesh = SubResource("CylinderMesh_5s6u7")

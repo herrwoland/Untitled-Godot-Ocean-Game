@@ -98,8 +98,8 @@ func _pick_bearing() -> Vector3:
 			break
 	return best
 
-## A ship it carried off and kept is given back by the morning (the mission controller has
-## already put her at her mooring).
+## A ship it took down and kept is given back by the morning (the mission controller has already
+## put her at her mooring).
 func _on_day_started(_day: int) -> void:
 	if ship and ship.has_meta(Leviathan.TAKEN_META):
 		ship.remove_meta(Leviathan.TAKEN_META)

@@ -147,9 +147,12 @@ of the sea with its mouth always open. Why the power panel exists. Code: `leviat
   sidestepping, zigzags, circles and crossing its line all fail in the preview (210/210) and in game.
 - A node in group `leviathan_lure` within 400 m draws it while the ship is dark (hook for throwable
   distractions, nothing uses it yet).
-- **Swallowed:** anything in its MouthZone. The player can only look round while drawn down the
-  gullet for 15 s, the last 3 s fading to black, then dies (same morning). The ship is carried in
-  the mouth; taken without the player aboard, she is kept until the morning gives her back.
+- **Swallowed:** the ship touching its MouthZone (an Area3D at the end of the throat) is caught there
+  and carried with it; nothing moves the player, who stays aboard like on any moving deck. A player
+  inside its MouthInside (an Area3D over the mouth cavity) for 10 s straight is lost: the view fades
+  to black (3 s), then they die (same morning). Once it has caught her or the player is in its
+  mouth it slows to 3 m/s for 3-4 s, then goes back down; a ship it takes down without the player is
+  kept until the morning gives her back. Its model's collision is made a moving body (two-sided).
 - Placeholder built from primitives (`leviathan.tscn`: Head + Body/Seg00..08). The real model needs
   to bend: a rigid head piece and a body cut in segments (or bones) along +Z, see §7.
 
