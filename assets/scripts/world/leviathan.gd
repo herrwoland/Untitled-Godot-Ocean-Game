@@ -30,7 +30,9 @@ class_name Leviathan extends Node3D
 ## goes down (SWALLOW, then DIVE). A ship it took down without the player is kept until morning.
 ##
 ## Body: the Head (mouth at the origin, the body toward +Z) is rigid; the Body's segments are laid
-## along the path the head swam, so the long body bends through the curves behind it. The scene is
+## along the path the head swam, so the long body bends through the curves behind it. A rigged model
+## bends the same way: its spine (the bone chain from body_center down to the tail, bones named
+## *obsolete* left alone) is turned to follow the path, with a slow tail beat on top. The scene is
 ## built at MODEL_LENGTH; body_length scales the whole creature.
 
 enum State { RISE, DRIFT, HUNT, RUNUP, COMMIT, MISS, PASSED, DIVE, SWALLOW }
@@ -74,8 +76,10 @@ const HEAD_LENGTH := 160.0 # m (model units) from the mouth to where the Body's 
 @export var steer_ease := 8.0
 ## Most the head tilts nose up or down (degrees) as it climbs or sinks.
 @export var max_pitch := 15.0
-@export var tail_sway := 8.0 # degrees
-@export var tail_period := 9.0 # s
+@export var tail_sway := 8.0 # degrees the tail beats to each side
+@export var tail_period := 9.0 # s for one beat
+## m down the body the beat travels per radian: lower = more of an S-wave along the body.
+@export var tail_wave := 120.0
 
 @export_group('Passing by')
 ## Gaps between its flank and the ship as it passes (m).
@@ -153,6 +157,10 @@ var _segments: Array[Node3D] = []
 var _seg_offsets: Array[float] = [] # m behind the mouth (model units)
 var _tail: Node3D
 var _tail_rest := Basis.IDENTITY
+var _skel: Skeleton3D # a rigged model's skeleton (null for the placeholder)
+var _spine: Array[int] = [] # its spine bones, head to tail
+var _spine_s: Array[float] = [] # m behind the mouth of each (model units, at rest)
+var _spine_rest: Array[Quaternion] = [] # their rest turn, in the skeleton's space
 var _rng := RandomNumberGenerator.new()
 var _fed := false # it caught the ship or the player is in its mouth
 var _ship_held := false
@@ -181,6 +189,7 @@ func _ready() -> void:
 	for d in find_children('*', 'WaterDeformer', true, false):
 		_scale_deformer(d)
 	_make_bodies_move()
+	_find_spine()
 	_mouth_zone.body_entered.connect(_on_throat_body_entered)
 	_fill_sounds()
 	EventBus.day_started.connect(_on_day_started)
@@ -505,7 +514,9 @@ func _place_body() -> void:
 	# for each segment: a little ahead of it, where it is, a little behind it (all in order down the
 	# body, so one walk along the trail finds them all)
 	var wants := PackedFloat32Array([HEAD_LENGTH * _k])
-	for o in _seg_offsets:
+	var segments: Array[Node3D] = _segments if _body_shown() else ([] as Array[Node3D])
+	for i in segments.size():
+		var o := _seg_offsets[i]
 		var back := o * _k
 		wants.append(maxf(back - 6.0 * _k, 0.0))
 		wants.append(back)
@@ -516,11 +527,72 @@ func _place_body() -> void:
 	var head_dir := global_position - pts[0]
 	if head_dir.length() > 0.01:
 		_head.global_transform = Transform3D(Basis.looking_at(head_dir.normalized(), Vector3.UP).scaled(s), global_position)
-	for i in _segments.size():
+	for i in segments.size():
 		var dir := pts[1 + i * 3] - pts[1 + i * 3 + 2]
 		if dir.length() < 0.01:
 			dir = _flat_dir(_yaw)
-		_segments[i].global_transform = Transform3D(Basis.looking_at(dir.normalized(), Vector3.UP).scaled(s), pts[1 + i * 3 + 1])
+		segments[i].global_transform = Transform3D(Basis.looking_at(dir.normalized(), Vector3.UP).scaled(s), pts[1 + i * 3 + 1])
+	_pose_spine()
+
+## The placeholder body is in use (a rigged model hides it and bends itself).
+func _body_shown() -> bool:
+	var body := get_node_or_null(^'Body') as Node3D
+	return body != null and body.visible
+
+## The rigged spine: each bone turned the way the path runs where it is (relative to the way the
+## head faces), so on a straight course it is the rest pose and on a curve the body bends through
+## it. The tail beats slowly on top, growing toward the tail and travelling down the body.
+func _pose_spine() -> void:
+	if _spine.is_empty():
+		return
+	var wants := PackedFloat32Array()
+	var last := 0.0
+	for sb in _spine_s:
+		for w in [maxf(sb * _k - 6.0 * _k, 0.0), sb * _k + 6.0 * _k]:
+			last = maxf(last, w) # ascending, for one walk along the trail
+			wants.append(last)
+	var pts := _trail_points(wants)
+	var ahead := -global_basis.z.normalized() # the way the head faces
+	var sk_rot := _skel.global_basis.orthonormalized().get_rotation_quaternion()
+	var sk_inv := sk_rot.inverse()
+	var beat := TAU * Time.get_ticks_msec() / 1000.0 / tail_period
+	var placed := {}
+	for i in _spine.size():
+		var along := pts[i * 2] - pts[i * 2 + 1] # the path here, toward the head
+		var turn := Quaternion(ahead, along.normalized()) if along.length() > 0.01 else Quaternion.IDENTITY
+		var reach := pow(clampf(_spine_s[i] / MODEL_LENGTH, 0.0, 1.0), 1.5)
+		turn = Quaternion(Vector3.UP, deg_to_rad(tail_sway) * reach * sin(beat - _spine_s[i] / tail_wave)) * turn
+		var g := (sk_inv * turn * sk_rot) * _spine_rest[i] # its turn in the skeleton's space
+		var b := _spine[i]
+		var parent := _skel.get_bone_parent(b)
+		var pg: Quaternion = placed.get(parent, _skel.get_bone_global_rest(parent).basis.get_rotation_quaternion() if parent >= 0 else Quaternion.IDENTITY)
+		_skel.set_bone_pose_rotation(b, (pg.inverse() * g).normalized())
+		placed[b] = g
+
+## A rigged model: its spine is the chain from the bone named body_center down to the tail (bones
+## named *obsolete*, the jaw, are left alone).
+func _find_spine() -> void:
+	for sk: Skeleton3D in find_children('*', 'Skeleton3D', true, false):
+		var b := sk.find_bone('body_center')
+		if b < 0:
+			continue
+		_skel = sk
+		var to_root := global_transform.affine_inverse() * sk.global_transform
+		while b >= 0:
+			_spine.append(b)
+			var rest := sk.get_bone_global_rest(b)
+			_spine_s.append(maxf((to_root * rest.origin).z, 0.0))
+			_spine_rest.append(rest.basis.get_rotation_quaternion())
+			var next := -1
+			for c in sk.get_bone_children(b):
+				if not sk.get_bone_name(c).contains('obsolete'):
+					next = c
+					break
+			b = next
+		# a bent body reaches outside its rest box: don't let it be culled while still in view
+		for m: MeshInstance3D in sk.find_children('*', 'MeshInstance3D', true, false):
+			m.extra_cull_margin = MODEL_LENGTH * 0.5
+		return
 
 ## The points `wants` m (ascending) behind the mouth along the path it swam.
 func _trail_points(wants: PackedFloat32Array) -> PackedVector3Array:
@@ -547,6 +619,8 @@ func _trail_points(wants: PackedFloat32Array) -> PackedVector3Array:
 func _trail_length() -> float:
 	var longest := MODEL_LENGTH
 	for o in _seg_offsets:
+		longest = maxf(longest, o + 40.0)
+	for o in _spine_s:
 		longest = maxf(longest, o + 40.0)
 	return longest * _k
 

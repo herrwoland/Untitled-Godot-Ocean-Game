@@ -235,11 +235,11 @@ Later (milestones 4–7):
   and sounds: presence loop, wake, arm grab, grip breaking, hull creak.
 - The leviathan: ~500 m basking-shark-like body, mouth always open (pale gill rakers inside), a
   long dark throat the player is drawn down (the camera goes inside it: model the inside too).
-  It bends along its path, so it is not one rigid mesh: a rigid head (mouth at the origin, body
-  toward +Z, the first ~160 m) and the body in pieces or a bone chain behind it, each laid on the
-  path by the code (`leviathan.tscn`: Head, Body/Seg00..08 at their distance behind the mouth; a
-  `Tail` node is swayed). Axis at the waterline when it swims half out. Sounds: call, surfacing,
-  suction.
+  It bends along its path: one skinned mesh with a spine bone chain from `body_center` (at the
+  head) down to the tail; the code turns each spine bone to follow the path the head swam, plus a
+  slow tail beat (`tail_sway`, `tail_period`, `tail_wave`). Bones with "obsolete" in the name (the
+  jaw) are left alone. Done: `leviathan_fish.glb` (2026-10-19). Its collision does not bend (it is
+  the rest shape). Axis at the waterline when it swims half out. Sounds: call, surfacing, suction.
 
 ## 8. Open Questions (decide when relevant)
 
