@@ -340,13 +340,40 @@ left_to_right = 0.85
 size = Vector3(40, 80, 5)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_23be2"]
-albedo_color = Color(0.6045571, 0.5905535, 0.839016, 1)
 albedo_texture = ExtResource("4_uaybq")
 roughness = 0.74
 clearcoat_enabled = true
 clearcoat = 0.4
 clearcoat_roughness = 1.0
 texture_filter = 0
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_spine05"]
+radius = 66.5
+height = 172.6
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_spine06"]
+radius = 60.3
+height = 166.6
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_spine07"]
+radius = 54.4
+height = 142.4
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_spine08"]
+radius = 44.3
+height = 123.4
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_spine09"]
+radius = 34.0
+height = 104.5
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_spine10"]
+radius = 30.8
+height = 100.6
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_spine11"]
+radius = 44.5
+height = 227.9
 
 [node name="Leviathan" type="Node3D" unique_id=800797773]
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
@@ -527,7 +554,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 200)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -40.01281, 65)
 script = ExtResource("2_23be2")
 radius = 100.0
-max_lift = 15.0
+max_lift = 50.0
 influence_depth = 80.0
 settled_lift = 0.0
 drain_time = 10.0
@@ -711,6 +738,57 @@ material_override = SubResource("StandardMaterial3D_3b8bd")
 cast_shadow = 0
 mesh = SubResource("PrismMesh_3guqm")
 
+[node name="BodyColliders" type="Node3D" parent="."]
+
+[node name="spine05" type="AnimatableBody3D" parent="BodyColliders"]
+transform = Transform3D(1, 8.729562e-08, 0, 1.0230965e-08, -0.11719907, -0.99310845, -8.6694016e-08, 0.99310845, -0.11719907, 1.7573259, 17.931019, 258.16827)
+sync_to_physics = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BodyColliders/spine05"]
+shape = SubResource("CapsuleShape3D_spine05")
+
+[node name="spine06" type="AnimatableBody3D" parent="BodyColliders"]
+transform = Transform3D(1, 8.047556e-08, 0, 1.84082e-08, -0.22874273, -0.9734869, -7.8341905e-08, 0.9734869, -0.22874273, 1.7573295, 10.358362, 300.18433)
+sync_to_physics = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BodyColliders/spine06"]
+shape = SubResource("CapsuleShape3D_spine06")
+
+[node name="spine07" type="AnimatableBody3D" parent="BodyColliders"]
+transform = Transform3D(1, 8.509173e-08, 0, 2.4110403e-08, -0.28334603, -0.95901775, -8.1604476e-08, 0.95901775, -0.28334603, 1.7573328, 0.34291267, 338.65833)
+sync_to_physics = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BodyColliders/spine07"]
+shape = SubResource("CapsuleShape3D_spine07")
+
+[node name="spine08" type="AnimatableBody3D" parent="BodyColliders"]
+transform = Transform3D(1, 8.2379565e-08, 1.7763568e-15, 2.2018515e-08, -0.26728126, -0.9636186, -7.938248e-08, 0.9636186, -0.26728126, 1.7573357, -9.06184, 371.5139)
+sync_to_physics = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BodyColliders/spine08"]
+shape = SubResource("CapsuleShape3D_spine08")
+
+[node name="spine09" type="AnimatableBody3D" parent="BodyColliders"]
+transform = Transform3D(1, 8.464563e-08, -1.7763568e-15, 2.1458323e-08, -0.25350776, -0.9673334, -8.188054e-08, 0.9673334, -0.25350776, 1.7573386, -18.344454, 405.95728)
+sync_to_physics = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BodyColliders/spine09"]
+shape = SubResource("CapsuleShape3D_spine09")
+
+[node name="spine10" type="AnimatableBody3D" parent="BodyColliders"]
+transform = Transform3D(1, 8.5749434e-08, 0, 1.6143684e-08, -0.18826577, -0.9821181, -8.4216076e-08, 0.9821181, -0.18826577, 1.7573419, -26.649952, 442.78238)
+sync_to_physics = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BodyColliders/spine10"]
+shape = SubResource("CapsuleShape3D_spine10")
+
+[node name="spine11" type="AnimatableBody3D" parent="BodyColliders"]
+transform = Transform3D(1, 8.754149e-08, 0, 7.0747306e-09, -0.08081575, -0.996729, -8.725514e-08, 0.996729, -0.08081575, 1.7573496, -35.92672, 531.11914)
+sync_to_physics = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BodyColliders/spine11"]
+shape = SubResource("CapsuleShape3D_spine11")
+
 [node name="leviathan_fish" parent="." unique_id=749777099 instance=ExtResource("4_3b8bd")]
 transform = Transform3D(-1.163483, 0, -1.0171491e-07, 0, 1.163483, 0, 1.0171491e-07, 0, -1.163483, 0, 0, 276.97253)
 
@@ -723,12 +801,14 @@ shape = null
 
 [node name="OmniLight3D" type="OmniLight3D" parent="leviathan_fish" unique_id=33270278]
 transform = Transform3D(0.8594883, 0, 7.1054274e-15, 0, 0.8594883, 0, -7.1054274e-15, 0, 0.8594883, -45.1522, 31.56441, 215.00525)
+visible = false
 light_color = Color(0.96, 0.416, 0, 1)
 light_energy = 100.0
 omni_range = 109.698
 
 [node name="OmniLight3D2" type="OmniLight3D" parent="leviathan_fish" unique_id=1728768880]
 transform = Transform3D(0.8594883, 0, 7.1054274e-15, 0, 0.8594883, 0, -7.1054274e-15, 0, 0.8594883, 45.97957, 31.564411, 215.00528)
+visible = false
 light_color = Color(0.96, 0.416, 0, 1)
 light_energy = 100.0
 omni_range = 109.698

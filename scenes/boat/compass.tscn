@@ -14,6 +14,7 @@ metadata/_gltf_primary_texture_coord = 0
 
 [node name="compass" type="Node3D" unique_id=553590637]
 script = ExtResource("1_ci5km")
+north_offset_deg = 180.0
 
 [node name="compass" parent="." unique_id=1602209663 instance=ExtResource("1_2m26c")]
 

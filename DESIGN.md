@@ -128,8 +128,9 @@ of the sea with its mouth always open. Why the power panel exists. Code: `leviat
 `leviathan_encounter.gd` + `scenes/world/leviathan_waters.tscn` (EncounterArea, user-sized).
 - **Comes** only at night (sun dimmer than `night_sun_energy`, until there is a clock), when the
   player swims or sails into the EncounterArea; once per entry, 240 s cooldown. Debug builds: F8.
-- **Never pops in:** made 250 m down ~1.5 km off, ahead of the ship (±60°), it swims up. Its call
-  is heard ~10 s before it breaks the surface (5 s moan, 5 s silence), ~1 km off; the water domes,
+- **Never pops in:** made 250 m down well off, ahead of the ship (±60°), it swims up. Its call
+  is heard ~10 s before it breaks the surface (5 s moan, 5 s silence), 1.5-2.5 km from where the
+  ship will be by then (`surface_distance_min/max`); the water domes,
   breaks and rings (two WaterDeformers).
 - **Always on a curve:** far too big to turn on the spot. Its body follows the path its head swam
   (the Head is rigid, the Body's segments are laid along the trail), so it bends through curves.

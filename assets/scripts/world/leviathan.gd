@@ -6,7 +6,7 @@ class_name Leviathan extends Node3D
 ## backups/leviathan_replays/leviathan_tuning.html, which these defaults come from):
 ##
 ##  - RISE: swims up from the deep on a gentle drifting curve. Shortly before it breaks the surface
-##    its call is heard (call_lead s ahead), then silence; it surfaces ~surface_distance off. Its
+##    its call is heard (call_lead s ahead), then silence; it surfaces surface_distance_min..max off. Its
 ##    WaterDeformers swell, break and calm the sea.
 ##  - DRIFT: the ship is dark, it does not know she is there. Its curve was aimed at spawn to pass
 ##    dark_gap_min..max off her flank; it passes, then goes down (PASSED, DIVE).
@@ -55,8 +55,10 @@ const HEAD_LENGTH := 160.0 # m (model units) from the mouth to where the Body's 
 @export var rise_climb := 5.0 # m/s fastest climb; it eases off near the surface
 ## Seconds to ease out of the climb: higher = a slower, gentler surfacing.
 @export var rise_ease := 6.0
-## How far from the ship it breaks the surface (m). Used to place it.
-@export var surface_distance := 1000.0
+## How far from the ship it breaks the surface (m): a random distance between these, measured
+## from where she will be by then (sailing toward it doesn't bring it up on top of her).
+@export var surface_distance_min := 1500.0
+@export var surface_distance_max := 2500.0
 ## Seconds before it breaks the surface that its call is heard (the call is ~5 s, then silence).
 @export var call_lead := 10.0
 
@@ -85,6 +87,11 @@ const HEAD_LENGTH := 160.0 # m (model units) from the mouth to where the Body's 
 @export var tail_period := 20.0
 ## How much the head swings against the tail (fraction of the tail's swing).
 @export_range(0.0, 1.0, 0.01) var head_recoil := 0.12
+
+@export_group('Collision')
+## The model's own collision (its whole mesh at rest: it does not bend). Untick once BodyColliders
+## and a head-only collision on the model cover the fish.
+@export var model_collision := true
 
 @export_group('Jaw tremble')
 ## The jaw shakes against the sea pushing into its open mouth (a rigged model's jaw bones).
@@ -187,6 +194,10 @@ var _jaw: Array[int] = [] # the jaw bones
 var _jaw_rest: Array[Quaternion] = []
 var _jaw_noise := FastNoiseLite.new()
 var _jaw_t := 0.0
+## BodyColliders: each child named after a bone follows that bone (its offset from it at rest).
+var _colliders: Array[Node3D] = []
+var _collider_bones: Array[int] = []
+var _collider_offsets: Array[Transform3D] = []
 var _rng := RandomNumberGenerator.new()
 var _fed := false # it caught the ship or the player is in its mouth
 var _ship_held := false
@@ -220,7 +231,7 @@ func _ready() -> void:
 	_fill_sounds()
 	EventBus.day_started.connect(_on_day_started)
 
-## Places it despawn_depth under the sea, far enough off that it surfaces ~surface_distance from
+## Places it despawn_depth under the sea, far enough off that it surfaces surface_distance_min..max from
 ## the ship along `bearing` (a flat direction from the ship), on a curve that would carry it past
 ## her dark_gap off its flank.
 func begin(p_ship: RigidBody3D, p_player: Node3D, p_water: Node3D, bearing: Vector3) -> void:
@@ -229,9 +240,13 @@ func begin(p_ship: RigidBody3D, p_player: Node3D, p_water: Node3D, bearing: Vect
 	water = p_water
 	bearing.y = 0.0
 	bearing = bearing.normalized()
-	# the run it swims climbing up until its back breaks the surface
-	var run := maxf(despawn_depth - _radius(), 0.0) / maxf(rise_climb, 0.1) * rise_speed
-	var origin := ship.global_position + bearing * (surface_distance + run)
+	# the run it swims climbing up until its back breaks the surface, and where she'll be by then
+	var rise_time := maxf(despawn_depth - _radius(), 0.0) / maxf(rise_climb, 0.1)
+	var run := rise_time * rise_speed
+	var flat_vel := Vector3(ship.linear_velocity.x, 0.0, ship.linear_velocity.z)
+	var ship_then := ship.global_position + flat_vel * rise_time
+	var dist := _rng.randf_range(minf(surface_distance_min, surface_distance_max), maxf(surface_distance_min, surface_distance_max))
+	var origin := ship_then + bearing * (dist + run)
 	origin.y = _sea() - despawn_depth
 	_curve = (1.0 if _rng.randf() < 0.5 else -1.0) / (drift_radius * _k)
 	_curve_target = _curve
@@ -243,7 +258,7 @@ func begin(p_ship: RigidBody3D, p_player: Node3D, p_water: Node3D, bearing: Vect
 	_yaw = toward
 	for i in range(-60, 61):
 		var yaw := toward + deg_to_rad(i)
-		var c := _closest(at, yaw, _curve, _ship2(), 9000.0)
+		var c := _closest(at, yaw, _curve, Vector2(ship_then.x, ship_then.z), 9000.0)
 		var err := absf(c.x - (gap + _radius()))
 		if c.y > run and err < best_err:
 			best_err = err
@@ -308,6 +323,7 @@ func _physics_process(delta: float) -> void:
 	_suck(d)
 	_place_body()
 	_shake_jaw(delta)
+	_place_colliders()
 	_sway_tail()
 	if _ship_held:
 		ship.global_transform = _frame() * _ship_local
@@ -599,6 +615,11 @@ func _pose_spine() -> void:
 		_skel.set_bone_pose_rotation(b, (pg.inverse() * g).normalized())
 		placed[b] = g
 
+## Each body collider where its bone is now, so the collision bends with the body.
+func _place_colliders() -> void:
+	for i in _colliders.size():
+		_colliders[i].global_transform = _skel.global_transform * _skel.get_bone_global_pose(_collider_bones[i]) * _collider_offsets[i]
+
 ## The jaw trembles on smooth noise, harder the faster it swims: each jaw bone turned a little from
 ## its rest pose, mostly about its hinge (its own X), the rest a side-to-side twist.
 func _shake_jaw(delta: float) -> void:
@@ -632,6 +653,15 @@ func _find_spine() -> void:
 		_jaw_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 		_jaw_noise.frequency = 1.0
 		_jaw_noise.seed = _rng.randi()
+		var holder := get_node_or_null(^'BodyColliders')
+		if holder:
+			for c in holder.get_children():
+				var bone := sk.find_bone(c.name)
+				if c is Node3D and bone >= 0:
+					_colliders.append(c)
+					_collider_bones.append(bone)
+					_collider_offsets.append((sk.global_transform * sk.get_bone_global_rest(bone)).affine_inverse() * c.global_transform)
+					(c as Node3D).top_level = true
 		var to_root := global_transform.affine_inverse() * sk.global_transform
 		while b >= 0:
 			_spine.append(b)
@@ -822,6 +852,12 @@ func _set_state(s: State) -> void:
 ## seen. So the shapes are rebuilt with the stretch baked in, on a body with no stretch at all.
 func _make_bodies_move() -> void:
 	for body: StaticBody3D in find_children('*', 'StaticBody3D', true, false):
+		if body is AnimatableBody3D:
+			continue # already a moving body (BodyColliders' capsules)
+		if not model_collision:
+			body.get_parent().remove_child(body)
+			body.free()
+			continue
 		var mover := AnimatableBody3D.new()
 		mover.name = body.name
 		mover.collision_layer = body.collision_layer

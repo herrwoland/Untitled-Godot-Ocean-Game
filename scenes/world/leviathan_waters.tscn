@@ -14,6 +14,8 @@ height = 120.0
 [node name="LeviathanWaters" type="Node3D" unique_id=2134943945 node_paths=PackedStringArray("encounter_area")]
 script = ExtResource("main_script")
 encounter_area = NodePath("EncounterArea")
+bearing_spread = 50.0
+debug_key = 4194333
 
 [node name="EncounterArea" type="Area3D" parent="." unique_id=681071646]
 collision_layer = 0
@@ -25,5 +27,6 @@ shape = SubResource("CylinderShape3D_mfuu5")
 debug_color = Color(0.71, 0.34316668, 0, 0.85490197)
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1237140656]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -12.644104, 0)
 visible = false
 mesh = SubResource("CylinderMesh_5s6u7")
