@@ -196,6 +196,22 @@ group_uniforms;
 /** Seamless foam pattern the wake and contact foam are cut from (bright = foam). */
 uniform sampler2D foam_pattern_tex : repeat_enable, filter_linear_mipmap;
 
+// White water from WaterDeformers and breach splashes (breaking swell rings, dome flanks, the
+// boil left where something went under). Cut from foam_pattern_tex like the wake, so it is lace
+// and patches, never a solid sheet.
+group_uniforms shape_foam;
+/** Opacity of the white water. */
+uniform float shape_foam_strength : hint_range(0.0, 1.0, 0.01) = 0.9;
+/** Breaks it into patches; as the foam fades it falls apart into lace and then islands. */
+uniform float shape_foam_breakup : hint_range(0.0, 1.0, 0.01) = 0.55;
+/** World size (m) of one tile of the foam pattern. */
+uniform float shape_foam_tile_size : hint_range(1.0, 64.0, 0.1) = 9.0;
+/** How much the pattern's gaps show through thick foam (0 = solid white). */
+uniform float shape_foam_lace : hint_range(0.0, 1.0, 0.01) = 0.5;
+/** Bubbles stirred under the foam glow pale green-blue (uses wake_tint_color). */
+uniform float shape_foam_tint : hint_range(0.0, 1.0, 0.01) = 0.5;
+group_uniforms;
+
 // Ship wakes: world-space trail map (r = foam, g = churn) around the camera, from wake_map.gd.
 group_uniforms wake;
 uniform sampler2D wake_map : filter_linear, repeat_disable;
@@ -389,7 +405,16 @@ vec4 water_shapes_eval(vec2 p, out float foam) {
 			if (abs(u) > 4.0) continue;
 			float g = exp(-u * u);
 			result.xyz += vec3(a.w * g, a.w * g * (-2.0 * u / b.x) * rel / max(r, 1e-3));
-			foam = max(foam, b.w * g * clamp(a.w, 0.0, 1.0));
+			// A swell only breaks where it is steep: real crests spill from a slope of ~0.3 (the
+			// limit is ~0.44). Then a white line runs just ahead of the crest and leaves a fading
+			// trail of spent foam behind it. A gentle swell stays clean, except that the sea's own
+			// small waves break a little more readily riding its crest (gated by them in fragment()).
+			float steep = abs(a.w) * 0.858 / b.x; // Steepest slope of the swell.
+			float breaking = smoothstep(0.12, 0.35, steep);
+			float lead = u - 0.35;
+			float crest = lead > 0.0 ? exp(-lead * lead * 6.0) // the breaking line, bright
+					: 0.55 * exp(-lead * lead * 4.0) + 0.45 * exp(-lead * lead * 0.6); // spent foam behind
+			foam = max(foam, b.w * (breaking * crest + 0.25 * g));
 		} else {
 			// Churned water left where something went under.
 			float q = dot(rel, rel) / (a.z * a.z);
@@ -602,7 +627,13 @@ void fragment() {
 	}
 	// Foam texture. The 3.0 keeps the foam exactly as strong as before for a white texture (this
 	// used to be one stretched read per cascade, summed).
-	foam_alpha = 3.0 * mix(1.0, texture(foam_noise_tex, UV / foam_texture_tile_size).r, foam_texture_strength);
+	// Two reads at unrelated sizes and angles, so the pattern never visibly repeats; the blend is
+	// stretched back to the texture's own contrast.
+	vec2 foam_uv = UV / foam_texture_tile_size;
+	float foam_tex = texture(foam_noise_tex, foam_uv).r * 0.6
+			+ texture(foam_noise_tex, mat2(vec2(0.799, 0.602), vec2(-0.602, 0.799)) * foam_uv * 0.413 + 0.37).r * 0.4;
+	foam_tex = clamp(0.5 + (foam_tex - 0.5) * 1.39, 0.0, 1.0);
+	foam_alpha = 3.0 * mix(1.0, foam_tex, foam_texture_strength);
 	gradient *= blocker_mask; // calm zones lose their wave normals and foam too
 	float shape_foam;
 	vec4 shape = water_shapes_eval(UV, shape_foam);
@@ -614,7 +645,8 @@ void fragment() {
 	rain_rings *= rain_fade;
 	gradient.xy *= 1.0 - rain_flatten * rain_intensity;
 	rain_wet = rain_intensity * rain_matte;
-	foam_factor = max(smoothstep(0.0, 1.0, gradient.z*0.75) * exp(-dist*0.0075), shape_foam);
+	float wave_foam = smoothstep(0.0, 1.0, gradient.z*0.75);
+	foam_factor = wave_foam * exp(-dist*0.0075);
 
 	// A back face is the underside when WE are under the water, not when this particular scrap
 	// of sea happens to sit above our eyes: that comparison is a horizontal plane at eye level,
@@ -670,6 +702,17 @@ void fragment() {
 	float wake_foam = smoothstep(wake_noise * wake_foam_breakup, wake_noise * wake_foam_breakup + 0.25, wake.x) * wake_foam_strength;
 	wake_foam *= 1.0 - wake_foam_lace * wake_noise; // Keeps the lace visible in thick fresh foam too.
 	contact.x = max(contact.x, wake_foam);
+	// White water from the water shapes, cut into lace the same way. Where the sea's own waves
+	// are cresting it holds on longest, so a weak swell only catches their whitecaps.
+	if (shape_foam > 0.001) { // Its texture reads only where there is any.
+		float shape_noise = foam_gaps(world_frag.xz / shape_foam_tile_size, TIME * vec2(0.006, -0.004)) * (1.0 - 0.7 * wave_foam);
+		// A crest never breaks all along its length at once: big patches of it stay dark.
+		float shape_patches = 1.0 - smoothstep(0.4, 0.9, texture(foam_pattern_tex, world_frag.xz / (shape_foam_tile_size * 7.0) + 0.21).r);
+		float shape_threshold = 0.15 * (1.0 - wave_foam) + shape_noise * shape_foam_breakup + shape_patches * 0.5;
+		float shape_white = smoothstep(shape_threshold, shape_threshold + 0.25, shape_foam);
+		shape_white *= (1.0 - shape_foam_lace * shape_noise) * shape_foam_strength;
+		contact.x = max(contact.x, shape_white);
+	}
 	gradient.xy *= 1.0 - wake_flatten * wake.y;
 
 	if (underside > 0.5) {
@@ -736,7 +779,7 @@ void fragment() {
 	vec3 depth_water_color = screen_albedo * survives + water_color.rgb * lit_column;
 	// ===================== shine through ===================================#
 	depth_water_color = mix(depth_water_color, contact_tint_color, contact.y);
-	depth_water_color = mix(depth_water_color, wake_tint_color, wake.y * wake_tint_strength);
+	depth_water_color = mix(depth_water_color, wake_tint_color, max(wake.y * wake_tint_strength, clamp(shape_foam, 0.0, 1.0) * shape_foam_tint));
 	ALBEDO = mix(depth_water_color, foam_color.rgb, foam_factor * foam_alpha * foam_alpha);
 	ALBEDO = mix(ALBEDO, foam_color.rgb, contact.x);
 	// A dark mass under the water swallows the light that would come back up through it, so
