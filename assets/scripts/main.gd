@@ -27,7 +27,17 @@ func _init() -> void:
 	if DisplayServer.window_get_vsync_mode() != DisplayServer.VSYNC_DISABLED:
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	DisplayServer.window_set_size(DisplayServer.screen_get_size() * 0.75)
-	DisplayServer.window_set_position(DisplayServer.screen_get_size() * 0.25 / 2.0)
+	_center_window.call_deferred() # Once the window exists, so its title bar is measured.
+
+## Centres the window in the part of its screen the taskbar leaves free. Positions are on the
+## whole desktop (a second monitor can sit anywhere), and the title bar counts towards the height.
+func _center_window() -> void:
+	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED: return
+	var area := DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen())
+	var outer := DisplayServer.window_get_size_with_decorations()
+	var frame := outer - DisplayServer.window_get_size() # Side borders + title bar.
+	var corner := Vector2i(frame.x / 2, frame.y - frame.x / 2) # Where the inside starts in the frame.
+	DisplayServer.window_set_position(area.position + (area.size - outer) / 2 + corner)
 
 func _ready() -> void:
 	if Engine.is_editor_hint(): return
