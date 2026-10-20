@@ -207,6 +207,7 @@ var _mouth_t := 0.0 # s the player has been inside its mouth, straight
 var _fade_t := -1.0 # s into the fade to black (< 0: not started)
 var _died := false
 var _fade: ColorRect
+var _splash: LeviathanSplash # the water its body throws about
 
 func _ready() -> void:
 	_k = body_length / MODEL_LENGTH
@@ -227,6 +228,13 @@ func _ready() -> void:
 		_scale_deformer(d)
 	_make_bodies_move()
 	_find_spine()
+	# a LeviathanSplash child of its own (to tune in the editor), else a default one
+	_splash = get_node_or_null(^'LeviathanSplash') as LeviathanSplash
+	if _splash == null:
+		_splash = LeviathanSplash.new()
+		_splash.name = &'LeviathanSplash'
+		add_child(_splash)
+	_splash.setup(_colliders, _head)
 	_mouth_zone.body_entered.connect(_on_throat_body_entered)
 	_fill_sounds()
 	EventBus.day_started.connect(_on_day_started)
@@ -325,6 +333,7 @@ func _physics_process(delta: float) -> void:
 	_shake_jaw(delta)
 	_place_colliders()
 	_sway_tail()
+	_splash.track(delta)
 	if _ship_held:
 		ship.global_transform = _frame() * _ship_local
 	_watch_mouth(delta)
