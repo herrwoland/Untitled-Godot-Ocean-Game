@@ -103,8 +103,13 @@ vec3 celestial_disc(vec3 dir, vec3 to_light, vec3 light_color) {
 	float lit = smoothstep(-0.08, 0.12, dot(n, vec3(sin(ph), 0.0, cos(ph))));
 	float maria = texture(noise_texture, p * 0.35 + vec2(0.37, 0.61)).r;
 	float albedo = mix(0.62, 1.0, smoothstep(0.35, 0.7, maria));
-	vec3 moon = moon_color * moon_brightness * (moon_disc * albedo * mix(0.03, 1.0, lit)
-			+ moon_halo * exp(-max(mr - 1.0, 0.0) * 1.6) * (1.0 - moon_disc) * 0.25);
+	// The unlit side adds nothing: earthshine is ~1/10000 of the lit side, so the sky shows
+	// through it. The halo is our own air scattering the lit part's light, in front of the
+	// moon: it gathers round the lit part, fades with the phase and never outlines the dark limb.
+	float lit_fraction = 0.5 + 0.5 * cos(ph);
+	vec2 lit_centre = vec2(sin(ph), 0.0) * (1.0 - lit_fraction) * 0.7;
+	float halo = moon_halo * exp(-max(length(p - lit_centre) - 1.0, 0.0) * 1.6) * 0.25 * lit_fraction;
+	vec3 moon = moon_color * moon_brightness * (moon_disc * albedo * lit + halo * (1.0 - moon_disc * lit));
 
 	return mix(sun, moon, moon_amount);
 }
