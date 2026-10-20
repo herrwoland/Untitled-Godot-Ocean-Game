@@ -80,6 +80,10 @@ const MAX_RINGS := 3
 @export_range(0.5, 60.0, 0.1) var ring_lifetime := 8.0
 ## Foam on the swell crests.
 @export_range(0.0, 2.0, 0.01) var ring_foam := 0.8
+## How fast a swell loses height as it spreads: height ~ (radius / distance) ^ this. 0.5 only
+## spreads it round a growing circle; 1.0 is what deep water does to a swell from a single heave,
+## which also stretches into a longer and longer train as it goes (its energy spread over both).
+@export_range(0.0, 1.5, 0.05) var ring_falloff := 0.5
 ## Also send out a (smaller) swell when the body sinks back under.
 @export var rings_on_submerge := true
 
@@ -310,7 +314,7 @@ func pack_shapes() -> Array:
 		# Grows in over ring_fade_in, spreads its energy over a growing circle and dies out over
 		# its lifetime.
 		var fade_in := smoothstep(0.0, ring_fade_in, age) if ring_fade_in > 0.0 else 1.0
-		var amplitude := ring_amplitude * ring.y * strength * sqrt(radius / ring_radius) * fade_in \
+		var amplitude := ring_amplitude * ring.y * strength * pow(radius / ring_radius, ring_falloff) * fade_in \
 				* (1.0 - smoothstep(0.5 * ring_lifetime, ring_lifetime, age))
 		if amplitude > 0.001:
 			shapes.append([Vector4(global_position.x, global_position.z, ring_radius, amplitude),

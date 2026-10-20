@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://ddm71i1yfjrbw" path="res://assets/scripts/world/water_deformer.gd" id="2_23be2"]
 [ext_resource type="PackedScene" uid="uid://dgx8n3bqdrwve" path="res://assets/models/creatures/leviathan/leviathan_fish.glb" id="4_3b8bd"]
-[ext_resource type="Texture2D" uid="uid://8ii16irs8ng7" path="res://assets/blender/boat_0.1_rust_coarse_01_diff_1k.jpg" id="4_uaybq"]
 [ext_resource type="Script" uid="uid://doax2jxcestwf" path="res://assets/scripts/world/leviathan.gd" id="main_script"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_qpvu1"]
@@ -59,7 +58,7 @@ height = 100.6
 size = Vector3(44.23535, 71.21506, 127.94299)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_23be2"]
-albedo_texture = ExtResource("4_uaybq")
+albedo_color = Color(0.76034504, 0.8296668, 0.9052602, 1)
 roughness = 0.74
 clearcoat_enabled = true
 clearcoat = 0.4
@@ -113,25 +112,28 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 145)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 200)
 
 [node name="HeadWater" type="Node3D" parent="Head" unique_id=317559169]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -40.01281, 65)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 42.555855, 65)
 script = ExtResource("2_23be2")
-radius = 100.0
-max_lift = 50.0
+radius = 142.8
+max_lift = 2.0
+spread = 1.3
 influence_depth = 80.0
 settled_lift = 0.0
 drain_time = 10.0
 response = 0.8
-max_drawdown = 12.0
+max_drawdown = 1.0
 drawdown_speed = 5.0
-rebound_height = 8.0
-rebound_time = 6.0
+rebound_height = 1.0
+rebound_delay = 9.0
+rebound_time = 18.0
 boil_time = 20.0
-ring_amplitude = 5.0
-ring_speed = 15.0
-ring_width = 32.1
-ring_fade_in = 1.5
-ring_lifetime = 25.0
+ring_amplitude = 1.0
+ring_speed = 21.2
+ring_width = 263.0
+ring_fade_in = 8.0
+ring_lifetime = 120.0
 ring_foam = 0.44
+ring_falloff = 1.0
 
 [node name="CallSound" type="AudioStreamPlayer3D" parent="Head" unique_id=1843566639]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 35)
@@ -261,13 +263,13 @@ transform = Transform3D(0.8594883, 0, 7.1054274e-15, 0, 0.8594883, 0, -7.1054274
 visible = false
 light_color = Color(0.96, 0.416, 0, 1)
 light_energy = 100.0
-omni_range = 109.698
+omni_range = 256.191
 
 [node name="OmniLight3D2" type="OmniLight3D" parent="leviathan_fish" unique_id=1728768880]
 transform = Transform3D(0.8594883, 0, 7.1054274e-15, 0, 0.8594883, 0, -7.1054274e-15, 0, 0.8594883, 45.97957, 31.564411, 215.00528)
 visible = false
 light_color = Color(0.96, 0.416, 0, 1)
 light_energy = 100.0
-omni_range = 109.698
+omni_range = 256.191
 
 [editable path="leviathan_fish"]
