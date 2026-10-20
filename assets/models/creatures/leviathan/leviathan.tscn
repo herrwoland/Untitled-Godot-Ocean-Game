@@ -58,7 +58,7 @@ height = 100.6
 size = Vector3(44.23535, 71.21506, 127.94299)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_23be2"]
-albedo_color = Color(0.76034504, 0.8296668, 0.9052602, 1)
+albedo_color = Color(0.14965484, 0.22442368, 0.30068785, 1)
 roughness = 0.74
 clearcoat_enabled = true
 clearcoat = 0.4
