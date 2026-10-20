@@ -6,7 +6,7 @@ render_mode world_vertex_coords, depth_draw_always, cull_disabled;
  */
 
 #define MAX_CASCADES 8    // I am unsure how to generalize this.
-#define REFLECTANCE  0.02 // Reflectance from air to water (eta=1.33).
+#define REFLECTANCE  0.021 // Reflectance from air to seawater (eta=1.34).
 
 global uniform vec4 water_color : source_color;
 global uniform vec4 foam_color : source_color;
@@ -75,7 +75,11 @@ uniform vec4 wave_blocker_c[8]; // calm plane: (height at the centre, dh/dx, dh/
 group_uniforms;
 
 
-uniform float roughness : hint_range(0.0, 1.0) = 0.4;
+/** How rough the surface is below the size the waves are drawn at, as a slope (GGX alpha).
+ * The wind sets it at sea (Cox & Munk): ~0.13 in a breath of air, ~0.25 at 12 m/s, ~0.33 in a
+ * 20 m/s gale. Lower = a sharp sun path and a horizon that mirrors the sky; higher = a broad,
+ * dull glint band. Each weather preset sets its own. */
+uniform float roughness : hint_range(0.0, 1.0) = 0.17;
 /** How little the bare water is lit like paint. Water hardly scatters light off its surface: what
  * you see is the sky mirrored in it and the deep colour coming up from below, so at 0 it reads
  * milky and pale. Higher values darken it and leave the reflections; foam is left out, it stays matte. */
@@ -104,8 +108,8 @@ global uniform sampler2DArray displacements;         // Each layer represents on
 global uniform sampler2DArray normals : hint_normal; // Each layer represents one wave cascade.
 
 group_uniforms underwater;
-/** Index of refraction of water. Sets the size of Snell's window (~97 degree cone at 1.333). */
-uniform float water_ior : hint_range(1.0, 2.0) = 1.333;
+/** Index of refraction of water. Sets the size of Snell's window (~97 degree cone). Seawater is ~1.34. */
+uniform float water_ior : hint_range(1.0, 2.0) = 1.34;
 /** Per-channel IOR spread, gives the edge of Snell's window a faint rainbow fringe. */
 uniform float ior_dispersion : hint_range(0.0, 0.05) = 0.01;
 /** How strongly the refracted ray bends the screen sample. 1.0 = physically based offset. */
@@ -743,9 +747,8 @@ void fragment() {
 	ALBEDO *= 1.0 - blocking * submerged_shadow;
 	METALLIC = metallic * (1.0 - clamp(max(foam_factor * foam_alpha * foam_alpha, contact.x), 0.0, 1.0));
 	foam_factor = max(foam_factor, contact.x); // Contact foam is matte and lit like foam too.
-	float wet_roughness = mix(roughness, max(roughness, 0.85), rain_wet); // Rain: matte, hazy surface.
-	fresnel = mix(pow(1.0 - dot(VIEW, NORMAL), 5.0*exp(-2.69*wet_roughness)) / (1.0 + 22.7*pow(wet_roughness, 1.5)), 1.0, REFLECTANCE);
-	ROUGHNESS = (1.0 - fresnel) * foam_factor + 0.4; // Roughness is proportional to foam/fog amount and fresnel.
+	// Fresnel needs the wave normal, so it is worked out at the end, once NORMAL is set.
+	vec3 emission_glow = vec3(0.0); // Added once fresnel is known.
 
 	// Underwater glows seen through the surface: the lit water along the view ray, bent down
 	// into the sea, for as far as the ray goes before it hits something. Foam is in the way.
@@ -755,13 +758,23 @@ void fragment() {
 		if (dot(into_sea, into_sea) < 0.5) into_sea = view_ray;
 		float water_len = depth_tex > 0.0 ? min(length(world_pos.xyz - VERTEX), 2000.0) : 2000.0; // 0 = nothing behind.
 		vec3 glow = underwater_glow(world_frag, into_sea, water_len);
-		EMISSION += glow * glow_above_water * (1.0 - fresnel) * (1.0 - clamp(foam_factor * foam_alpha * foam_alpha, 0.0, 1.0));
+		emission_glow = glow * glow_above_water * (1.0 - clamp(foam_factor * foam_alpha * foam_alpha, 0.0, 1.0));
 	}
 
 	gradient *= mix(0.015, normal_strength, exp(-dist*0.0175)); // Blend normal with terrain normal as distance increases.
 	gradient.xy += shape.yz; // Water shapes are large and smooth, never faded with distance.
 	gradient.xy += rain_slope;
 	NORMAL = (VIEW_MATRIX * vec4(normalize(vec3(-gradient.x, 1.0, -gradient.y)), 0.0)).xyz;
+
+	// How much of the sky each bit of wave mirrors, from its own slope: a face turned away
+	// from us catches more of it than one turned towards us.
+	float wet_roughness = mix(roughness, max(roughness, 0.85), rain_wet); // Rain: matte, hazy surface.
+	float facing = clamp(dot(VIEW, NORMAL), 0.0, 1.0);
+	fresnel = mix(pow(1.0 - facing, 5.0*exp(-2.69*wet_roughness)) / (1.0 + 22.7*pow(wet_roughness, 1.5)), 1.0, REFLECTANCE);
+	// `roughness` is a microfacet slope (GGX alpha, ~Cox-Munk), Godot's ROUGHNESS its square root.
+	// Foam is matte, more so where little sky is mirrored.
+	ROUGHNESS = clamp(sqrt(wet_roughness) + (1.0 - fresnel) * foam_factor, 0.0, 1.0);
+	EMISSION += emission_glow * (1.0 - fresnel);
 	}
 }
 
