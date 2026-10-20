@@ -837,10 +837,16 @@ func _wave_plane(blocker: Node) -> Vector3:
 	var across := Vector3(-c.w, 0.0, c.z)
 	var half: Vector2 = blocker.half_size()
 	half = Vector2(maxf(half.x, 0.5), maxf(half.y, 0.5))
-	var slope_along := (get_wave_height(center + along * half.x, false) - get_wave_height(center - along * half.x, false)) / (2.0 * half.x)
-	var slope_across := (get_wave_height(center + across * half.y, false) - get_wave_height(center - across * half.y, false)) / (2.0 * half.y)
+	var slope_along := (_waves_only(center + along * half.x) - _waves_only(center - along * half.x)) / (2.0 * half.x)
+	var slope_across := (_waves_only(center + across * half.y) - _waves_only(center - across * half.y)) / (2.0 * half.y)
 	var gradient := Vector2(c.z, c.w) * slope_along + Vector2(-c.w, c.z) * slope_across
-	return Vector3(get_wave_height(center, false), gradient.x, gradient.y)
+	return Vector3(_waves_only(center), gradient.x, gradient.y)
+
+## The waves alone at a position, without the water shapes: those are added on top of a calm
+## plane everywhere (here, in the shader and the underwater effect), so a plane that held them
+## too would lift the calmed water by them twice.
+func _waves_only(p: Vector3) -> float:
+	return get_wave_height(p, false) - water_shapes_eval(Vector2(p.x, p.z)).x
 
 func _in_dry_volume(world_pos : Vector3) -> bool:
 	for volume in _dry_volumes:

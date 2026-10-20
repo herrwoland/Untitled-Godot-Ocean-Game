@@ -69,12 +69,17 @@ texture_filter = 0
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
 script = ExtResource("main_script")
 body_length = 1000.0
+despawn_depth = 150.0
 rise_speed = 18.0
 rise_climb = 7.5
+surface_distance_min = 500.0
+surface_distance_max = 1000.0
 cruise_speed = 50.0
 chase_speed = 50.0
 hunt_speed = 50.0
 jaw_bones = PackedStringArray("bone_mouth_top_obsolete", "bone_mouth_bottom_obsolete")
+jaw_shake_angle = 1.0
+jaw_shake_rate = 2.0
 
 [node name="Head" type="Node3D" parent="." unique_id=2082841984]
 
@@ -115,24 +120,24 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 200)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 42.555855, 65)
 script = ExtResource("2_23be2")
 radius = 142.8
-max_lift = 2.0
+max_lift = 30.0
 spread = 1.3
 influence_depth = 80.0
 settled_lift = 0.0
-drain_time = 10.0
-response = 0.8
-max_drawdown = 1.0
+drain_time = 30.0
+response = 1.0
+max_drawdown = 20.0
 drawdown_speed = 5.0
 rebound_height = 1.0
 rebound_delay = 9.0
 rebound_time = 18.0
 boil_time = 20.0
-ring_amplitude = 1.0
-ring_speed = 21.2
-ring_width = 263.0
+ring_amplitude = 20.0
+ring_speed = 16.0
+ring_width = 35.0
 ring_fade_in = 8.0
 ring_lifetime = 120.0
-ring_foam = 0.44
+ring_foam = 1.26
 ring_falloff = 1.0
 
 [node name="CallSound" type="AudioStreamPlayer3D" parent="Head" unique_id=1843566639]
