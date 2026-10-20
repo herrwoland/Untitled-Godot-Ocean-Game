@@ -366,8 +366,8 @@ eye_waterline_clearance = 0.9
 eye_waterline_speed = 16.0
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=2103121333]
-transform = Transform3D(0.94560057, -0.05169212, 0.32119673, -0.008405724, 0.9830845, 0.1829601, -0.32522106, -0.17570707, 0.92917085, 0, 10, 0)
-light_color = Color(0.55, 0.65, 0.95, 1)
+transform = Transform3D(0.9456005, -0.051692124, 0.32119676, -0.008405729, 0.98308456, 0.18296008, -0.3252211, -0.17570706, 0.92917085, 0, 10, 0)
+light_color = Color(0.4504043, 0.5977014, 0.6869505, 1)
 light_energy = 0.3
 light_indirect_energy = 0.5
 light_volumetric_fog_energy = 0.3
@@ -378,7 +378,7 @@ shadow_opacity = 0.8
 shadow_blur = 4.592
 
 [node name="Rain" type="Node3D" parent="." unique_id=1570342401]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 531.9963, 4.121062, -67.785255)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4977.936, 82.62827, 76.515045)
 script = ExtResource("60_rain")
 intensity = 0.0
 wind_strength = 2.0
@@ -435,7 +435,7 @@ shape = SubResource("CylinderShape3D_5s6u7")
 debug_color = Color(0.8128558, 0.030233042, 0.97549945, 0.41960785)
 
 [node name="Water" type="MeshInstance3D" parent="." unique_id=946478083]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 532, 0, -67)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4978, 0, 77)
 layers = 524288
 sorting_offset = 999.0
 material_override = ExtResource("5_lt75t")

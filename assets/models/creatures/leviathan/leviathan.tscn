@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://ddm71i1yfjrbw" path="res://assets/scripts/world/water_deformer.gd" id="2_23be2"]
 [ext_resource type="PackedScene" uid="uid://dgx8n3bqdrwve" path="res://assets/models/creatures/leviathan/leviathan_fish.glb" id="4_3b8bd"]
+[ext_resource type="Texture2D" uid="uid://8ii16irs8ng7" path="res://assets/blender/boat_0.1_rust_coarse_01_diff_1k.jpg" id="4_uaybq"]
 [ext_resource type="Script" uid="uid://doax2jxcestwf" path="res://assets/scripts/world/leviathan.gd" id="main_script"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3b8bd"]
@@ -175,7 +176,10 @@ left_to_right = 0.2
 size = Vector3(70, 80, 5)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_qpvu1"]
-size = Vector3(85.66391, 52.368896, 89.47363)
+size = Vector3(85.66391, 52.368896, 34.64612)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_mouthin"]
+size = Vector3(103.600586, 63.047363, 170)
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_2ax84"]
 top_radius = 54.0
@@ -335,14 +339,25 @@ size = Vector3(45, 120, 5)
 left_to_right = 0.85
 size = Vector3(40, 80, 5)
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_mouthin"]
-size = Vector3(120, 80, 170)
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_23be2"]
+albedo_color = Color(0.6045571, 0.5905535, 0.839016, 1)
+albedo_texture = ExtResource("4_uaybq")
+roughness = 0.74
+clearcoat_enabled = true
+clearcoat = 0.4
+clearcoat_roughness = 1.0
+texture_filter = 0
 
 [node name="Leviathan" type="Node3D" unique_id=800797773]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
 script = ExtResource("main_script")
-cruise_speed = 15.0
-chase_speed = 20.0
-hunt_speed = 25.0
+body_length = 1000.0
+rise_speed = 18.0
+rise_climb = 7.5
+cruise_speed = 50.0
+chase_speed = 50.0
+hunt_speed = 50.0
+jaw_bones = PackedStringArray()
 
 [node name="Head" type="Node3D" parent="." unique_id=2082841984]
 
@@ -482,16 +497,17 @@ collision_mask = 6
 monitorable = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Head/MouthZone" unique_id=1395261262]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0001373291, 7.109741, 40.263184)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0001373291, 7.109741, 67.67694)
 shape = SubResource("BoxShape3D_qpvu1")
 
-[node name="MouthInside" type="Area3D" parent="Head"]
+[node name="MouthInside" type="Area3D" parent="Head" unique_id=2127496815]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 80)
 collision_layer = 0
 collision_mask = 2
 monitorable = false
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Head/MouthInside"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Head/MouthInside" unique_id=724576510]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8.476318, 0)
 shape = SubResource("BoxShape3D_mouthin")
 debug_color = Color(0.9, 0.2, 0.3, 0.42)
 
@@ -508,13 +524,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 145)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 200)
 
 [node name="HeadWater" type="Node3D" parent="Head" unique_id=317559169]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 65)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -40.01281, 65)
 script = ExtResource("2_23be2")
-radius = 98.1
-strength = 3.0
+radius = 100.0
 max_lift = 15.0
 influence_depth = 80.0
-settled_lift = 0.2
+settled_lift = 0.0
 drain_time = 10.0
 response = 0.8
 max_drawdown = 12.0
@@ -522,11 +537,12 @@ drawdown_speed = 5.0
 rebound_height = 8.0
 rebound_time = 6.0
 boil_time = 20.0
-ring_amplitude = 5.7
-ring_speed = 14.0
-ring_width = 25.0
+ring_amplitude = 5.0
+ring_speed = 15.0
+ring_width = 32.1
 ring_fade_in = 1.5
 ring_lifetime = 25.0
+ring_foam = 0.44
 
 [node name="CallSound" type="AudioStreamPlayer3D" parent="Head" unique_id=1843566639]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 35)
@@ -698,8 +714,23 @@ mesh = SubResource("PrismMesh_3guqm")
 [node name="leviathan_fish" parent="." unique_id=749777099 instance=ExtResource("4_3b8bd")]
 transform = Transform3D(-1.163483, 0, -1.0171491e-07, 0, 1.163483, 0, 1.0171491e-07, 0, -1.163483, 0, 0, 276.97253)
 
+[node name="leviatan_body" parent="leviathan_fish/Armature/Skeleton3D" parent_id_path=PackedInt32Array(749777099, 52701150) index="0" unique_id=934365997]
+surface_material_override/0 = SubResource("StandardMaterial3D_23be2")
+
+[node name="CollisionShape3D" parent="leviathan_fish/Armature/Skeleton3D/leviatan_body/StaticBody3D" parent_id_path=PackedInt32Array(749777099, 2065734699) index="0" unique_id=954522121]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.847744e-05, -37.84175, -211.9139)
+shape = null
+
 [node name="OmniLight3D" type="OmniLight3D" parent="leviathan_fish" unique_id=33270278]
-transform = Transform3D(0.8594883, 0, 7.1054274e-15, 0, 0.8594883, 0, -7.1054274e-15, 0, 0.8594883, -2.3777013e-05, 49.294327, 271.97733)
+transform = Transform3D(0.8594883, 0, 7.1054274e-15, 0, 0.8594883, 0, -7.1054274e-15, 0, 0.8594883, -45.1522, 31.56441, 215.00525)
 light_color = Color(0.96, 0.416, 0, 1)
 light_energy = 100.0
-omni_range = 285.821
+omni_range = 109.698
+
+[node name="OmniLight3D2" type="OmniLight3D" parent="leviathan_fish" unique_id=1728768880]
+transform = Transform3D(0.8594883, 0, 7.1054274e-15, 0, 0.8594883, 0, -7.1054274e-15, 0, 0.8594883, 45.97957, 31.564411, 215.00528)
+light_color = Color(0.96, 0.416, 0, 1)
+light_energy = 100.0
+omni_range = 109.698
+
+[editable path="leviathan_fish"]

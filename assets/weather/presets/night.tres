@@ -182,11 +182,11 @@ environment = {
 &"volumetric_fog_sky_affect": 1.0
 }
 sun = {
-&"light_color": Color(0.55, 0.65, 0.95, 1),
+&"light_color": Color(0.4504043, 0.5977014, 0.6869505, 1),
 &"light_energy": 0.3,
 &"light_indirect_energy": 0.5,
 &"light_volumetric_fog_energy": 0.3,
-&"quaternion": Quaternion(-0.09130374, 0.16455473, 0.011019157, 0.9820713),
+&"quaternion": Quaternion(-0.09130373, 0.16455476, 0.011019156, 0.9820713),
 &"shadow_opacity": 0.8
 }
 rain = {

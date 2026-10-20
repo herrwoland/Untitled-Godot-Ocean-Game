@@ -425,6 +425,9 @@ collision_layer = 2
 [node name="StaticBody3D" parent="boat/top_door_001" parent_id_path=PackedInt32Array(331109473, 769972089) index="0" unique_id=1214543142]
 collision_layer = 2
 
+[node name="window_inside" parent="boat" index="68" unique_id=427142581]
+visible = false
+
 [node name="control_panel" parent="boat" index="70" unique_id=1769502697]
 transform = Transform3D(0.6308224, 0, -3.5527137e-15, 0, 0.6308224, 0, 0, 0, 0.5597129, -0.014570771, 5.5032043, 2.9313788)
 
@@ -705,7 +708,7 @@ edge_bias = 0.5
 full_speed = 4.0
 
 [node name="BowSprayPort" type="GPUParticles3D" parent="." unique_id=1570342203]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, -2.8905516, 5.300825)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, -2.8905516, 6.633892)
 cast_shadow = 0
 amount = 600
 amount_ratio = 0.0
@@ -717,7 +720,7 @@ draw_pass_1 = SubResource("QuadMesh_plcnw")
 script = ExtResource("21_spray")
 
 [node name="BowSprayStarboard" type="GPUParticles3D" parent="." unique_id=1570342204]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, -3.2230392, -4.36267)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, -3.2230392, -6.457492)
 cast_shadow = 0
 amount = 600
 amount_ratio = 0.0
