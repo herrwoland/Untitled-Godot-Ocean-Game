@@ -49,6 +49,15 @@ enum Kind { SHEET, PUFF, DROP, MIST }
 ## body (the mouth is open there).
 @export var mouth_trim := 0.0
 
+@export_group('Crown')
+## Where its back first breaks the surface coming up, the water heaped on it (the HeadWater dome)
+## and what the climb throws burst up and fall off it. Height x this (1 = just that water).
+@export_range(0.0, 3.0, 0.05) var crown_drama := 1.8
+## How much water each burst throws (thins or thickens it).
+@export_range(0.0, 4.0, 0.05) var crown_amount := 2.0
+## Seconds a burst lasts.
+@export var crown_time := 2.5
+
 @export_group('Jaw corners')
 ## Markers on the corners of the mouth (children of the Leviathan named jaw_splash_zone...): the
 ## water rushing into the open mouth slams into the jaw's edge there head-on, the hardest-hit
@@ -87,7 +96,8 @@ var _bow_at := Vector3.INF # the middle of the front of the body at the waterlin
 var _bow_fwd := Vector3.ZERO # the way it faces (flat)
 var _bow_w := 0.0 # its half-width at the waterline (m)
 var _bow_speed := 0.0 # m/s through the water, eased (the sea takes a moment to pile up)
-var emitted := [0, 0, 0, 0] # particles placed so far, per layer (for a look in the debugger)
+var emitted := [0, 0, 0, 0]
+var last_crown := 0.0 # height (m) of the last crown burst thrown # particles placed so far, per layer (for a look in the debugger)
 
 ## The body to follow, called once at rest: its colliders (each with a CollisionShape3D child
 ## holding a capsule or a box lying along its local Y) and the head, whose origin is the mouth.
@@ -180,6 +190,8 @@ func _build_stations(colliders: Array[Node3D], mouth: Node3D) -> void:
 		st.out_t = 99.0 # s since its top came out
 		st.top_was = 0.0 # how far its top stood out last frame
 		st.push = [0.0, 0.0] # how fast each side (left, right) drove into the water last frame
+		st.crown = false # its top broke the surface coming up: bursting through (see _crown())
+		st.crown_credit = [0.0, 0.0, 0.0, 0.0]
 		st.credit = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # per side and layer: particles owed
 
 ## Points over a collision shape's surface, in world space (its edges filled in, so a mesh made of
@@ -292,6 +304,7 @@ func track(delta: float) -> void:
 		var went_under: bool = top <= 0.0 and st.top_was > 0.0
 		if top > 0.0 and st.top_was <= 0.0:
 			st.out_t = 0.0 # its top just came out
+			st.crown = vel.y > 1.0 # coming up, not a wave washing off it
 		st.out_t += delta
 		st.top_was = top
 		st.c = c
@@ -329,6 +342,13 @@ func track(delta: float) -> void:
 			var meet := 2.0 * maxf(-vel.y, 0.0) + 0.3 * absf(vel.dot(left))
 			if meet > min_push:
 				_throw(st, 0, mid, Vector3.ZERO, minf(meet, max_push), st.len, vel, 1.0) # one burst
+		# bursting through: the water heaped on its back thrown up and off where its top comes out
+		if st.crown and st.out_t < crown_time and near:
+			var f_top := atan2(b.y, a.y)
+			var crest := c + a * cos(f_top) + b * sin(f_top)
+			var heaped := maxf(sea - _water.global_position.y, 0.0) + vel.y * vel.y / (2.0 * G)
+			_crown(st, Vector3(crest.x, sea, crest.z), minf(heaped * crown_drama, max_height), a.length(), exp(-st.out_t / (crown_time * 0.35)), vel, delta)
+			last_crown = minf(heaped * crown_drama, max_height) # for a look in the debugger
 		if state != 0:
 			continue
 		if wake_bow < 0: wake_bow = i
@@ -461,6 +481,40 @@ func _throw(st: Dictionary, slot: int, at: Vector3, out: Vector3, u: float, len_
 		var v := up * _rng.randf_range(1.0, 3.0) + out * _rng.randf_range(0.5, 2.0)
 		var pos := at + _along(st, len_m) + up * h * _rng.randf_range(0.2, 0.5)
 		_emit(Kind.MIST, pos, v, h * _rng.randf_range(0.5, 0.9), _rng.randf_range(9.0, 16.0))
+
+## A part bursting up through the surface at `at`: sheets standing in a ring round where its top
+## comes out, lumps and drops flung up off it, and a mist that hangs over it all. `h` is how high
+## (m), `across` its half-width, `left` how much of the burst is still to come (1 = just broke).
+func _crown(st: Dictionary, at: Vector3, h: float, across: float, left: float, carry: Vector3, delta: float) -> void:
+	if h < 2.0:
+		return
+	var k := crown_amount * density * left * delta
+	var credit: Array = st.crown_credit
+	credit[0] = minf(credit[0] + 8.0 * k, 8.0)
+	credit[1] = minf(credit[1] + 40.0 * k, 8.0)
+	credit[2] = minf(credit[2] + 70.0 * k, 8.0)
+	credit[3] = minf(credit[3] + (3.0 if h > 12.0 else 0.0) * k, 8.0)
+	var up := sqrt(2.0 * G * h)
+	var ring := across * 0.45
+	while credit[0] >= 1.0:
+		credit[0] -= 1.0
+		var a := _rng.randf_range(0.0, TAU)
+		var hh := h * _rng.randf_range(0.6, 1.0)
+		_emit(Kind.SHEET, at + Vector3(cos(a), 0.0, sin(a)) * ring * _rng.randf_range(0.3, 1.0), Vector3.ZERO, hh, 2.0 * sqrt(2.0 * hh / G) + 0.8)
+	while credit[1] >= 1.0:
+		credit[1] -= 1.0
+		var v := _jitter(Vector3.UP, 0.45) * up * _rng.randf_range(0.5, 1.0) + carry * 0.5
+		var a := _rng.randf_range(0.0, TAU)
+		_emit(Kind.PUFF, at + Vector3(cos(a), 0.0, sin(a)) * ring * _rng.randf(), v, clampf(h * 0.3, 4.0, 45.0) * _rng.randf_range(0.7, 1.3), _flight(v))
+	while credit[2] >= 1.0:
+		credit[2] -= 1.0
+		var v := _jitter(Vector3.UP, 0.6) * up * _rng.randf_range(0.4, 1.1) + carry * 0.5
+		var a := _rng.randf_range(0.0, TAU)
+		_emit(Kind.DROP, at + Vector3(cos(a), 0.0, sin(a)) * ring * _rng.randf(), v, clampf(h * 0.09, 1.5, 11.0) * _rng.randf_range(0.7, 1.3), _flight(v))
+	while credit[3] >= 1.0:
+		credit[3] -= 1.0
+		var v := Vector3.UP * _rng.randf_range(1.0, 3.0) + carry * 0.3
+		_emit(Kind.MIST, at + Vector3.UP * h * _rng.randf_range(0.3, 0.6), v, h * _rng.randf_range(0.6, 1.0), _rng.randf_range(10.0, 16.0))
 
 ## Water running off a part that has come out and stands `height` m tall: cascades down its flank
 ## (sheets standing on the sea there) and the drops that rain off its edge. `left` is how much of
