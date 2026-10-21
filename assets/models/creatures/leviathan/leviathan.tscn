@@ -53,8 +53,11 @@ size = Vector3(37.535156, 21.014387, 90.2899)
 size = Vector3(38.69043, 21.014387, 72.92685)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_23be2"]
-albedo_color = Color(0.14965484, 0.22442368, 0.30068785, 1)
+albedo_color = Color(0.22200002, 0.261, 0.3, 1)
 roughness = 0.74
+emission_enabled = true
+emission = Color(0.1309, 0.16152833, 0.17, 1)
+emission_energy_multiplier = 0.01
 clearcoat_enabled = true
 clearcoat = 0.4
 clearcoat_roughness = 1.0
@@ -67,8 +70,8 @@ body_length = 1000.0
 despawn_depth = 150.0
 rise_speed = 18.0
 rise_climb = 7.5
-surface_distance_min = 500.0
-surface_distance_max = 1000.0
+surface_distance_min = 1000.0
+surface_distance_max = 1500.0
 cruise_speed = 50.0
 chase_speed = 55.0
 hunt_speed = 60.0

@@ -47,8 +47,8 @@ texture_filter = 2
 metadata/_gltf_primary_texture_coord = 0
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_5s6u7"]
-height = 0.22253418
-radius = 0.064453125
+height = 0.43499756
+radius = 0.12011719
 
 [sub_resource type="Animation" id="Animation_6dels"]
 length = 0.001
@@ -450,19 +450,19 @@ script = ExtResource("1_rqivs")
 
 [node name="power_panel" parent="." unique_id=328058151 instance=ExtResource("1_0drgh")]
 
-[node name="Circle" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 1104820633) index="0" unique_id=704312187]
+[node name="Circle" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 583203980) index="0" unique_id=1910816152]
 surface_material_override/0 = SubResource("StandardMaterial3D_rqivs")
 
-[node name="Circle_001" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 1104820633) index="1" unique_id=573556214]
+[node name="Circle_001" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 583203980) index="1" unique_id=1299322185]
 surface_material_override/0 = SubResource("StandardMaterial3D_0drgh")
 
-[node name="Circle_002" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 1104820633) index="2" unique_id=75773143]
+[node name="Circle_002" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 583203980) index="2" unique_id=1503672114]
 surface_material_override/0 = SubResource("StandardMaterial3D_6dels")
 
-[node name="Circle_003" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 1104820633) index="3" unique_id=221943954]
+[node name="Circle_003" parent="power_panel/power_board" parent_id_path=PackedInt32Array(328058151, 583203980) index="3" unique_id=1320853610]
 surface_material_override/0 = SubResource("StandardMaterial3D_11nsy")
 
-[node name="switch_handle" parent="power_panel/power_board/switch_board" parent_id_path=PackedInt32Array(328058151, 1245462107) index="2" unique_id=1460972011]
+[node name="switch_handle" parent="power_panel/power_board/switch_board" parent_id_path=PackedInt32Array(328058151, 1701931878) index="2" unique_id=1632629266]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.007975578, 0.029454947, 0)
 surface_material_override/0 = SubResource("StandardMaterial3D_4whjn")
 
@@ -472,7 +472,7 @@ collision_mask = 0
 script = ExtResource("4_pull")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="power_panel/power_board/switch_board/switch_handle/Area3D" unique_id=1930512694]
-transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0.4319458, 2.9802322e-08, 0)
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0.3257141, 2.9802322e-08, 0)
 shape = SubResource("CylinderShape3D_5s6u7")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=621644925]
