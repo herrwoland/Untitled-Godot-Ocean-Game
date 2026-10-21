@@ -65,6 +65,7 @@ var _air_momentum := Vector3.ZERO
 const MAX_AIR_MOMENTUM := 10.0 # m/s: a violent jerk of the hull as we leave doesn't launch us
 const DECK_COYOTE := 0.35 # keep carrying this long after the deck drops away, so a heaving
 						  # sea doesn't shake us loose every time contact is lost
+const AIRBORNE_DECK_REACH := 8.0 # m: still over her deck this far below us, we are still aboard
 var ladder: Node = null # the Ladder we are on (see ladder.gd)
 var _ladders_in_reach: Array[Node] = []
 var _climb_t := 0.0 # where on the ladder, 0 = bottom, 1 = top
@@ -410,8 +411,13 @@ func _carry_with_deck(delta: float) -> void:
 		return
 	_deck_coyote -= delta
 	if _deck_coyote <= 0.0:
-		_release_deck() # airborne too long to still count as standing on her
-		return
+		# Still over her (a jump, a fall into the well of her deck): in the air we keep her motion,
+		# so we stay carried and come down on the same plank. Only off her side do we let go.
+		if _ship_under_feet(AIRBORNE_DECK_REACH) == _deck:
+			_deck_coyote = DECK_COYOTE
+		else:
+			_release_deck() # airborne too long to still count as standing on her
+			return
 	var step := _deck_step()
 	var carried_to := step * global_position
 	_deck_velocity = (carried_to - global_position) / delta
@@ -457,11 +463,11 @@ func _release_deck() -> void:
 ## the slide collisions: standing perfectly still reports none. Loose items lying on the deck
 ## (carryables: a fuel cell, a letter) are looked through -- they are rigid bodies too, and
 ## riding one would drag us along with it as it rolls.
-func _ship_under_feet() -> PhysicsBody3D:
+func _ship_under_feet(reach := 0.8) -> PhysicsBody3D:
 	var from := global_position + Vector3.UP * 0.3
 	var exclude: Array[RID] = [get_rid()]
 	for attempt in 4:
-		var query := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 0.8,
+		var query := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * reach,
 				collision_mask, exclude)
 		var hit := get_world_3d().direct_space_state.intersect_ray(query)
 		if not hit:
