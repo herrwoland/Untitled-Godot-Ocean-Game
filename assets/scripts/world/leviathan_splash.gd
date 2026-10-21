@@ -66,7 +66,7 @@ var _wakes: Array[WakeEmitter] = []
 var _rng := RandomNumberGenerator.new()
 const UPDATE_EVERY := 2 # physics frames per update
 const SEA_STEP := 8 # sections per reading of the waves
-const SECTIONS := 6 # cross-sections tried along each collider
+const SLICE := 24.0 # m along the body between cross-sections
 var _frame := 0
 var _skipped := 0.0 # s since the last update
 var _bow_at := Vector3.INF # the middle of the front of the body at the waterline (INF: not in the water)
@@ -96,49 +96,55 @@ func setup(colliders: Array[Node3D], mouth: Node3D) -> void:
 			add_child(w)
 			_wakes.append(w)
 
-## Cross-sections along the body, chosen once at rest: a few along each collider, keeping only
-## those that are the outside of the body there (where colliders overlap, the inner one is hidden).
-## Each: {shape, z (along its axis, local), r (radius there / its full radius), s (m behind the
-## mouth at rest), len (m of body it stands for)} plus what is tracked from frame to frame.
+## Cross-sections along the body, worked out once at rest from the colliders' own shapes (any kind:
+## meshes, capsules, boxes...): each collider's surface is sliced every SLICE m along the body and
+## each slice fitted with an ellipse, kept in the collider's own space so it bends with its bone.
+## Where colliders overlap only the outside of the body is kept (the widest slice there).
+## Each: {col, centre / across / updown / along (the ellipse's middle, half-width, half-height and
+## the way to the tail, in the collider's space), s (m behind the mouth at rest), width (its
+## half-width, m), len (m of body it stands for)} plus what is tracked from frame to frame.
 func _build_stations(colliders: Array[Node3D], mouth: Node3D) -> void:
 	var cands := []
-	var inv := mouth.global_transform.affine_inverse()
+	var origin := mouth.global_position
 	var fwd := -mouth.global_basis.z.normalized() # the way the mouth faces
-	for c in colliders:
-		for cs in c.get_children():
-			if not cs is CollisionShape3D:
-				continue
-			var shape := (cs as CollisionShape3D).shape
-			var half_len: float
-			var cap: float # length of the rounded end, along the axis (local)
-			if shape is CapsuleShape3D:
-				half_len = shape.height * 0.5
-				cap = shape.radius
-			elif shape is BoxShape3D:
-				half_len = shape.size.y * 0.5
-				cap = 0.0
-			else:
-				continue
-			var m: Transform3D = cs.global_transform
-			for i in SECTIONS:
-				var z := lerpf(-half_len, half_len, (i + 0.5) / SECTIONS)
-				var r := 1.0
-				var into_cap := absf(z) - (half_len - cap)
-				if cap > 0.0 and into_cap > 0.0:
-					r = sqrt(maxf(1.0 - pow(into_cap / cap, 2.0), 0.0))
-				var p := m * Vector3(0.0, z, 0.0)
-				var s := (p - mouth.global_position).dot(-fwd)
-				if s < mouth_trim:
-					continue # in front of the mouth: the open mouth is there, not body
-				var width := (m.basis.x * _semi(shape, true)).length() * r
-				cands.append({cs = cs, shape = shape, z = z, r = r, s = s, width = width})
-	# keep the outside of the body: the widest section within a few metres along it
+	var right := mouth.global_basis.x.normalized()
+	for col in colliders:
+		var pts := PackedVector3Array()
+		for cs in col.get_children():
+			if cs is CollisionShape3D and (cs as CollisionShape3D).shape:
+				pts.append_array(_surface_points(cs))
+		if pts.is_empty():
+			continue
+		# slice it along the body
+		var slices := {} # slice index -> [x min, x max, y min, y max]
+		for p in pts:
+			var rel := p - origin
+			var k := int(floor(rel.dot(-fwd) / SLICE))
+			var x := rel.dot(right)
+			var e: Array = slices.get(k, [INF, -INF, INF, -INF])
+			slices[k] = [minf(e[0], x), maxf(e[1], x), minf(e[2], p.y), maxf(e[3], p.y)]
+		var rest := col.global_transform
+		var to_col := rest.affine_inverse()
+		var basis_inv := rest.basis.inverse()
+		for k: int in slices:
+			var e: Array = slices[k]
+			var s_at := (k + 0.5) * SLICE
+			var half_w: float = (e[1] - e[0]) * 0.5
+			var half_h: float = (e[3] - e[2]) * 0.5
+			if s_at < mouth_trim or half_w < 1.0 or half_h < 0.5:
+				continue # in front of the mouth (it is open there), or a sliver
+			var centre: Vector3 = origin + fwd * -s_at + right * (e[0] + e[1]) * 0.5
+			centre.y = (e[2] + e[3]) * 0.5
+			cands.append({col = col, s = s_at, width = half_w,
+					centre = to_col * centre, across = basis_inv * (right * half_w),
+					updown = basis_inv * (Vector3.UP * half_h), along = basis_inv * -fwd})
+	# keep the outside of the body: the widest slice at each place along it
 	for a in cands:
 		var widest: float = a.width
 		for b in cands:
-			if absf(b.s - a.s) < 12.0:
+			if absf(b.s - a.s) < SLICE * 0.6:
 				widest = maxf(widest, b.width)
-		if a.width >= widest * 0.92 and a.width > 1.0:
+		if a.width >= widest * 0.92:
 			_stations.append(a)
 	_stations.sort_custom(func(a, b): return a.s < b.s)
 	for i in _stations.size():
@@ -157,11 +163,50 @@ func _build_stations(colliders: Array[Node3D], mouth: Node3D) -> void:
 		st.push = [0.0, 0.0] # how fast each side (left, right) drove into the water last frame
 		st.credit = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # per side and layer: particles owed
 
-## Semi-axis of the cross-section: across the body (local X) or up and down it (local Z).
-static func _semi(shape: Shape3D, across: bool) -> float:
-	if shape is CapsuleShape3D:
-		return shape.radius
-	return (shape.size.x if across else shape.size.z) * 0.5
+## Points over a collision shape's surface, in world space (its edges filled in, so a mesh made of
+## a few big triangles still lands in every slice it spans).
+static func _surface_points(cs: CollisionShape3D) -> PackedVector3Array:
+	var shape := cs.shape
+	var local := PackedVector3Array()
+	if shape is ConcavePolygonShape3D:
+		var faces: PackedVector3Array = shape.get_faces()
+		for t in range(0, faces.size() - 2, 3):
+			for e in 3:
+				var p0 := faces[t + e]
+				var p1 := faces[t + (e + 1) % 3]
+				var steps := maxi(1, ceili(p0.distance_to(p1) * cs.global_basis.get_scale().x / (SLICE * 0.4)))
+				for q in steps:
+					local.append(p0.lerp(p1, float(q) / steps))
+	elif shape is ConvexPolygonShape3D:
+		local = shape.points
+	elif shape is CapsuleShape3D or shape is CylinderShape3D or shape is SphereShape3D:
+		var r: float = shape.radius
+		var half: float = r if shape is SphereShape3D else shape.height * 0.5
+		var cap: float = r if (shape is CapsuleShape3D or shape is SphereShape3D) else 0.0
+		for k in 17:
+			var y := lerpf(-half, half, k / 16.0)
+			var into := absf(y) - (half - cap)
+			var ry := r * sqrt(maxf(1.0 - pow(into / cap, 2.0), 0.0)) if cap > 0.0 and into > 0.0 else r
+			for j in 12:
+				var a := TAU * j / 12.0
+				local.append(Vector3(cos(a) * ry, y, sin(a) * ry))
+	elif shape is BoxShape3D:
+		var h: Vector3 = shape.size * 0.5
+		for x in 5:
+			for y in 5:
+				for z in 5:
+					local.append(Vector3(lerpf(-h.x, h.x, x / 4.0), lerpf(-h.y, h.y, y / 4.0), lerpf(-h.z, h.z, z / 4.0)))
+	var m := cs.global_transform
+	var out := PackedVector3Array()
+	out.resize(local.size())
+	for i in local.size():
+		out[i] = m * local[i]
+	return out
+
+## A station's ellipse now: [middle, half-width vector, half-height vector, way to the tail (unit)].
+static func _now(st: Dictionary) -> Array:
+	var m: Transform3D = st.col.global_transform
+	return [m * (st.centre as Vector3), m.basis * (st.across as Vector3), m.basis * (st.updown as Vector3), (m.basis * (st.along as Vector3)).normalized()]
 
 ## Every physics frame, after the body has been posed. The work is done every other frame (the
 ## spray owed piles up meanwhile, so nothing is lost): the sea is read at only some of the
@@ -183,7 +228,8 @@ func track(delta: float) -> void:
 	var level: float = _water.global_position.y
 	var shallowest := -INF
 	for st: Dictionary in _stations:
-		shallowest = maxf(shallowest, (st.cs.global_transform * Vector3(0.0, st.z, 0.0)).y + _semi(st.shape, false) * 2.5)
+		var m: Transform3D = st.col.global_transform
+		shallowest = maxf(shallowest, (m * (st.centre as Vector3)).y + (m.basis * (st.updown as Vector3)).length() * 1.5)
 	if shallowest < level - 40.0:
 		for st: Dictionary in _stations:
 			st.c = Vector3.INF
@@ -201,23 +247,23 @@ func track(delta: float) -> void:
 		if i % SEA_STEP != 0 and i != n - 1:
 			continue
 		var st: Dictionary = _stations[i]
-		seas[i] = _water.get_wave_height(st.cs.global_transform * Vector3(0.0, st.z, 0.0), false)
+		seas[i] = _water.get_wave_height((st.col as Node3D).global_transform * (st.centre as Vector3), false)
 		if last >= 0:
 			for j in range(last + 1, i):
 				seas[j] = lerpf(seas[last], seas[i], float(j - last) / float(i - last))
 		last = i
 	var cam := get_viewport().get_camera_3d()
-	var near := cam != null and cam.global_position.distance_to(_stations[0].cs.global_position) < cull_distance
+	var near := cam != null and cam.global_position.distance_to(_stations[0].col.global_position) < cull_distance
 	var wake_bow := -1
 	var wake_wide := -1
 	var wake_stern := -1
 	for i in _stations.size():
 		var st: Dictionary = _stations[i]
-		var m: Transform3D = st.cs.global_transform
-		var c: Vector3 = m * Vector3(0.0, st.z, 0.0)
-		var a: Vector3 = m.basis.x * _semi(st.shape, true) * st.r # across
-		var b: Vector3 = m.basis.z * _semi(st.shape, false) * st.r # up and down (either way)
-		var along := m.basis.y.normalized()
+		var now := _now(st)
+		var c: Vector3 = now[0]
+		var a: Vector3 = now[1] # across
+		var b: Vector3 = now[2] # up and down
+		var along: Vector3 = now[3]
 		var sea: float = seas[i]
 		# where the ellipse c + a cos f + b sin f meets the sea: a.y cos f + b.y sin f = sea - c.y
 		var reach := sqrt(a.y * a.y + b.y * b.y)
@@ -294,8 +340,8 @@ func _track_bow(front: int, delta: float) -> void:
 		_bow_speed = 0.0
 		return
 	var st: Dictionary = _stations[front]
-	var m: Transform3D = st.cs.global_transform
-	var fwd := -Vector3(m.basis.y.x, 0.0, m.basis.y.z).normalized()
+	var tail: Vector3 = _now(st)[3]
+	var fwd := -Vector3(tail.x, 0.0, tail.z).normalized()
 	var moved: Vector3 = Vector3.ZERO if _bow_at == Vector3.INF else (Vector3(st.c.x, 0.0, st.c.z) - Vector3(_bow_at.x, 0.0, _bow_at.z)) / delta
 	_bow_at = Vector3(st.c.x, _water.global_position.y, st.c.z)
 	_bow_fwd = fwd
@@ -397,8 +443,8 @@ func _owe(st: Dictionary, k: int, amount: float) -> void:
 
 ## A random spot along the stretch a station stands for.
 func _along(st: Dictionary, len_m: float) -> Vector3:
-	var m: Transform3D = st.cs.global_transform
-	var axis := Vector3(m.basis.y.x, 0.0, m.basis.y.z).normalized()
+	var tail: Vector3 = _now(st)[3]
+	var axis := Vector3(tail.x, 0.0, tail.z).normalized()
 	return axis * _rng.randf_range(-0.5, 0.5) * len_m
 
 func _jitter(dir: Vector3, amount: float) -> Vector3:
