@@ -19,6 +19,7 @@ class_name LeviathanSplash extends Node3D
 const SHEET_TEXTURE := preload('res://assets/textures/water_splash_big.png')
 const SPRAY_TEXTURE := preload('res://assets/water/sea_spray.png')
 const SPRAY_SHADER := preload('res://assets/shaders/particles/leviathan_spray.gdshader')
+const DRAW_SHADER := preload('res://assets/shaders/spatial/leviathan_spray_draw.gdshader')
 const G := 9.8
 const FLAGS := GPUParticles3D.EMIT_FLAG_POSITION | GPUParticles3D.EMIT_FLAG_VELOCITY \
 		| GPUParticles3D.EMIT_FLAG_COLOR | GPUParticles3D.EMIT_FLAG_CUSTOM
@@ -40,16 +41,28 @@ enum Kind { SHEET, PUFF, DROP, MIST }
 ## Farther than this from the camera, nothing is thrown.
 @export var cull_distance := 4000.0
 @export var spray_color := Color(0.82, 0.88, 0.9, 0.92) # sea water, a little grey-green
+## How bright the spray is in the light falling on it (1 = as bright as white sea foam there).
+@export_range(0.0, 3.0, 0.01) var spray_brightness := 0.9
 ## A churned wake left behind each stretch of the body that is in the water.
 @export var leave_wake := true
 ## How far (m) behind the mouth the body begins: anything of the colliders in front of that is not
 ## body (the mouth is open there).
 @export var mouth_trim := 0.0
 
+@export_group('Jaw corners')
+## Markers on the corners of the mouth (children of the Leviathan named jaw_splash_zone...): the
+## water rushing into the open mouth slams into the jaw's edge there head-on, the hardest-hit
+## water on the whole body. Each throws as much as this many metres of flank would.
+@export var jaw_amount := 60.0
+## How high the water climbs a jaw corner, x V^2 / 2g (1 = all of it: a blunt edge met head-on).
+@export_range(0.0, 2.0, 0.01) var jaw_climb := 1.0
+## A corner farther than this (m) above or below the sea throws nothing.
+@export var jaw_band := 30.0
+
 @export_group('Bow wave')
 ## Height of the water piled against the cheeks, x V^2 / 2g (a blunt bow piles it to about half the
 ## height the water would climb at a dead stop; the open mouth lets the rest through).
-@export_range(0.0, 1.5, 0.01) var bow_pile := 0.5
+@export_range(0.0, 1.5, 0.01) var bow_pile := 0.25
 ## How deep the sea is drawn down into the open mouth, x V^2 / 2g.
 @export_range(0.0, 1.0, 0.01) var mouth_draw := 0.2
 
@@ -63,6 +76,7 @@ var _water: Node
 var _layers := {} # Kind -> GPUParticles3D
 var _stations: Array = [] # see _build_stations()
 var _wakes: Array[WakeEmitter] = []
+var _jaws: Array = [] # per mouth corner: the same bookkeeping as a station (see _build_stations)
 var _rng := RandomNumberGenerator.new()
 const UPDATE_EVERY := 2 # physics frames per update
 const SEA_STEP := 8 # sections per reading of the waves
@@ -81,8 +95,13 @@ func setup(colliders: Array[Node3D], mouth: Node3D) -> void:
 	_rng.randomize()
 	add_to_group(&'water_deformer') # water.gd takes our bow wave from pack_shapes()
 	_build_stations(colliders, mouth)
+	for marker in get_parent().find_children('jaw_splash_zone*', 'Node3D', false):
+		# its ellipse is a point; the way to the tail is the Leviathan's +Z, in the marker's space
+		var to_tail: Vector3 = (marker as Node3D).global_basis.inverse() * get_parent().global_basis.z
+		_jaws.append({col = marker, centre = Vector3.ZERO, across = Vector3.ZERO, updown = Vector3.ZERO,
+				along = to_tail, c = Vector3.INF, credit = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]})
 	_layers[Kind.SHEET] = _make_layer(Kind.SHEET, max_sheets, SHEET_TEXTURE)
-	_layers[Kind.PUFF] = _make_layer(Kind.PUFF, max_puffs, SPRAY_TEXTURE)
+	_layers[Kind.PUFF] = _make_layer(Kind.PUFF, max_puffs, SHEET_TEXTURE)
 	_layers[Kind.DROP] = _make_layer(Kind.DROP, max_drops, _drop_texture())
 	_layers[Kind.MIST] = _make_layer(Kind.MIST, max_mist, SPRAY_TEXTURE)
 	if leave_wake:
@@ -332,6 +351,28 @@ func track(delta: float) -> void:
 				_pour(st, k * 4, at, out, minf(top, max_height), exp(-st.out_t / pour_time), len_m, delta)
 	_place_wakes(wake_bow, wake_wide, wake_stern)
 	_track_bow(wake_bow, delta)
+	if near:
+		_track_jaws(delta)
+
+## The mouth's corners: the sea streams into the open mouth at the speed it swims and slams into
+## the jaw's edge at each side, climbing it all the way to V^2 / 2g and flung out to the side.
+func _track_jaws(delta: float) -> void:
+	for jaw: Dictionary in _jaws:
+		var p: Vector3 = (jaw.col as Node3D).global_position
+		var vel: Vector3 = Vector3.ZERO if jaw.c == Vector3.INF else (p - jaw.c) / delta
+		jaw.c = p
+		var sea: float = _water.get_wave_height(p, false)
+		if absf(p.y - sea) > jaw_band:
+			continue
+		var tail: Vector3 = _now(jaw)[3]
+		var fwd := -Vector3(tail.x, 0.0, tail.z).normalized()
+		var mouth: Vector3 = get_parent().global_position
+		var out := Vector3(p.x - mouth.x, 0.0, p.z - mouth.z)
+		out = (out - fwd * out.dot(fwd)).normalized() # straight out to its side
+		# met head-on as it swims, plus the jaw slapping up and down through the surface
+		var u := minf(maxf(vel.dot(fwd), 0.0) + absf(vel.y), max_push)
+		if u > min_push:
+			_throw(jaw, 0, Vector3(p.x, sea, p.z), (out + fwd * 0.3).normalized(), u, jaw_amount, vel, delta, jaw_climb)
 
 ## The front of the body in the water, for the bow wave.
 func _track_bow(front: int, delta: float) -> void:
@@ -380,8 +421,8 @@ func pack_shapes() -> Array:
 
 ## Water flung off a side driving into it at u m/s: a sheet climbing it, lumps and drops thrown
 ## up and out, and a mist that hangs where a big one was.
-func _throw(st: Dictionary, slot: int, at: Vector3, out: Vector3, u: float, len_m: float, carry: Vector3, delta: float) -> void:
-	var h := minf(climb * u * u / (2.0 * G), max_height)
+func _throw(st: Dictionary, slot: int, at: Vector3, out: Vector3, u: float, len_m: float, carry: Vector3, delta: float, how_high := -1.0) -> void:
+	var h := minf((climb if how_high < 0.0 else how_high) * u * u / (2.0 * G), max_height)
 	if h < 1.0:
 		return
 	var rise := sqrt(2.0 * h / G)
@@ -504,31 +545,25 @@ func _make_layer(kind: Kind, count: int, texture: Texture2D) -> GPUParticles3D:
 			pm.set_shader_parameter(&'wind', Vector3(1.2, 0.0, 0.6))
 			pm.set_shader_parameter(&'grow', 2.4)
 	p.process_material = pm
-	var mat := StandardMaterial3D.new()
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_VERTEX # lit like the world: dim under the moon
-	mat.roughness = 1.0
-	mat.metallic_specular = 0.0
-	mat.vertex_color_use_as_albedo = true
-	mat.albedo_texture = texture
-	mat.albedo_color = spray_color
-	mat.disable_receive_shadows = true
-	mat.billboard_keep_scale = true
+	# drawn turned to the eye but lit as if facing the sky, see leviathan_spray_draw.gdshader
+	var mat := ShaderMaterial.new()
+	mat.shader = DRAW_SHADER
+	mat.set_shader_parameter(&'tex', texture)
+	mat.set_shader_parameter(&'tint', Color(spray_color.r * spray_brightness, spray_color.g * spray_brightness,
+			spray_color.b * spray_brightness, spray_color.a))
 	mat.render_priority = 1 # after the water, never hidden behind it
-	# fade out close to the eye: from inside the mouth a sheet must not wall off the view
-	mat.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
-	mat.distance_fade_min_distance = 6.0
-	mat.distance_fade_max_distance = 40.0
 	var quad := QuadMesh.new()
 	match kind:
 		Kind.SHEET:
-			mat.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y # stands upright, turned to the eye
+			mat.set_shader_parameter(&'axis_mode', 1) # stands upright, turned to the eye
 			quad.center_offset = Vector3(0.0, 0.5, 0.0) # standing on the sea, not sunk to its middle
+		Kind.PUFF:
+			mat.set_shader_parameter(&'axis_mode', 1) # a burst of water held upright as it flies
 		Kind.DROP:
-			mat.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y # a streak along its flight
+			mat.set_shader_parameter(&'axis_mode', 1) # a streak along its flight
 			quad.size = Vector2(0.45, 1.1)
 		_:
-			mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+			mat.set_shader_parameter(&'axis_mode', 0)
 	quad.material = mat
 	p.draw_pass_1 = quad
 	add_child(p)

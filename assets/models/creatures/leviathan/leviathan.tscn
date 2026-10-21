@@ -70,11 +70,15 @@ rise_climb = 7.5
 surface_distance_min = 500.0
 surface_distance_max = 1000.0
 cruise_speed = 50.0
-chase_speed = 50.0
-hunt_speed = 50.0
+chase_speed = 55.0
+hunt_speed = 60.0
+drift_radius = 2000.0
+hunt_turn_radius = 250.0
+return_turn_radius = 300.0
 jaw_bones = PackedStringArray("bone_mouth_top_obsolete", "bone_mouth_bottom_obsolete")
 jaw_shake_angle = 1.0
 jaw_shake_rate = 2.0
+mouth_time = 1000.0
 
 [node name="Head" type="Node3D" parent="." unique_id=2082841984]
 
@@ -133,7 +137,7 @@ ring_width = 35.0
 ring_delay = 10.0
 ring_fade_in = 8.0
 ring_lifetime = 120.0
-ring_foam = 1.26
+ring_foam = 2.0
 ring_falloff = 1.0
 
 [node name="CallSound" type="AudioStreamPlayer3D" parent="Head" unique_id=1843566639]
@@ -311,5 +315,11 @@ visible = false
 light_color = Color(0.96, 0.416, 0, 1)
 light_energy = 100.0
 omni_range = 256.191
+
+[node name="jaw_splash_zone_L" type="Marker3D" parent="." unique_id=1825173412]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.151947, 2.129469, 4.732147)
+
+[node name="jaw_splash_zone_R" type="Marker3D" parent="." unique_id=1212328469]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -60.808197, 2.129469, 4.732147)
 
 [editable path="leviathan_fish"]
