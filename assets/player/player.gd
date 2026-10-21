@@ -10,6 +10,8 @@ enum State { WALK, SWIM, PILOT, OPERATE, CLIMB }
 @export var sprint_speed: float = 8.5
 @export var swim_speed: float = 3.5
 @export var jump_velocity: float = 4.5
+## Our own body (PlayerBody): seen looking down and in our shadow.
+@export var show_body := true
 @export var mouse_sensitivity: float = 0.0025
 @export var turn_speed: float = 2.0 # radians/sec, for keyboard look (Q/R or arrow keys), eg. over a remote desktop
 @export var look_speed: float = 1.5 # radians/sec, for keyboard look up/down (arrow keys)
@@ -117,6 +119,11 @@ func _ready() -> void:
 	sonar.name = &'SonarPulse'
 	sonar.player = self
 	add_child(sonar)
+	if show_body:
+		var body := PlayerBody.new() # our own body: seen looking down, and in our shadow
+		body.name = &'Body'
+		add_child(body)
+		body.setup(self)
 	_head_base_y = head.position.y
 	floor_snap_length = 0.5 # a deck falling out of a wave can outrun gravity; stay stuck to it
 	# Muffle all audio while underwater via a low-pass filter on the Master bus.
