@@ -201,6 +201,8 @@ var _collider_offsets: Array[Transform3D] = []
 var _rng := RandomNumberGenerator.new()
 var _fed := false # it caught the ship or the player is in its mouth
 var _ship_held := false
+var _player_on_ship := Vector3.INF # where on the held ship the player last stood (her space)
+var _player_held := false # the player is carried inside it with her (see _hold_player())
 var _ship_local := Transform3D.IDENTITY # the caught ship, in the head's (unscaled) space
 var _dive_in := 0.0 # s left before it goes down after feeding
 var _mouth_t := 0.0 # s the player has been inside its mouth, straight
@@ -226,6 +228,14 @@ func _ready() -> void:
 		_tail_rest = _tail.basis
 	for d in find_children('*', 'WaterDeformer', true, false):
 		_scale_deformer(d)
+	# It moves before anything riding it: a ship it holds is in place before the player standing on
+	# her is carried along, or each frame the deck runs a frame ahead and shakes them loose.
+	process_physics_priority = -10
+	# Mesh colliders are solid from both sides: from inside its mouth, nothing slips out through
+	# the walls of its head.
+	for cs: CollisionShape3D in find_children('*', 'CollisionShape3D', true, false):
+		if cs.shape is ConcavePolygonShape3D:
+			(cs.shape as ConcavePolygonShape3D).backface_collision = true
 	_make_bodies_move()
 	_find_spine()
 	# a LeviathanSplash child of its own (to tune in the editor), else a default one
@@ -336,6 +346,7 @@ func _physics_process(delta: float) -> void:
 	_splash.track(delta)
 	if _ship_held:
 		ship.global_transform = _frame() * _ship_local
+		_hold_player()
 	_watch_mouth(delta)
 
 ## ---- states --------------------------------------------------------------------
@@ -414,6 +425,11 @@ func _process_dive(delta: float) -> bool:
 			# she stays down there with it, out of sight, until the morning gives her back
 			ship.visible = false
 			ship.set_meta(TAKEN_META, true)
+		if _player_held:
+			_let_player_go()
+			if not _died:
+				_died = true
+				EventBus.player_died.emit() # taken down into the deep with her
 		queue_free()
 		return true
 	return false
@@ -456,6 +472,32 @@ func _on_throat_body_entered(body: Node3D) -> void:
 	ship.angular_velocity = Vector3.ZERO
 	_ship_local = _frame().affine_inverse() * ship.global_transform
 	_feed()
+
+## While it holds the ship the player aboard her walks about as they like (the deck carries them).
+## Should they come loose from her in its mouth (thrown off by its swing, or her deck going under
+## and them floating up off it) it does not let them swim out: they are held where they were on her
+## and go wherever she goes. Taken down with her, they die.
+func _hold_player() -> void:
+	if not is_instance_valid(player) or not player.has_method(&'set_captured'):
+		return
+	if _player_held:
+		player.global_position = ship.global_transform * _player_on_ship
+		return
+	if player.has_method(&'ship_aboard') and player.ship_aboard() == ship:
+		_player_on_ship = ship.global_transform.affine_inverse() * player.global_position
+	elif _player_on_ship != Vector3.INF and player.global_position.distance_to(ship.global_transform * _player_on_ship) < 30.0:
+		_player_held = true # came loose aboard her, in its mouth
+		player.set_captured(true)
+		player.global_position = ship.global_transform * _player_on_ship
+
+## Gone for any reason (down into the deep, a new morning): it holds no one any more.
+func _exit_tree() -> void:
+	_let_player_go()
+
+func _let_player_go() -> void:
+	if _player_held and is_instance_valid(player):
+		player.set_captured(false)
+	_player_held = false
 
 ## Caught the ship or has the player in its mouth: it swims on slowly a moment, then goes down.
 func _feed() -> void:
