@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://ddm71i1yfjrbw" path="res://assets/scripts/world/water_deformer.gd" id="2_23be2"]
 [ext_resource type="PackedScene" uid="uid://dgx8n3bqdrwve" path="res://assets/models/creatures/leviathan/leviathan_fish.glb" id="4_3b8bd"]
+[ext_resource type="Script" uid="uid://csyjpi4nlac4u" path="res://assets/scripts/world/underwater_glow.gd" id="4_uaybq"]
 [ext_resource type="Script" uid="uid://doax2jxcestwf" path="res://assets/scripts/world/leviathan.gd" id="main_script"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_qpvu1"]
@@ -70,8 +71,8 @@ body_length = 1000.0
 despawn_depth = 150.0
 rise_speed = 18.0
 rise_climb = 7.5
-surface_distance_min = 1000.0
-surface_distance_max = 1500.0
+surface_distance_min = 750.0
+surface_distance_max = 1000.0
 cruise_speed = 50.0
 chase_speed = 55.0
 hunt_speed = 60.0
@@ -324,5 +325,14 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.151947, 2.129469, 4.732147
 
 [node name="jaw_splash_zone_R" type="Marker3D" parent="." unique_id=1212328469]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -60.808197, 2.129469, 4.732147)
+
+[node name="UnderwaterGlow" type="Node3D" parent="." unique_id=1697827150]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 76.42788, 42.561646)
+script = ExtResource("4_uaybq")
+color = Color(1, 0, 0.25, 1)
+strength = 5.95
+size = 20.0
+reach = 161.0
+metadata/_custom_type_script = "uid://csyjpi4nlac4u"
 
 [editable path="leviathan_fish"]

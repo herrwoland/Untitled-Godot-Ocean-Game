@@ -22,6 +22,7 @@
 [ext_resource type="PackedScene" uid="uid://d327mym4cwyr7" path="res://assets/models/boat/ladder.glb" id="9_4dvsp"]
 [ext_resource type="Script" uid="uid://c31olmyjgo1bk" path="res://assets/scripts/interactables/searchlight_interactable.gd" id="9_searchlight"]
 [ext_resource type="Texture2D" uid="uid://dtm5tyuh2slqt" path="res://assets/water/sea_spray.png" id="11_w61sw"]
+[ext_resource type="Texture2D" uid="uid://ecrr4oy8bulh" path="res://assets/models/boat/boat_0_glass_texture.png" id="13_4qo5w"]
 [ext_resource type="PackedScene" uid="uid://dj8t1o61d618s" path="res://scenes/boat/dispenser.tscn" id="17_duxm1"]
 [ext_resource type="AudioStream" uid="uid://bgy5gqiked7ux" path="res://assets/SFX/547515__carlos-as15__light-switch.mp3" id="18_g26kg"]
 [ext_resource type="AudioStream" uid="uid://x684u8qcrapm" path="res://assets/SFX/Rusty-door-hinge.ogg" id="19_se4o6"]
@@ -111,6 +112,16 @@ emission_energy_multiplier = 0.95
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_klyyb"]
 size = Vector3(1.6560059, 4.9916687, 0.20031738)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_j4wko"]
+resource_name = "glass_window"
+render_priority = 1
+transparency = 4
+cull_mode = 2
+albedo_color = Color(1, 1, 1, 0.12156863)
+albedo_texture = ExtResource("13_4qo5w")
+roughness = 0.0
+texture_filter = 2
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_vqht1"]
 
@@ -312,7 +323,8 @@ light_color = Color(1, 0.8666667, 0.59607846, 1)
 light_energy = 16.0
 light_specular = 0.0
 spot_range = 50.0
-spot_angle = 47.76
+spot_angle = 35.12
+spot_angle_attenuation = 9.513646
 
 [node name="head_light_2" type="SpotLight3D" parent="lights" unique_id=1342475156]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -2.408451, 8.605911, 2.7679212)
@@ -320,7 +332,8 @@ light_color = Color(1, 0.8666667, 0.59607846, 1)
 light_energy = 16.0
 light_specular = 0.0
 spot_range = 50.0
-spot_angle = 47.76
+spot_angle = 35.12
+spot_angle_attenuation = 9.513646
 
 [node name="furnace_light" type="OmniLight3D" parent="lights" unique_id=645486856]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 6.852402, 0.23572978, -0.04049349)
@@ -418,6 +431,18 @@ collision_layer = 2
 transform = Transform3D(1, -2.4150717e-07, 7.3631156e-08, 2.4150725e-07, 0.8299049, -0.5579044, 7.36312e-08, 0.55790436, 0.82990515, 0.0025644302, -2.12534, -1.1581947)
 shape = SubResource("BoxShape3D_klyyb")
 
+[node name="table2" parent="boat" index="57" unique_id=432744879]
+visible = false
+
+[node name="CollisionShape3D" parent="boat/table2/StaticBody3D" parent_id_path=PackedInt32Array(331109473, 753028911) index="0" unique_id=561420792]
+shape = null
+
+[node name="table" parent="boat" index="58" unique_id=776182462]
+visible = false
+
+[node name="CollisionShape3D" parent="boat/table/StaticBody3D" parent_id_path=PackedInt32Array(331109473, 850757623) index="0" unique_id=257323812]
+shape = null
+
 [node name="StaticBody3D" parent="boat/top_door" parent_id_path=PackedInt32Array(331109473, 799778765) index="0" unique_id=1689788088]
 collision_layer = 2
 
@@ -426,6 +451,9 @@ collision_layer = 2
 
 [node name="window_inside" parent="boat" index="68" unique_id=427142581]
 visible = false
+
+[node name="window_outside" parent="boat" index="69" unique_id=572516459]
+surface_material_override/0 = SubResource("StandardMaterial3D_j4wko")
 
 [node name="control_panel" parent="boat" index="70" unique_id=1769502697]
 transform = Transform3D(0.6308224, 0, -3.5527137e-15, 0, 0.6308224, 0, 0, 0, 0.5597129, -0.014570771, 5.5032043, 2.9313788)
