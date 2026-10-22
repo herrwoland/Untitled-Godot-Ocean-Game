@@ -66,6 +66,7 @@ texture_filter = 0
 
 [node name="Leviathan" type="Node3D" unique_id=800797773]
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
+visible = false
 script = ExtResource("main_script")
 body_length = 1000.0
 despawn_depth = 150.0
