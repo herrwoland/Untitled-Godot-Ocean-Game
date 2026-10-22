@@ -44,6 +44,7 @@ var home_r := Vector3.ZERO
 ## The wrists' extra turn once a hand is turning with its spoke (radians, like `wrist`), faded in
 ## with the lock.
 var lock_wrist := Vector3.ZERO
+var _clip_hand := {} # per side: the hand's turn as the clip posed it, this frame
 var _lock := {} # per side: the hand's turn relative to its spoke, as it was near home
 const LOCK_FROM := 10.0 # degrees from home: up to here the hand is as the arm leaves it
 const LOCK_FULL := 25.0 # degrees from home: from here it turns wholly with its spoke
@@ -55,6 +56,7 @@ const LEAN := {&'spine_01': 0.4, &'spine_02': 0.35, &'spine_03': 0.25}
 const TWIST := {&'spine_01': 0.15, &'spine_02': 0.2, &'spine_03': 0.25, &'neck_01': 0.4}
 const SHOULDER_SHARE := 0.6 # of the twist, what the bones below the shoulders take
 const MAX_PASSES := 8 # aims at most per hand per frame
+const HOLD_TRIES := 3 # at most, the chest pulled in and the arms reaching again (more, and the pulls add up)
 const SETTLED := 0.002 # how near the handle (in the skeleton's units) the palm must land
 
 func _process_modification() -> void:
@@ -83,9 +85,16 @@ func _process_modification() -> void:
 		_lock.erase('_l')
 	if hand_r == Vector3.INF:
 		_lock.erase('_r')
+	# the hands as the clip left them: each reach below starts from here (the wrist turn is laid on
+	# once per reach, never on top of the last one)
+	_clip_hand.clear()
+	for side in ['_l', '_r']:
+		var hb := sk.find_bone('hand' + side)
+		if hb >= 0:
+			_clip_hand[side] = sk.get_bone_pose_rotation(hb)
 	# reach for the handles; if the sway has carried a shoulder past where its hand can hold, the
 	# grip pulls the chest in by what it missed and the arms reach again
-	for attempt in 3:
+	for attempt in HOLD_TRIES:
 		var miss := Vector3.ZERO
 		if hand_l != Vector3.INF:
 			var m := _grip(sk, '_l', hand_l, pole_l)
@@ -93,7 +102,7 @@ func _process_modification() -> void:
 		if hand_r != Vector3.INF:
 			var m := _grip(sk, '_r', hand_r, pole_r)
 			if m.length() > miss.length(): miss = m
-		if miss.length() < SETTLED * 2.0 or attempt == 2:
+		if miss.length() < SETTLED * 2.0 or attempt == HOLD_TRIES - 1:
 			break
 		_hold_on(sk, miss)
 	_close(sk, fingers_l, grip_l)
@@ -138,10 +147,10 @@ func _grip(sk: Skeleton3D, side: String, grip: Vector3, pole: Vector3) -> Vector
 	var knuckle := StringName('middle_01' + side)
 	# the wrist's turn first, so the reach below lands the palm with the hand already turned
 	var h := sk.find_bone(hand)
-	if h >= 0 and wrist != Vector3.ZERO:
+	if h >= 0:
 		var m := 1.0 if side == '_l' else -1.0
 		var turn := Quaternion.from_euler(Vector3(wrist.x, wrist.y * m, wrist.z * m))
-		sk.set_bone_pose_rotation(h, sk.get_bone_pose_rotation(h) * turn)
+		sk.set_bone_pose_rotation(h, (_clip_hand.get(side, sk.get_bone_pose_rotation(h)) as Quaternion) * turn)
 	# aimed, then corrected by what it missed until the palm is on the handle: a fixed few passes
 	# left a miss of a few cm that changed as the body swayed, the hands creeping on the wheel
 	var aim := _palm_on(sk, upper, hand, knuckle, grip)
