@@ -54,6 +54,8 @@ const LEAN := {&'spine_01': 0.4, &'spine_02': 0.35, &'spine_03': 0.25}
 ## How the turn is shared out, lower back to neck (adds up to 1).
 const TWIST := {&'spine_01': 0.15, &'spine_02': 0.2, &'spine_03': 0.25, &'neck_01': 0.4}
 const SHOULDER_SHARE := 0.6 # of the twist, what the bones below the shoulders take
+const MAX_PASSES := 8 # aims at most per hand per frame
+const SETTLED := 0.002 # how near the handle (in the skeleton's units) the palm must land
 
 func _process_modification() -> void:
 	var sk := get_skeleton()
@@ -77,20 +79,47 @@ func _process_modification() -> void:
 			var g := sk.get_bone_global_pose(b)
 			g.basis = Basis(Vector3.UP, twist * TWIST[bone_name]) * g.basis
 			sk.set_bone_global_pose(b, g)
-	if hand_l != Vector3.INF:
-		_grip(sk, '_l', hand_l, pole_l)
-	else:
+	if hand_l == Vector3.INF:
 		_lock.erase('_l')
-	if hand_r != Vector3.INF:
-		_grip(sk, '_r', hand_r, pole_r)
-	else:
+	if hand_r == Vector3.INF:
 		_lock.erase('_r')
+	# reach for the handles; if the sway has carried a shoulder past where its hand can hold, the
+	# grip pulls the chest in by what it missed and the arms reach again
+	for attempt in 3:
+		var miss := Vector3.ZERO
+		if hand_l != Vector3.INF:
+			var m := _grip(sk, '_l', hand_l, pole_l)
+			if m.length() > miss.length(): miss = m
+		if hand_r != Vector3.INF:
+			var m := _grip(sk, '_r', hand_r, pole_r)
+			if m.length() > miss.length(): miss = m
+		if miss.length() < SETTLED * 2.0 or attempt == 2:
+			break
+		_hold_on(sk, miss)
 	_close(sk, fingers_l, grip_l)
 	_close(sk, fingers_r, grip_r)
 	if grip_l > 0.001:
 		_turn_thumb(sk, '_l')
 	if grip_r > 0.001:
 		_turn_thumb(sk, '_r')
+
+## Holding on: the body can't sway farther from a handle than its arm reaches, the grip pulls it
+## along. The back bends about the waist to bring the shoulders `miss` nearer the handle.
+func _hold_on(sk: Skeleton3D, miss: Vector3) -> void:
+	var waist := sk.get_bone_global_pose(sk.find_bone(&'spine_01')).origin
+	var chest := (sk.get_bone_global_pose(sk.find_bone(&'upperarm_l')).origin + sk.get_bone_global_pose(sk.find_bone(&'upperarm_r')).origin) * 0.5
+	var up := chest - waist
+	var axis := up.cross(miss)
+	if axis.length() < 0.000001:
+		return
+	var angle := minf(miss.length() / maxf(up.length(), 0.01), deg_to_rad(10.0))
+	for bone_name: StringName in LEAN:
+		var b := sk.find_bone(bone_name)
+		if b < 0:
+			continue
+		var g := sk.get_bone_global_pose(b)
+		g.basis = Basis(axis.normalized(), angle * LEAN[bone_name]) * g.basis
+		sk.set_bone_global_pose(b, g)
 
 ## The thumb opened and turned at its base, by the thumb sliders.
 func _turn_thumb(sk: Skeleton3D, side: String) -> void:
@@ -102,7 +131,7 @@ func _turn_thumb(sk: Skeleton3D, side: String) -> void:
 
 ## The arm reaches so its palm lands on `grip`: aimed once, then corrected by what it missed (the
 ## hand angles at the wrist, so the first aim is a few cm off).
-func _grip(sk: Skeleton3D, side: String, grip: Vector3, pole: Vector3) -> void:
+func _grip(sk: Skeleton3D, side: String, grip: Vector3, pole: Vector3) -> Vector3:
 	var upper := StringName('upperarm' + side)
 	var lower := StringName('lowerarm' + side)
 	var hand := StringName('hand' + side)
@@ -113,11 +142,17 @@ func _grip(sk: Skeleton3D, side: String, grip: Vector3, pole: Vector3) -> void:
 		var m := 1.0 if side == '_l' else -1.0
 		var turn := Quaternion.from_euler(Vector3(wrist.x, wrist.y * m, wrist.z * m))
 		sk.set_bone_pose_rotation(h, sk.get_bone_pose_rotation(h) * turn)
+	# aimed, then corrected by what it missed until the palm is on the handle: a fixed few passes
+	# left a miss of a few cm that changed as the body swayed, the hands creeping on the wheel
 	var aim := _palm_on(sk, upper, hand, knuckle, grip)
-	for pass_i in 3:
+	for pass_i in MAX_PASSES:
 		_reach(sk, upper, lower, hand, aim, pole)
 		_lock_to_spoke(sk, h, side, grip, sk.get_bone_global_pose(sk.find_bone(upper)).origin)
-		aim += grip - _palm(sk, hand, knuckle)
+		var miss := grip - _palm(sk, hand, knuckle)
+		if miss.length() < SETTLED:
+			return Vector3.ZERO
+		aim += miss
+	return grip - _palm(sk, hand, knuckle) # what it could not reach
 
 ## Keeps the hand gripping the handle it holds as the wheel turns (see wheel_center). A handle is a
 ## bar sticking out from the wheel, and a hand can hold a bar from any side round it: it holds it
