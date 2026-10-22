@@ -355,6 +355,24 @@ transform = Transform3D(1, -5.9604645e-08, -5.32907e-15, 5.9604645e-08, 1, 3.552
 [node name="control_steering" parent="lights/steering_hinge/steering" index="0" unique_id=464494156]
 transform = Transform3D(-2.043148e-07, 1.312402e-09, -1.154, 0.6343089, 1.1347476, -8.747832e-08, 1.1347475, -0.63430893, -1.5888205e-07, -2.22453, 3.257318, 1.0430146)
 
+[node name="Steering_11o\'clock" type="Marker3D" parent="lights/steering_hinge" unique_id=1047955923]
+transform = Transform3D(1, -2.5243564e-29, 1.6940665e-21, 2.5243564e-29, 1, 1.0587912e-21, -1.6940665e-21, -1.0587912e-21, 1, 0.32209516, 0.7151413, 0.43430325)
+
+[node name="Steering_1o\'clock" type="Marker3D" parent="lights/steering_hinge" unique_id=1913426112]
+transform = Transform3D(1, -2.5243564e-29, 2.117583e-21, 2.5243564e-29, 1, 1.0587912e-21, -2.117583e-21, -1.0587912e-21, 1, 0.3220954, 0.7151413, -0.41208673)
+
+[node name="Steering_9o\'clock" type="Marker3D" parent="lights/steering_hinge" unique_id=910320255]
+transform = Transform3D(1, -2.5243564e-29, 2.5410992e-21, 2.5243564e-29, 1, 1.0587912e-21, -2.5410992e-21, -1.0587912e-21, 1, 0.32209635, 0.0040135384, 0.9038888)
+
+[node name="Steering_3o\'clock" type="Marker3D" parent="lights/steering_hinge" unique_id=815593491]
+transform = Transform3D(1, -2.5243564e-29, 2.5410992e-21, 2.5243564e-29, 1, 1.0587912e-21, -2.5410992e-21, -1.0587912e-21, 1, 0.32209635, 0.0040135384, -0.8816724)
+
+[node name="Steering_7o\'clock" type="Marker3D" parent="lights/steering_hinge" unique_id=868263371]
+transform = Transform3D(0.9999997, -2.842171e-13, 1.6940659e-21, 2.524356e-29, 1, 1.2705494e-21, -3.3881318e-21, -1.2705494e-21, 0.9999997, 0.3220961, -0.7371321, 0.4058923)
+
+[node name="Steering_5o\'clock" type="Marker3D" parent="lights/steering_hinge" unique_id=1407723482]
+transform = Transform3D(0.9999997, -2.842171e-13, 1.6940659e-21, 2.524356e-29, 1, 1.2705494e-21, -3.3881318e-21, -1.2705494e-21, 0.9999997, 0.3220961, -0.7371321, -0.4404976)
+
 [node name="controls" type="Node3D" parent="." unique_id=1887152825]
 
 [node name="navigation_lock" parent="controls" unique_id=1226678181 node_paths=PackedStringArray("ship") instance=ExtResource("3_2q3ma")]
