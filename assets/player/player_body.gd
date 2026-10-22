@@ -81,6 +81,8 @@ var _lean := Vector2.ZERO # the upper body's lean on its spring, and how fast it
 var _lean_v := Vector2.ZERO
 var _stand_was := Vector3.INF # where the feet stood, and how fast they moved (the deck's lurch)
 var _stand_v := Vector3.ZERO
+var _lurch := Vector3.ZERO
+const SWAY_SMOOTH := 0.12 # s: how long the deck's motion is smoothed over before the body feels it
 var _arm_reach := 0.0 # m from the shoulder a hand can hold something (see _hands())
 var _pivot: Node3D # what carries the camera (the camera shake's pivot, else the camera)
 var _pivot_rest := Vector3.ZERO
@@ -309,9 +311,14 @@ func _helm(view_yaw: float, delta: float) -> void:
 	# the upper body on its spring: pushed by how her deck lurches under the feet, and straightening
 	# up against her tilt
 	if _stand_was != Vector3.INF and delta > 0.0:
+		# the deck's speed and lurch, smoothed: she moves in physics steps that don't line up with
+		# drawn frames, so taken raw, frame to frame, they are mostly that stepping, and the body
+		# shook with it
 		var v := (stand - _stand_was) / delta
-		var lurch := (v - _stand_v) / delta
-		_stand_v = v
+		var was_v := _stand_v
+		_stand_v = _stand_v.lerp(v, 1.0 - exp(-delta / SWAY_SMOOTH))
+		_lurch = _lurch.lerp((_stand_v - was_v) / delta, 1.0 - exp(-delta / SWAY_SMOOTH))
+		var lurch := _lurch
 		var tilt_fwd := asin(clampf(Vector3.UP.dot(fwd), -1.0, 1.0)) # world up leans this way off her deck
 		var tilt_right := asin(clampf(Vector3.UP.dot(right), -1.0, 1.0))
 		var target := Vector2(-lurch.dot(fwd) * sway_push + tilt_fwd * sway_upright,
@@ -351,6 +358,7 @@ func _leave_helm() -> void:
 	_lean_v = Vector2.ZERO
 	_stand_was = Vector3.INF
 	_stand_v = Vector3.ZERO
+	_lurch = Vector3.ZERO
 	_hold = [-1, -1]
 	_regrip = [-1.0, -1.0]
 

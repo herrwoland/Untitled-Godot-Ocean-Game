@@ -44,6 +44,7 @@ var home_r := Vector3.ZERO
 ## The wrists' extra turn once a hand is turning with its spoke (radians, like `wrist`), faded in
 ## with the lock.
 var lock_wrist := Vector3.ZERO
+var _pull := Vector3.ZERO # the chest drawn toward the handles (see _process_modification)
 var _clip_hand := {} # per side: the hand's turn as the clip posed it, this frame
 var _lock := {} # per side: the hand's turn relative to its spoke, as it was near home
 const LOCK_FROM := 10.0 # degrees from home: up to here the hand is as the arm leaves it
@@ -55,9 +56,10 @@ const LEAN := {&'spine_01': 0.4, &'spine_02': 0.35, &'spine_03': 0.25}
 ## How the turn is shared out, lower back to neck (adds up to 1).
 const TWIST := {&'spine_01': 0.15, &'spine_02': 0.2, &'spine_03': 0.25, &'neck_01': 0.4}
 const SHOULDER_SHARE := 0.6 # of the twist, what the bones below the shoulders take
-const MAX_PASSES := 8 # aims at most per hand per frame
-const HOLD_TRIES := 3 # at most, the chest pulled in and the arms reaching again (more, and the pulls add up)
-const SETTLED := 0.002 # how near the handle (in the skeleton's units) the palm must land
+const MAX_PASSES := 6 # aims per hand per frame
+const SOFT_FROM := 0.9 # of an arm's full length, where its reach starts to ease off
+const PULL_GAIN := 0.35 # of what the arms couldn't reach, how much more the chest is drawn in next frame
+const PULL_LET_GO := 0.985 # how much of the pull is kept each frame (the rest lets go)
 
 func _process_modification() -> void:
 	var sk := get_skeleton()
@@ -92,19 +94,21 @@ func _process_modification() -> void:
 		var hb := sk.find_bone('hand' + side)
 		if hb >= 0:
 			_clip_hand[side] = sk.get_bone_pose_rotation(hb)
-	# reach for the handles; if the sway has carried a shoulder past where its hand can hold, the
-	# grip pulls the chest in by what it missed and the arms reach again
-	for attempt in HOLD_TRIES:
-		var miss := Vector3.ZERO
-		if hand_l != Vector3.INF:
-			var m := _grip(sk, '_l', hand_l, pole_l)
-			if m.length() > miss.length(): miss = m
-		if hand_r != Vector3.INF:
-			var m := _grip(sk, '_r', hand_r, pole_r)
-			if m.length() > miss.length(): miss = m
-		if miss.length() < SETTLED * 2.0 or attempt == HOLD_TRIES - 1:
-			break
-		_hold_on(sk, miss)
+	# holding on: the chest is drawn toward the handles by a pull kept from frame to frame, then the
+	# arms reach. What they still can't reach adds to the pull; when they reach easily it lets go,
+	# slowly. Worked out afresh each frame (pull or no pull), the chest snapped back and forth.
+	if hand_l == Vector3.INF and hand_r == Vector3.INF:
+		_pull = Vector3.ZERO
+	elif _pull.length() > 0.0001:
+		_hold_on(sk, _pull)
+	var miss := Vector3.ZERO
+	if hand_l != Vector3.INF:
+		var m := _grip(sk, '_l', hand_l, pole_l)
+		if m.length() > miss.length(): miss = m
+	if hand_r != Vector3.INF:
+		var m := _grip(sk, '_r', hand_r, pole_r)
+		if m.length() > miss.length(): miss = m
+	_pull = (_pull + miss * PULL_GAIN) * PULL_LET_GO
 	_close(sk, fingers_l, grip_l)
 	_close(sk, fingers_r, grip_r)
 	if grip_l > 0.001:
@@ -151,16 +155,14 @@ func _grip(sk: Skeleton3D, side: String, grip: Vector3, pole: Vector3) -> Vector
 		var m := 1.0 if side == '_l' else -1.0
 		var turn := Quaternion.from_euler(Vector3(wrist.x, wrist.y * m, wrist.z * m))
 		sk.set_bone_pose_rotation(h, (_clip_hand.get(side, sk.get_bone_pose_rotation(h)) as Quaternion) * turn)
-	# aimed, then corrected by what it missed until the palm is on the handle: a fixed few passes
-	# left a miss of a few cm that changed as the body swayed, the hands creeping on the wheel
+	# aimed, then corrected by what it missed, always the same number of times (stopping as soon as
+	# it was near enough stopped at a different pass each frame, the arm jittering between them)
+	var shoulder := sk.get_bone_global_pose(sk.find_bone(upper)).origin
 	var aim := _palm_on(sk, upper, hand, knuckle, grip)
 	for pass_i in MAX_PASSES:
 		_reach(sk, upper, lower, hand, aim, pole)
-		_lock_to_spoke(sk, h, side, grip, sk.get_bone_global_pose(sk.find_bone(upper)).origin)
-		var miss := grip - _palm(sk, hand, knuckle)
-		if miss.length() < SETTLED:
-			return Vector3.ZERO
-		aim += miss
+		_lock_to_spoke(sk, h, side, grip, shoulder)
+		aim += grip - _palm(sk, hand, knuckle)
 	return grip - _palm(sk, hand, knuckle) # what it could not reach
 
 ## Keeps the hand gripping the handle it holds as the wheel turns (see wheel_center). A handle is a
@@ -235,7 +237,14 @@ func _reach(sk: Skeleton3D, upper_name: StringName, lower_name: StringName, hand
 	var a := s.distance_to(e)
 	var b := e.distance_to(h)
 	var to := target - s
-	var d := clampf(to.length(), 0.01, (a + b) * 0.999) # out of reach: the arm straight toward it
+	# soft near straight: the last stretch of the arm's reach is eased into, never snapped to (a
+	# nearly straight arm swings its elbow by cm for a mm of reach, and shook as the body swayed)
+	var full := a + b
+	var soft := full * SOFT_FROM
+	var d := maxf(to.length(), 0.01)
+	if d > soft:
+		d = soft + (full - soft) * (1.0 - exp(-(d - soft) / (full - soft)))
+	d = minf(d, full * 0.999)
 	var dir := to.normalized()
 	# the elbow: on the circle the two bones allow, on the pole's side
 	var cos_a := clampf((a * a + d * d - b * b) / (2.0 * a * d), -1.0, 1.0)
