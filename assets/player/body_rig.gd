@@ -18,8 +18,9 @@ var pole_l := Vector3.ZERO
 var pole_r := Vector3.ZERO
 ## The upper body's lean (radians): x forward (+) or back, y to its right (+) or left.
 var lean := Vector2.ZERO
-## How closed each hand is round a grip (0 = as its clip has it, 1 = holding), and the holding
-## fingers' turns (bone -> local rotation), taken from a clip that grips (see PlayerBody).
+## How closed each hand is round a grip, from an open hand (just above 0) to the holding pose (1);
+## 0 leaves the fingers to the clip. The holding fingers' turns (bone -> local rotation) are taken
+## from a clip that grips (see PlayerBody); the open hand is the rig's rest pose.
 var grip_l := 0.0
 var grip_r := 0.0
 var fingers_l := {}
@@ -87,12 +88,13 @@ func _palm_on(sk: Skeleton3D, shoulder_name: StringName, hand_name: StringName, 
 	var shoulder := sk.get_bone_global_pose(sk.find_bone(shoulder_name)).origin
 	return grip - (grip - shoulder).normalized() * palm
 
-## Fingers turned toward their holding pose, `weight` of the way.
+## Fingers set `weight` of the way from an open hand to their holding pose.
 func _close(sk: Skeleton3D, fingers: Dictionary, weight: float) -> void:
 	if weight <= 0.001:
 		return
 	for b: int in fingers:
-		sk.set_bone_pose_rotation(b, sk.get_bone_pose_rotation(b).slerp(fingers[b], weight))
+		var open := sk.get_bone_rest(b).basis.get_rotation_quaternion()
+		sk.set_bone_pose_rotation(b, open.slerp(fingers[b], weight))
 
 ## Upper arm and forearm turned so the hand lands on `target`, the elbow toward `pole`.
 func _reach(sk: Skeleton3D, upper_name: StringName, lower_name: StringName, hand_name: StringName, target: Vector3, pole: Vector3) -> void:

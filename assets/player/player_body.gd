@@ -48,6 +48,9 @@ const BodyRig := preload('res://assets/player/body_rig.gd')
 @export var hand_reach := 100.0
 ## Seconds a hand takes to let go and take a new handle.
 @export var regrip_time := 0.28
+## How far the fingers close round a handle (0 = open hand, 1 = a tight fist): a handle is thick,
+## so a hand holding it stays partly open.
+@export_range(0.0, 1.0, 0.01) var grip_closure := 0.55
 ## The upper body riding the deck: how hard the deck's lurches push it (radians per m/s^2)...
 @export var sway_push := 0.02
 ## ...how much of the deck's tilt it straightens up against (0 = tilts with her, 1 = stays upright)...
@@ -374,7 +377,7 @@ func _hands(right: Vector3, delta: float) -> void:
 			var arc := sin(t * PI)
 			# let go, lift off toward the chest a little, and take the new handle
 			at = (_regrip_from[k] as Vector3).lerp(at, smoothstep(0.0, 1.0, t)) + toward_me * arc * 0.12 + Vector3.UP * arc * 0.06
-			grip = 1.0 - arc
+			grip = maxf(1.0 - arc, 0.2) # opens to let go and take the next handle
 			if t >= 1.0:
 				_regrip[k] = -1.0
 		targets.append(at)
@@ -384,8 +387,8 @@ func _hands(right: Vector3, delta: float) -> void:
 	_rig.hand_r = to_sk * targets[1]
 	_rig.pole_l = to_sk * (targets[0] + down - right * 0.5)
 	_rig.pole_r = to_sk * (targets[1] + down + right * 0.5)
-	_rig.grip_l = grips[0]
-	_rig.grip_r = grips[1]
+	_rig.grip_l = grips[0] * grip_closure
+	_rig.grip_r = grips[1] * grip_closure
 
 ## The handle nearest `home` degrees round, other than `taken`.
 func _nearest(clock: Callable, home: float, taken: int) -> int:
