@@ -16,7 +16,7 @@ class_name LeviathanSplash extends Node3D
 ## that hangs on long after), the bigger the slower: it all flies under real gravity. Each
 ## stretch of the body also leaves a churned wake on the sea (WakeEmitters it moves itself).
 
-const SHEET_TEXTURE := preload('res://assets/textures/water_splash_big.png')
+const SHEET_TEXTURE := preload('res://assets/textures/water_splash.png')
 const SPRAY_TEXTURE := preload('res://assets/water/sea_spray.png')
 const SPRAY_SHADER := preload('res://assets/shaders/particles/leviathan_spray.gdshader')
 const DRAW_SHADER := preload('res://assets/shaders/spatial/leviathan_spray_draw.gdshader')

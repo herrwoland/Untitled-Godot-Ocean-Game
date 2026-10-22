@@ -10,6 +10,31 @@ enum State { WALK, SWIM, PILOT, OPERATE, CLIMB }
 @export var sprint_speed: float = 8.5
 @export var swim_speed: float = 3.5
 @export var jump_velocity: float = 4.5
+## Our own body (PlayerBody): seen looking down and in our shadow.
+@export var show_body := true
+@export_group('Body at the Helm')
+## How far the fingers close round a handle: 0 = an open hand, 1 = a tight fist.
+@export_range(0.0, 1.0, 0.01) var grip_closure := 0.55
+## How deep the handle sits in the hand: 0 = at the wrist, 1 = at the knuckles.
+@export_range(0.0, 1.0, 0.01) var grip_depth := 0.55
+## The wrists, turned from where the arm leaves them (degrees; the hands mirror each other):
+## bend = the palm folds down (+) or back (-) ...
+@export_range(-90.0, 90.0, 0.5) var wrist_bend := 0.0
+## ... twist = the hand rolls about the forearm, thumbs out (+) or in (-) ...
+@export_range(-90.0, 90.0, 0.5) var wrist_twist := 0.0
+## ... tilt = the hand swings toward the little finger (+) or the thumb (-).
+@export_range(-90.0, 90.0, 0.5) var wrist_tilt := 0.0
+## The thumbs, turned at their base on top of the grip (degrees, mirrored): pitch opens the thumb
+## out from the palm (+) or folds it in (-) ...
+@export_range(-90.0, 90.0, 0.5) var thumb_pitch := 0.0
+## ... turn swings it round toward the fingers (+) or away (-).
+@export_range(-90.0, 90.0, 0.5) var thumb_turn := 0.0
+## The wrists again, but only as the wheel goes round toward full lock and the hands turn with
+## their spokes (degrees, on top of the wrist sliders above; fading in from 10 to 25 degrees round).
+@export_range(-90.0, 90.0, 0.5) var lock_wrist_bend := 0.0
+@export_range(-90.0, 90.0, 0.5) var lock_wrist_twist := 0.0
+@export_range(-90.0, 90.0, 0.5) var lock_wrist_tilt := 0.0
+@export_group('')
 @export var mouse_sensitivity: float = 0.0025
 @export var turn_speed: float = 2.0 # radians/sec, for keyboard look (Q/R or arrow keys), eg. over a remote desktop
 @export var look_speed: float = 1.5 # radians/sec, for keyboard look up/down (arrow keys)
@@ -117,6 +142,11 @@ func _ready() -> void:
 	sonar.name = &'SonarPulse'
 	sonar.player = self
 	add_child(sonar)
+	if show_body:
+		var body := PlayerBody.new() # our own body: seen looking down, and in our shadow
+		body.name = &'Body'
+		add_child(body)
+		body.setup(self)
 	_head_base_y = head.position.y
 	floor_snap_length = 0.5 # a deck falling out of a wave can outrun gravity; stay stuck to it
 	# Muffle all audio while underwater via a low-pass filter on the Master bus.
