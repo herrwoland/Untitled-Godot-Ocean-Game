@@ -53,6 +53,7 @@ const LEAN := {&'spine_01': 0.4, &'spine_02': 0.35, &'spine_03': 0.25}
 
 ## How the turn is shared out, lower back to neck (adds up to 1).
 const TWIST := {&'spine_01': 0.15, &'spine_02': 0.2, &'spine_03': 0.25, &'neck_01': 0.4}
+const SHOULDER_SHARE := 0.6 # of the twist, what the bones below the shoulders take
 
 func _process_modification() -> void:
 	var sk := get_skeleton()
@@ -115,11 +116,15 @@ func _grip(sk: Skeleton3D, side: String, grip: Vector3, pole: Vector3) -> void:
 	var aim := _palm_on(sk, upper, hand, knuckle, grip)
 	for pass_i in 3:
 		_reach(sk, upper, lower, hand, aim, pole)
-		_lock_to_spoke(sk, h, side, grip)
+		_lock_to_spoke(sk, h, side, grip, sk.get_bone_global_pose(sk.find_bone(upper)).origin)
 		aim += grip - _palm(sk, hand, knuckle)
 
-## Turns the hand with the spoke it holds (see wheel_center).
-func _lock_to_spoke(sk: Skeleton3D, h: int, side: String, grip: Vector3) -> void:
+## Keeps the hand gripping the handle it holds as the wheel turns (see wheel_center). A handle is a
+## bar sticking out from the wheel, and a hand can hold a bar from any side round it: it holds it
+## from the side its arm comes from. So the hand keeps the bar across its palm as it was tuned, and
+## turns round the bar to face its arm (a hand turned rigidly with the spoke would end up facing
+## away from the arm at full lock, out of its reach, the wrist wrung).
+func _lock_to_spoke(sk: Skeleton3D, h: int, side: String, grip: Vector3, shoulder: Vector3) -> void:
 	if h < 0 or wheel_center == Vector3.INF:
 		return
 	var axle := wheel_axle.normalized()
@@ -127,7 +132,12 @@ func _lock_to_spoke(sk: Skeleton3D, h: int, side: String, grip: Vector3) -> void
 	out = (out - axle * out.dot(axle)).normalized()
 	var home: Vector3 = home_l if side == '_l' else home_r
 	var off := rad_to_deg(absf(home.signed_angle_to(out, axle)))
-	var spoke := Basis(out, axle, out.cross(axle)) # turns as the spoke does
+	var reach := grip - shoulder # the way the arm comes to the handle
+	var facing := reach - out * reach.dot(out) # ... round the bar
+	if facing.length() < 0.001:
+		return
+	facing = facing.normalized()
+	var spoke := Basis(out, facing, out.cross(facing)) # the bar, and the side the arm holds it from
 	var g := sk.get_bone_global_pose(h)
 	var as_left := g.basis.orthonormalized()
 	if off < LOCK_FROM:

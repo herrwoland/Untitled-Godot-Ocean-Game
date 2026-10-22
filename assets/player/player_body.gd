@@ -81,6 +81,7 @@ var _lean := Vector2.ZERO # the upper body's lean on its spring, and how fast it
 var _lean_v := Vector2.ZERO
 var _stand_was := Vector3.INF # where the feet stood, and how fast they moved (the deck's lurch)
 var _stand_v := Vector3.ZERO
+var _arm_reach := 0.0 # m from the shoulder a hand can hold something (see _hands())
 var _pivot: Node3D # what carries the camera (the camera shake's pivot, else the camera)
 var _pivot_rest := Vector3.ZERO
 
@@ -230,7 +231,7 @@ func _process(delta: float) -> void:
 	var yaw: float = (player.head as Node3D).global_rotation.y
 	var p = player
 	if p.state == p.State.PILOT and _wheel_for(p.piloted_ship):
-		_rig.twist = 0.0
+		_rig.twist = _square_shoulders()
 		_helm(yaw, delta)
 		return
 	_leave_helm()
@@ -289,9 +290,17 @@ func _helm(view_yaw: float, delta: float) -> void:
 	var marker: Node3D = p.helm_marker
 	var wheel_at := _wheel.global_position
 	var deck_up: Vector3 = ship.global_basis.y.normalized()
-	var away := marker.global_position - wheel_at # from the wheel toward where we stand
-	away = (away - deck_up * away.dot(deck_up)).normalized()
-	var stand: Vector3 = marker.global_position + away * helm_step_back
+	# square to the wheel's face: on its axle, on the marker's side, at the marker's distance (a
+	# marker a little off to one side of the axle would have us see the wheel at a slant, the far
+	# side's handles out of reach)
+	var to_marker := marker.global_position - wheel_at
+	var flat_to_marker := to_marker - deck_up * to_marker.dot(deck_up)
+	var away := _wheel.global_basis * _wheel_axle
+	away = away - deck_up * away.dot(deck_up)
+	away = away.normalized() if away.length() > 0.001 else flat_to_marker.normalized()
+	if away.dot(flat_to_marker) < 0.0:
+		away = -away
+	var stand: Vector3 = wheel_at + deck_up * to_marker.dot(deck_up) + away * (flat_to_marker.length() + helm_step_back)
 	# square to the wheel, standing on her deck
 	var fwd := -away
 	_yaw = atan2(-fwd.x, -fwd.z)
@@ -318,6 +327,15 @@ func _helm(view_yaw: float, delta: float) -> void:
 	# the eyes carry the camera now (it turns as the player looks; the body stays square)
 	var eyes := _skel.global_transform * _skel.get_bone_global_pose(_head_bone) * _eye_in_head
 	_pivot.global_position = eyes + Basis(Vector3.UP, view_yaw) * Vector3(0.0, 0.0, -eye_back)
+
+## The turn that squares the shoulders to the way the body faces: the standing clip carries its
+## torso a little turned (the right shoulder back), which at the wheel leaves one hand short.
+func _square_shoulders() -> float:
+	var l := _skel.get_bone_global_pose(_skel.find_bone('upperarm_l')).origin
+	var r := _skel.get_bone_global_pose(_skel.find_bone('upperarm_r')).origin
+	var across := l - r # the body's left, in the skeleton's space (it faces +Z)
+	# the spine below the shoulders takes only part of the twist (the neck the rest; see body_rig.gd)
+	return atan2(across.z, across.x) / BodyRig.SHOULDER_SHARE
 
 ## Off the helm: the camera goes back where the Head carries it, the hands let go, the back unbends.
 func _leave_helm() -> void:
@@ -349,15 +367,28 @@ func _hands(right: Vector3, delta: float) -> void:
 		var d := h.global_position - _wheel.global_position
 		return rad_to_deg(atan2(d.dot(side), d.dot(top)))
 	var home := [-hand_home, hand_home]
+	# how far each hand can reach from its shoulder (an arm and a palm, a little short of straight)
+	var shoulders: Array[Vector3] = []
+	for k in 2:
+		var b := _skel.find_bone('upperarm_l' if k == 0 else 'upperarm_r')
+		shoulders.append(_skel.global_transform * _skel.get_bone_global_pose(b).origin)
+	if _arm_reach <= 0.0:
+		var sc := _skel.global_transform.basis.get_scale().x
+		var r := func(a: String, b: String) -> float:
+			return _skel.get_bone_global_rest(_skel.find_bone(a)).origin.distance_to(_skel.get_bone_global_rest(_skel.find_bone(b)).origin)
+		_arm_reach = (r.call('upperarm_l', 'lowerarm_l') + r.call('lowerarm_l', 'hand_l') + r.call('hand_l', 'middle_01_l') * 0.6) * sc * 0.97
+	var reachable := func(i: int, k: int) -> bool:
+		return shoulders[k].distance_to(_handles[i].global_position) < _arm_reach
 	for k in 2:
 		if _hold[k] < 0: # just took the helm: the handle nearest home
-			_hold[k] = _nearest(clock, home[k], _hold[1 - k])
+			_hold[k] = _nearest(clock, home[k], _hold[1 - k], reachable.bind(k))
 	for k in 2:
 		var other := 1 - k
 		if _regrip[k] < 0.0 and _regrip[other] < 0.0:
 			var off := angle_difference(deg_to_rad(home[k]), deg_to_rad(clock.call(_handles[_hold[k]])))
-			if absf(off) > deg_to_rad(hand_reach):
-				var next := _nearest(clock, home[k], _hold[other])
+			# carried too far round, or out of the arm's reach: let go and take a better handle
+			if absf(off) > deg_to_rad(hand_reach) or not reachable.call(_hold[k], k):
+				var next := _nearest(clock, home[k], _hold[other], reachable.bind(k))
 				if next != _hold[k]:
 					_regrip_from[k] = _handles[_hold[k]].global_position
 					_hold[k] = next
@@ -404,14 +435,16 @@ func _hands(right: Vector3, delta: float) -> void:
 		else:
 			_rig.home_r = to_sk.basis * home_dir
 
-## The handle nearest `home` degrees round, other than `taken`.
-func _nearest(clock: Callable, home: float, taken: int) -> int:
+## The handle nearest `home` degrees round, other than `taken`; one in reach (`reachable`) if any is.
+func _nearest(clock: Callable, home: float, taken: int, reachable: Callable) -> int:
 	var best := -1
 	var best_off := INF
 	for i in _handles.size():
 		if i == taken:
 			continue
 		var off := absf(angle_difference(deg_to_rad(home), deg_to_rad(clock.call(_handles[i]))))
+		if not reachable.call(i):
+			off += 1000.0 # only if nothing in reach
 		if off < best_off:
 			best_off = off
 			best = i
