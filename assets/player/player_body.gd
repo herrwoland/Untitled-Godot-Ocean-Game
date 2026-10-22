@@ -37,12 +37,26 @@ const BodyRig := preload('res://assets/player/body_rig.gd')
 @export var free_look := 50.0
 ## How far (degrees) the back and neck turn toward the view; past that only the eyes go on.
 @export var max_twist := 75.0
-## Where the hands hold the wheel: degrees either side of its top.
-@export var grip_angle := 50.0
-## How far (degrees) the hands go round with the wheel before they would have to let go.
-@export var grip_follow := 40.0
-## Where on the wheel the hands hold, from its middle (0) to the tips of its handles (1).
-@export_range(0.3, 1.0, 0.01) var rim := 0.78
+
+@export_group('Helm')
+## How much farther back (m) than the helm's marker the feet stand from the wheel.
+@export var helm_step_back := 0.15
+## Where each hand likes to hold (degrees round from the wheel's top, as the helmsman sees it).
+@export var hand_home := 35.0
+## How far (degrees) a hand is carried round with its handle before it lets go and takes the handle
+## nearest home: hand over hand, one hand always on the wheel.
+@export var hand_reach := 100.0
+## Seconds a hand takes to let go and take a new handle.
+@export var regrip_time := 0.28
+## The upper body riding the deck: how hard the deck's lurches push it (radians per m/s^2)...
+@export var sway_push := 0.02
+## ...how much of the deck's tilt it straightens up against (0 = tilts with her, 1 = stays upright)...
+@export_range(0.0, 1.0, 0.01) var sway_upright := 0.6
+## ...how quickly it swings back (Hz), how soon it settles (0..1), and how far it may lean (degrees).
+@export var sway_hz := 1.1
+@export_range(0.05, 1.0, 0.01) var sway_damping := 0.55
+@export var sway_max := 14.0
+@export_group('')
 
 var player # the Player (player.gd): its state, Head and Camera3D
 var _model: Node3D
@@ -59,8 +73,16 @@ var _yaw := NAN # where the body faces (the view's yaw convention), apart from t
 var _helm_ship: Node # the ship whose wheel we found
 var _wheel: Node3D # her steering wheel, its axle and size (see _find_wheel())
 var _wheel_axle := Vector3.RIGHT # in the wheel's own space
-var _wheel_up := Vector3.UP # the wheel's top at rest, in its own space
-var _wheel_radius := 0.4
+var _handles: Array[Node3D] = [] # the wheel's grip markers (Steering_*), round its rim
+var _hold := [-1, -1] # per hand (left, right): the handle it holds
+var _regrip := [-1.0, -1.0] # per hand: seconds into taking a new handle (< 0: holding)
+var _regrip_from := [Vector3.ZERO, Vector3.ZERO] # where the hand let go (world)
+var _lean := Vector2.ZERO # the upper body's lean on its spring, and how fast it swings
+var _lean_v := Vector2.ZERO
+var _stand_was := Vector3.INF # where the feet stood, and how fast they moved (the deck's lurch)
+var _stand_v := Vector3.ZERO
+var _pivot: Node3D # what carries the camera (the camera shake's pivot, else the camera)
+var _pivot_rest := Vector3.ZERO
 
 ## Builds the body for `p` (the Player: its Head turns it, its Camera3D is the eyes).
 func setup(p) -> void:
@@ -88,6 +110,31 @@ func setup(p) -> void:
 	_rig = BodyRig.new()
 	_rig.name = &'BodyRig'
 	_skel.add_child(_rig) # runs after the clip has posed the skeleton
+	_rig.fingers_l = _held_fingers(&'Driving', '_l')
+	_rig.fingers_r = _held_fingers(&'Driving', '_r')
+	var cam_parent: Node3D = player.camera.get_parent()
+	_pivot = cam_parent if cam_parent.name == &'ShakePivot' else player.camera
+	_pivot_rest = _pivot.position
+
+## The finger bones' turns (bone -> local rotation) halfway through `clip`: a clip whose hands hold
+## something, to close the hands with when they grip.
+func _held_fingers(clip: StringName, side: String) -> Dictionary:
+	var out := {}
+	var a := _anim.get_animation(clip)
+	if a == null:
+		return out
+	for t in a.get_track_count():
+		if a.track_get_type(t) != Animation.TYPE_ROTATION_3D:
+			continue
+		var bone := String(a.track_get_path(t).get_concatenated_subnames())
+		if not bone.ends_with(side):
+			continue
+		for finger in ['index', 'middle', 'ring', 'pinky', 'thumb']:
+			if bone.begins_with(finger):
+				var b := _skel.find_bone(bone)
+				if b >= 0:
+					out[b] = a.rotation_track_interpolate(t, a.length * 0.5)
+	return out
 
 ## Where its eyes are at rest, in world space: the middle of the eye mesh, or a guess off the head.
 func _rest_eyes() -> Vector3:
@@ -181,10 +228,15 @@ func _process(delta: float) -> void:
 	_animate(delta)
 	# its own facing (never pitched); the model faces +Z, the view -Z
 	var yaw: float = (player.head as Node3D).global_rotation.y
+	var p = player
+	if p.state == p.State.PILOT and _wheel_for(p.piloted_ship):
+		_rig.twist = 0.0
+		_helm(yaw, delta)
+		return
+	_leave_helm()
 	_face(yaw, delta)
 	_model.global_basis = Basis(Vector3.UP, _yaw + PI).scaled(_model.scale)
 	_rig.twist = clampf(angle_difference(_yaw, yaw), -deg_to_rad(max_twist), deg_to_rad(max_twist))
-	_hands_on_wheel()
 	# and moved so its eyes are at the camera, a touch behind it
 	var camera: Camera3D = player.camera
 	var eyes := _skel.global_transform * _skel.get_bone_global_pose(_head_bone) * _eye_in_head
@@ -198,10 +250,7 @@ func _face(view_yaw: float, delta: float) -> void:
 		_yaw = view_yaw
 	var p = player
 	var moving := Vector2(p.velocity.x, p.velocity.z).length() > 0.3
-	if p.state == p.State.PILOT and _wheel_for(p.piloted_ship):
-		var to := _wheel.global_position - (p.head as Node3D).global_position
-		_yaw = lerp_angle(_yaw, atan2(-to.x, -to.z), 1.0 - exp(-12.0 * delta))
-	elif p.state == p.State.SWIM or moving:
+	if p.state == p.State.SWIM or moving:
 		_yaw = lerp_angle(_yaw, view_yaw, 1.0 - exp(-10.0 * delta))
 	else:
 		var off := angle_difference(_yaw, view_yaw)
@@ -210,7 +259,7 @@ func _face(view_yaw: float, delta: float) -> void:
 			_yaw = wrapf(_yaw + off - signf(off) * limit, -PI, PI)
 
 ## The ship's wheel (the node the helm turns: her `steering_hinge`), found once per ship: its axle
-## and its size, from the meshes on it.
+## and the handles on it to hold.
 func _wheel_for(ship: Node) -> bool:
 	if ship == null:
 		return false
@@ -222,48 +271,134 @@ func _wheel_for(ship: Node) -> bool:
 		for n in ship.find_children('*', '', true, false):
 			if n.get(&'wheel') == _wheel and n.get(&'wheel_axis') is Vector3:
 				_wheel_axle = (n.get(&'wheel_axis') as Vector3).normalized()
-		# its reach: the farthest of its points from the axle (the tips of the spoke handles); the
-		# hands hold a little inside that, on the rim
-		var to_local := _wheel.global_transform.affine_inverse()
-		var reach := 0.0
-		for m: MeshInstance3D in _wheel.find_children('*', 'MeshInstance3D', true, false):
-			var xf := to_local * m.global_transform
-			for s in m.mesh.get_surface_count():
-				for v: Vector3 in m.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]:
-					var q := xf * v
-					reach = maxf(reach, (q - _wheel_axle * q.dot(_wheel_axle)).length())
-		_wheel_radius = reach * _wheel.global_basis.get_scale().x * rim
-		var up := _wheel.global_basis.inverse() * Vector3.UP
-		_wheel_up = (up - _wheel_axle * up.dot(_wheel_axle)).normalized() # its top, now (at rest)
-	return _wheel != null
+			# where hands can hold it: the markers on it named Steering_* (one per spoke handle)
+		_handles.clear()
+		for m: Node3D in _wheel.find_children('Steering_*', 'Marker3D', true, false):
+			_handles.append(m)
+		_hold = [-1, -1]
+		_regrip = [-1.0, -1.0]
+	return _wheel != null and _handles.size() >= 2
 
-## At the helm the hands hold two spokes near the top of the wheel and go round with it (a little:
-## past grip_follow a real helmsman would let go and take a new hold).
-func _hands_on_wheel() -> void:
+## At the helm. The feet stand helm_step_back behind the helm's marker, square to the wheel, on her
+## deck as it tilts; the upper body rides her lurches and rolls on a soft spring (leaning back into
+## a sudden stop, keeping itself fairly upright as she rolls), and the eyes, the camera, go with it.
+## The hands hold the wheel's handles hand over hand (see _hands()).
+func _helm(view_yaw: float, delta: float) -> void:
 	var p = player
-	if p.state != p.State.PILOT or _wheel == null or not _wheel_for(p.piloted_ship):
-		_rig.hand_l = Vector3.INF
-		_rig.hand_r = Vector3.INF
-		return
-	var wb := _wheel.global_basis
-	var axle := (wb * _wheel_axle).normalized()
-	var top := Vector3.UP - axle * Vector3.UP.dot(axle) # the top of the wheel as it stands, upright
+	var ship: Node3D = p.piloted_ship
+	var marker: Node3D = p.helm_marker
+	var wheel_at := _wheel.global_position
+	var deck_up: Vector3 = ship.global_basis.y.normalized()
+	var away := marker.global_position - wheel_at # from the wheel toward where we stand
+	away = (away - deck_up * away.dot(deck_up)).normalized()
+	var stand: Vector3 = marker.global_position + away * helm_step_back
+	# square to the wheel, standing on her deck
+	var fwd := -away
+	_yaw = atan2(-fwd.x, -fwd.z)
+	var right := fwd.cross(deck_up).normalized()
+	_model.global_transform = Transform3D(Basis(-right, deck_up, fwd).scaled(_model.scale), stand)
+	# the upper body on its spring: pushed by how her deck lurches under the feet, and straightening
+	# up against her tilt
+	if _stand_was != Vector3.INF and delta > 0.0:
+		var v := (stand - _stand_was) / delta
+		var lurch := (v - _stand_v) / delta
+		_stand_v = v
+		var tilt_fwd := asin(clampf(Vector3.UP.dot(fwd), -1.0, 1.0)) # world up leans this way off her deck
+		var tilt_right := asin(clampf(Vector3.UP.dot(right), -1.0, 1.0))
+		var target := Vector2(-lurch.dot(fwd) * sway_push + tilt_fwd * sway_upright,
+				-lurch.dot(right) * sway_push + tilt_right * sway_upright)
+		var limit := deg_to_rad(sway_max)
+		target = Vector2(clampf(target.x, -limit, limit), clampf(target.y, -limit, limit))
+		var w := TAU * sway_hz
+		_lean_v += (w * w * (target - _lean) - 2.0 * sway_damping * w * _lean_v) * delta
+		_lean += _lean_v * delta
+	_stand_was = stand
+	_rig.lean = _lean
+	_hands(right, delta)
+	# the eyes carry the camera now (it turns as the player looks; the body stays square)
+	var eyes := _skel.global_transform * _skel.get_bone_global_pose(_head_bone) * _eye_in_head
+	_pivot.global_position = eyes + Basis(Vector3.UP, view_yaw) * Vector3(0.0, 0.0, -eye_back)
+
+## Off the helm: the camera goes back where the Head carries it, the hands let go, the back unbends.
+func _leave_helm() -> void:
+	if _pivot and _pivot.position != _pivot_rest:
+		_pivot.position = _pivot_rest
+	_rig.hand_l = Vector3.INF
+	_rig.hand_r = Vector3.INF
+	_rig.grip_l = 0.0
+	_rig.grip_r = 0.0
+	_rig.lean = Vector2.ZERO
+	_lean = Vector2.ZERO
+	_lean_v = Vector2.ZERO
+	_stand_was = Vector3.INF
+	_stand_v = Vector3.ZERO
+	_hold = [-1, -1]
+	_regrip = [-1.0, -1.0]
+
+## Each hand holds a handle near its home (hand_home either side of the top), and is carried round
+## with it as the wheel turns. Carried hand_reach past home, it lets go and takes the free handle
+## nearest home again, in a short lifted reach (one hand at a time: the other keeps the wheel), the
+## way a helmsman goes hand over hand on a big turn.
+func _hands(right: Vector3, delta: float) -> void:
+	var axle := (_wheel.global_basis * _wheel_axle).normalized()
+	var top := Vector3.UP - axle * Vector3.UP.dot(axle)
 	top = top.normalized()
-	var turned := top.signed_angle_to((wb * _wheel_up).normalized(), axle) # how far it has gone round
-	var follow := clampf(turned, -deg_to_rad(grip_follow), deg_to_rad(grip_follow))
+	var side := (right - axle * right.dot(axle)).normalized() # the helmsman's right, on the wheel
+	var clock := func(h: Node3D) -> float: # degrees round from the top, clockwise as he sees it
+		var d := h.global_position - _wheel.global_position
+		return rad_to_deg(atan2(d.dot(side), d.dot(top)))
+	var home := [-hand_home, hand_home]
+	for k in 2:
+		if _hold[k] < 0: # just took the helm: the handle nearest home
+			_hold[k] = _nearest(clock, home[k], _hold[1 - k])
+	for k in 2:
+		var other := 1 - k
+		if _regrip[k] < 0.0 and _regrip[other] < 0.0:
+			var off := angle_difference(deg_to_rad(home[k]), deg_to_rad(clock.call(_handles[_hold[k]])))
+			if absf(off) > deg_to_rad(hand_reach):
+				var next := _nearest(clock, home[k], _hold[other])
+				if next != _hold[k]:
+					_regrip_from[k] = _handles[_hold[k]].global_position
+					_hold[k] = next
+					_regrip[k] = 0.0
 	var to_sk := _skel.global_transform.affine_inverse()
-	var body_right: Vector3 = _model.global_basis.x.normalized() * -1.0 # the model faces +Z
-	var grips: Array[Vector3] = []
-	for sgn: float in [1.0, -1.0]:
-		var spoke := Basis(axle, follow + sgn * deg_to_rad(grip_angle)) * top
-		grips.append(_wheel.global_position + spoke * _wheel_radius)
-	if (grips[0] - grips[1]).dot(body_right) > 0.0:
-		grips.reverse() # [left hand's, right hand's]
+	var toward_me: Vector3 = -_model.global_basis.z.normalized() # the body faces the wheel along +Z
+	var targets: Array[Vector3] = []
+	var grips: Array[float] = []
+	for k in 2:
+		var at: Vector3 = _handles[_hold[k]].global_position
+		var grip := 1.0
+		if _regrip[k] >= 0.0:
+			_regrip[k] += delta
+			var t := clampf(_regrip[k] / maxf(regrip_time, 0.01), 0.0, 1.0)
+			var arc := sin(t * PI)
+			# let go, lift off toward the chest a little, and take the new handle
+			at = (_regrip_from[k] as Vector3).lerp(at, smoothstep(0.0, 1.0, t)) + toward_me * arc * 0.12 + Vector3.UP * arc * 0.06
+			grip = 1.0 - arc
+			if t >= 1.0:
+				_regrip[k] = -1.0
+		targets.append(at)
+		grips.append(grip)
 	var down := Vector3.DOWN * 0.6
-	_rig.hand_l = to_sk * grips[0]
-	_rig.hand_r = to_sk * grips[1]
-	_rig.pole_l = to_sk * (grips[0] + down - body_right * 0.5)
-	_rig.pole_r = to_sk * (grips[1] + down + body_right * 0.5)
+	_rig.hand_l = to_sk * targets[0]
+	_rig.hand_r = to_sk * targets[1]
+	_rig.pole_l = to_sk * (targets[0] + down - right * 0.5)
+	_rig.pole_r = to_sk * (targets[1] + down + right * 0.5)
+	_rig.grip_l = grips[0]
+	_rig.grip_r = grips[1]
+
+## The handle nearest `home` degrees round, other than `taken`.
+func _nearest(clock: Callable, home: float, taken: int) -> int:
+	var best := -1
+	var best_off := INF
+	for i in _handles.size():
+		if i == taken:
+			continue
+		var off := absf(angle_difference(deg_to_rad(home), deg_to_rad(clock.call(_handles[i]))))
+		if off < best_off:
+			best_off = off
+			best = i
+	return best
 
 ## Picks the clip and moves it on (in steps, if anim_fps is set).
 func _animate(delta: float) -> void:
@@ -294,7 +429,7 @@ func _pick(delta: float) -> Array:
 	var speed := flat.length()
 	var dir := -1.0 if ahead < -0.1 else 1.0 # walk the clip backwards when backing up
 	if p.state == p.State.PILOT:
-		return [&'Driving', 1.0]
+		return [&'Idle', 1.0] # standing at the wheel; the hands and back are posed by the rig
 	if p.state == p.State.SWIM:
 		if speed > 0.3:
 			return [&'Swim_Fwd', clampf(speed / swim_pace, 0.5, 2.0)]
