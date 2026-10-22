@@ -25,6 +25,11 @@ var grip_l := 0.0
 var grip_r := 0.0
 var fingers_l := {}
 var fingers_r := {}
+## How deep a handle sits in the hand (0 = at the wrist, 1 = at the knuckles).
+var grip_depth := 0.55
+## The gripping hands' turn at the wrist (radians): x bend, y twist about the forearm, z tilt.
+## Applied to the left hand as is and mirrored on the right.
+var wrist := Vector3.ZERO
 
 ## How the lean is shared out up the back (adds up to 1).
 const LEAN := {&'spine_01': 0.4, &'spine_02': 0.35, &'spine_03': 0.25}
@@ -68,6 +73,12 @@ func _grip(sk: Skeleton3D, side: String, grip: Vector3, pole: Vector3) -> void:
 	var lower := StringName('lowerarm' + side)
 	var hand := StringName('hand' + side)
 	var knuckle := StringName('middle_01' + side)
+	# the wrist's turn first, so the reach below lands the palm with the hand already turned
+	var h := sk.find_bone(hand)
+	if h >= 0 and wrist != Vector3.ZERO:
+		var m := 1.0 if side == '_l' else -1.0
+		var turn := Quaternion.from_euler(Vector3(wrist.x, wrist.y * m, wrist.z * m))
+		sk.set_bone_pose_rotation(h, sk.get_bone_pose_rotation(h) * turn)
 	var aim := _palm_on(sk, upper, hand, knuckle, grip)
 	for pass_i in 2:
 		_reach(sk, upper, lower, hand, aim, pole)
@@ -75,7 +86,7 @@ func _grip(sk: Skeleton3D, side: String, grip: Vector3, pole: Vector3) -> void:
 
 ## Where the palm is: halfway from the wrist to the knuckles.
 func _palm(sk: Skeleton3D, hand_name: StringName, knuckle_name: StringName) -> Vector3:
-	return sk.get_bone_global_pose(sk.find_bone(hand_name)).origin.lerp(sk.get_bone_global_pose(sk.find_bone(knuckle_name)).origin, 0.55)
+	return sk.get_bone_global_pose(sk.find_bone(hand_name)).origin.lerp(sk.get_bone_global_pose(sk.find_bone(knuckle_name)).origin, grip_depth)
 
 ## Where the wrist goes for the palm (halfway to the knuckles) to sit on `grip`: a little short of it,
 ## back toward the shoulder, so the fingers close round the handle rather than the wrist.
@@ -84,7 +95,7 @@ func _palm_on(sk: Skeleton3D, shoulder_name: StringName, hand_name: StringName, 
 	var knuckle := sk.find_bone(knuckle_name)
 	if hand < 0 or knuckle < 0:
 		return grip
-	var palm := sk.get_bone_global_pose(hand).origin.distance_to(sk.get_bone_global_pose(knuckle).origin) * 0.55
+	var palm := sk.get_bone_global_pose(hand).origin.distance_to(sk.get_bone_global_pose(knuckle).origin) * grip_depth
 	var shoulder := sk.get_bone_global_pose(sk.find_bone(shoulder_name)).origin
 	return grip - (grip - shoulder).normalized() * palm
 

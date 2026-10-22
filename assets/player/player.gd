@@ -12,6 +12,19 @@ enum State { WALK, SWIM, PILOT, OPERATE, CLIMB }
 @export var jump_velocity: float = 4.5
 ## Our own body (PlayerBody): seen looking down and in our shadow.
 @export var show_body := true
+@export_group('Body at the Helm')
+## How far the fingers close round a handle: 0 = an open hand, 1 = a tight fist.
+@export_range(0.0, 1.0, 0.01) var grip_closure := 0.55
+## How deep the handle sits in the hand: 0 = at the wrist, 1 = at the knuckles.
+@export_range(0.0, 1.0, 0.01) var grip_depth := 0.55
+## The wrists, turned from where the arm leaves them (degrees; the hands mirror each other):
+## bend = the palm folds down (+) or back (-) ...
+@export_range(-90.0, 90.0, 0.5) var wrist_bend := 0.0
+## ... twist = the hand rolls about the forearm, thumbs out (+) or in (-) ...
+@export_range(-90.0, 90.0, 0.5) var wrist_twist := 0.0
+## ... tilt = the hand swings toward the little finger (+) or the thumb (-).
+@export_range(-90.0, 90.0, 0.5) var wrist_tilt := 0.0
+@export_group('')
 @export var mouse_sensitivity: float = 0.0025
 @export var turn_speed: float = 2.0 # radians/sec, for keyboard look (Q/R or arrow keys), eg. over a remote desktop
 @export var look_speed: float = 1.5 # radians/sec, for keyboard look up/down (arrow keys)
