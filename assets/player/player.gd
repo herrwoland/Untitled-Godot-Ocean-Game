@@ -29,6 +29,11 @@ enum State { WALK, SWIM, PILOT, OPERATE, CLIMB }
 @export_range(-90.0, 90.0, 0.5) var thumb_pitch := 0.0
 ## ... turn swings it round toward the fingers (+) or away (-).
 @export_range(-90.0, 90.0, 0.5) var thumb_turn := 0.0
+## The wrists again, but only as the wheel goes round toward full lock and the hands turn with
+## their spokes (degrees, on top of the wrist sliders above; fading in from 10 to 25 degrees round).
+@export_range(-90.0, 90.0, 0.5) var lock_wrist_bend := 0.0
+@export_range(-90.0, 90.0, 0.5) var lock_wrist_twist := 0.0
+@export_range(-90.0, 90.0, 0.5) var lock_wrist_tilt := 0.0
 @export_group('')
 @export var mouse_sensitivity: float = 0.0025
 @export var turn_speed: float = 2.0 # radians/sec, for keyboard look (Q/R or arrow keys), eg. over a remote desktop

@@ -392,6 +392,7 @@ func _hands(right: Vector3, delta: float) -> void:
 	_rig.grip_depth = p.grip_depth
 	_rig.wrist = Vector3(deg_to_rad(p.wrist_bend), deg_to_rad(p.wrist_twist), deg_to_rad(p.wrist_tilt))
 	_rig.thumb = Vector2(deg_to_rad(p.thumb_pitch), deg_to_rad(p.thumb_turn))
+	_rig.lock_wrist = Vector3(deg_to_rad(p.lock_wrist_bend), deg_to_rad(p.lock_wrist_twist), deg_to_rad(p.lock_wrist_tilt))
 	# the wheel, for the hands to stay locked to their spokes as it turns
 	_rig.wheel_center = to_sk * _wheel.global_position
 	_rig.wheel_axle = to_sk.basis * axle

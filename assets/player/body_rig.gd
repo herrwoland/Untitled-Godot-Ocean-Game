@@ -41,6 +41,9 @@ var wheel_center := Vector3.INF
 var wheel_axle := Vector3.ZERO
 var home_l := Vector3.ZERO
 var home_r := Vector3.ZERO
+## The wrists' extra turn once a hand is turning with its spoke (radians, like `wrist`), faded in
+## with the lock.
+var lock_wrist := Vector3.ZERO
 var _lock := {} # per side: the hand's turn relative to its spoke, as it was near home
 const LOCK_FROM := 10.0 # degrees from home: up to here the hand is as the arm leaves it
 const LOCK_FULL := 25.0 # degrees from home: from here it turns wholly with its spoke
@@ -135,6 +138,9 @@ func _lock_to_spoke(sk: Skeleton3D, h: int, side: String, grip: Vector3) -> void
 	var locked: Basis = spoke * (_lock[side] as Basis)
 	var w := smoothstep(LOCK_FROM, LOCK_FULL, off)
 	var q := as_left.get_rotation_quaternion().slerp(locked.get_rotation_quaternion(), w)
+	if lock_wrist != Vector3.ZERO:
+		var m := 1.0 if side == '_l' else -1.0
+		q = q * Quaternion.from_euler(Vector3(lock_wrist.x, lock_wrist.y * m, lock_wrist.z * m) * w)
 	g.basis = Basis(q).scaled(g.basis.get_scale())
 	sk.set_bone_global_pose(h, g)
 
