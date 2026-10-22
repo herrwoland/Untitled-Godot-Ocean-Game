@@ -66,7 +66,6 @@ texture_filter = 0
 
 [node name="Leviathan" type="Node3D" unique_id=800797773]
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
-visible = false
 script = ExtResource("main_script")
 body_length = 1000.0
 despawn_depth = 150.0
@@ -83,7 +82,7 @@ return_turn_radius = 300.0
 jaw_bones = PackedStringArray("bone_mouth_top_obsolete", "bone_mouth_bottom_obsolete")
 jaw_shake_angle = 1.0
 jaw_shake_rate = 2.0
-mouth_time = 1000.0
+mouth_time = 15.0
 
 [node name="Head" type="Node3D" parent="." unique_id=2082841984]
 
