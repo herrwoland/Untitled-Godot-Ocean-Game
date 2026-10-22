@@ -30,6 +30,20 @@ var grip_depth := 0.55
 ## The gripping hands' turn at the wrist (radians): x bend, y twist about the forearm, z tilt.
 ## Applied to the left hand as is and mirrored on the right.
 var wrist := Vector3.ZERO
+## The thumbs' turn at their base (radians): x pitch (opening the thumb out from the palm), y turn.
+## Mirrored on the right like the wrists.
+var thumb := Vector2.ZERO
+## The wheel the hands hold, in the skeleton's space: its middle and axle, and where each hand
+## likes to hold it (a direction out from the middle). A hand stays locked to its spoke: past
+## LOCK_FROM from home it turns with the spoke as a hand gripping it would, rather than keeping
+## the angle the forearm gives it (which, at full lock, turns the back of the hand to the handle).
+var wheel_center := Vector3.INF
+var wheel_axle := Vector3.ZERO
+var home_l := Vector3.ZERO
+var home_r := Vector3.ZERO
+var _lock := {} # per side: the hand's turn relative to its spoke, as it was near home
+const LOCK_FROM := 10.0 # degrees from home: up to here the hand is as the arm leaves it
+const LOCK_FULL := 25.0 # degrees from home: from here it turns wholly with its spoke
 
 ## How the lean is shared out up the back (adds up to 1).
 const LEAN := {&'spine_01': 0.4, &'spine_02': 0.35, &'spine_03': 0.25}
@@ -61,10 +75,26 @@ func _process_modification() -> void:
 			sk.set_bone_global_pose(b, g)
 	if hand_l != Vector3.INF:
 		_grip(sk, '_l', hand_l, pole_l)
+	else:
+		_lock.erase('_l')
 	if hand_r != Vector3.INF:
 		_grip(sk, '_r', hand_r, pole_r)
+	else:
+		_lock.erase('_r')
 	_close(sk, fingers_l, grip_l)
 	_close(sk, fingers_r, grip_r)
+	if grip_l > 0.001:
+		_turn_thumb(sk, '_l')
+	if grip_r > 0.001:
+		_turn_thumb(sk, '_r')
+
+## The thumb opened and turned at its base, by the thumb sliders.
+func _turn_thumb(sk: Skeleton3D, side: String) -> void:
+	var b := sk.find_bone('thumb_01' + side)
+	if b < 0 or thumb == Vector2.ZERO:
+		return
+	var m := 1.0 if side == '_l' else -1.0
+	sk.set_bone_pose_rotation(b, sk.get_bone_pose_rotation(b) * Quaternion.from_euler(Vector3(thumb.x, thumb.y * m, 0.0)))
 
 ## The arm reaches so its palm lands on `grip`: aimed once, then corrected by what it missed (the
 ## hand angles at the wrist, so the first aim is a few cm off).
@@ -80,9 +110,33 @@ func _grip(sk: Skeleton3D, side: String, grip: Vector3, pole: Vector3) -> void:
 		var turn := Quaternion.from_euler(Vector3(wrist.x, wrist.y * m, wrist.z * m))
 		sk.set_bone_pose_rotation(h, sk.get_bone_pose_rotation(h) * turn)
 	var aim := _palm_on(sk, upper, hand, knuckle, grip)
-	for pass_i in 2:
+	for pass_i in 3:
 		_reach(sk, upper, lower, hand, aim, pole)
+		_lock_to_spoke(sk, h, side, grip)
 		aim += grip - _palm(sk, hand, knuckle)
+
+## Turns the hand with the spoke it holds (see wheel_center).
+func _lock_to_spoke(sk: Skeleton3D, h: int, side: String, grip: Vector3) -> void:
+	if h < 0 or wheel_center == Vector3.INF:
+		return
+	var axle := wheel_axle.normalized()
+	var out := grip - wheel_center
+	out = (out - axle * out.dot(axle)).normalized()
+	var home: Vector3 = home_l if side == '_l' else home_r
+	var off := rad_to_deg(absf(home.signed_angle_to(out, axle)))
+	var spoke := Basis(out, axle, out.cross(axle)) # turns as the spoke does
+	var g := sk.get_bone_global_pose(h)
+	var as_left := g.basis.orthonormalized()
+	if off < LOCK_FROM:
+		_lock[side] = spoke.inverse() * as_left # how the tuned hand sits on its spoke
+		return
+	if not _lock.has(side):
+		return # took the wheel already turned: nothing to go by yet
+	var locked: Basis = spoke * (_lock[side] as Basis)
+	var w := smoothstep(LOCK_FROM, LOCK_FULL, off)
+	var q := as_left.get_rotation_quaternion().slerp(locked.get_rotation_quaternion(), w)
+	g.basis = Basis(q).scaled(g.basis.get_scale())
+	sk.set_bone_global_pose(h, g)
 
 ## Where the palm is: halfway from the wrist to the knuckles.
 func _palm(sk: Skeleton3D, hand_name: StringName, knuckle_name: StringName) -> Vector3:

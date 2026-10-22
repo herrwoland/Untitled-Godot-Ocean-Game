@@ -24,6 +24,11 @@ enum State { WALK, SWIM, PILOT, OPERATE, CLIMB }
 @export_range(-90.0, 90.0, 0.5) var wrist_twist := 0.0
 ## ... tilt = the hand swings toward the little finger (+) or the thumb (-).
 @export_range(-90.0, 90.0, 0.5) var wrist_tilt := 0.0
+## The thumbs, turned at their base on top of the grip (degrees, mirrored): pitch opens the thumb
+## out from the palm (+) or folds it in (-) ...
+@export_range(-90.0, 90.0, 0.5) var thumb_pitch := 0.0
+## ... turn swings it round toward the fingers (+) or away (-).
+@export_range(-90.0, 90.0, 0.5) var thumb_turn := 0.0
 @export_group('')
 @export var mouse_sensitivity: float = 0.0025
 @export var turn_speed: float = 2.0 # radians/sec, for keyboard look (Q/R or arrow keys), eg. over a remote desktop

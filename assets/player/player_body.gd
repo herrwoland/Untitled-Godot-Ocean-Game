@@ -325,6 +325,7 @@ func _leave_helm() -> void:
 		_pivot.position = _pivot_rest
 	_rig.hand_l = Vector3.INF
 	_rig.hand_r = Vector3.INF
+	_rig.wheel_center = Vector3.INF
 	_rig.grip_l = 0.0
 	_rig.grip_r = 0.0
 	_rig.lean = Vector2.ZERO
@@ -390,6 +391,17 @@ func _hands(right: Vector3, delta: float) -> void:
 	_rig.grip_r = grips[1] * p.grip_closure
 	_rig.grip_depth = p.grip_depth
 	_rig.wrist = Vector3(deg_to_rad(p.wrist_bend), deg_to_rad(p.wrist_twist), deg_to_rad(p.wrist_tilt))
+	_rig.thumb = Vector2(deg_to_rad(p.thumb_pitch), deg_to_rad(p.thumb_turn))
+	# the wheel, for the hands to stay locked to their spokes as it turns
+	_rig.wheel_center = to_sk * _wheel.global_position
+	_rig.wheel_axle = to_sk.basis * axle
+	for k in 2:
+		var c := deg_to_rad(home[k]) # home[k] degrees round from the top, as clock() counts
+		var home_dir := top * cos(c) + side * sin(c)
+		if k == 0:
+			_rig.home_l = to_sk.basis * home_dir
+		else:
+			_rig.home_r = to_sk.basis * home_dir
 
 ## The handle nearest `home` degrees round, other than `taken`.
 func _nearest(clock: Callable, home: float, taken: int) -> int:
