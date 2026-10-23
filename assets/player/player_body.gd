@@ -14,7 +14,7 @@ class_name PlayerBody extends Node3D
 ##    the rest of the turn taken by the back and neck (see body_rig.gd); walking or swimming it turns
 ##    with the view; at the helm it faces the wheel with its hands on two spokes.
 
-const BODY_SCENE := preload('res://assets/models/player/body/Superhero_Male_FullBody.gltf')
+const BODY_SCENE := preload('res://assets/models/player/body_ps1/Player_PS1.gltf')
 const ANIMATIONS := preload('res://assets/models/player/animations/UAL1_Standard.glb')
 ## Bones whose skin is cut from the visible copy (and everything below them).
 const HEAD_BONES := ['Head']
