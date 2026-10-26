@@ -1332,18 +1332,12 @@
 	"materials":[
 		{
 			"doubleSided":true,
-			"name":"MI_Superhero_Male",
-			"normalTexture":{
-				"index":0
-			},
+			"name":"material_player",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":1
+					"index":0
 				},
-				"metallicFactor":0,
-				"metallicRoughnessTexture":{
-					"index":2
-				}
+				"metallicFactor":0
 			}
 		}
 	],
@@ -1356,11 +1350,13 @@
 						"POSITION":0,
 						"NORMAL":1,
 						"TEXCOORD_0":2,
-						"COLOR_0":3,
-						"JOINTS_0":4,
-						"WEIGHTS_0":5
+						"TEXCOORD_1":3,
+						"COLOR_0":4,
+						"COLOR_1":5,
+						"JOINTS_0":6,
+						"WEIGHTS_0":7
 					},
-					"indices":6,
+					"indices":8,
 					"material":0
 				}
 			]
@@ -1370,36 +1366,18 @@
 		{
 			"sampler":0,
 			"source":0
-		},
-		{
-			"sampler":0,
-			"source":1
-		},
-		{
-			"sampler":0,
-			"source":2
 		}
 	],
 	"images":[
 		{
 			"mimeType":"image/png",
-			"name":"T_Superhero_Male_Normal",
-			"uri":"T_Superhero_Male_Normal.png"
-		},
-		{
-			"mimeType":"image/png",
-			"name":"T_Superhero_Male_Dark",
-			"uri":"T_Superhero_Male_Dark.png"
-		},
-		{
-			"mimeType":"image/png",
-			"name":"T_Superhero_Male_Roughness",
-			"uri":"T_Superhero_Male_Roughness.png"
+			"name":"texture_player_body",
+			"uri":"texture_player_body.png"
 		}
 	],
 	"skins":[
 		{
-			"inverseBindMatrices":7,
+			"inverseBindMatrices":9,
 			"joints":[
 				64,
 				63,
@@ -1474,57 +1452,71 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":3088,
+			"count":4084,
 			"max":[
 				0.9309462904930115,
-				1.8085846900939941,
+				1.814284324645996,
 				0.12811118364334106
 			],
 			"min":[
 				-0.9309462904930115,
 				-0.005509018898010254,
-				-0.16137996315956116
+				-0.16787326335906982
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":3088,
+			"count":4084,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":3088,
+			"count":4084,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5126,
-			"count":3088,
-			"type":"VEC3"
+			"count":4084,
+			"type":"VEC2"
 		},
 		{
 			"bufferView":4,
 			"componentType":5121,
-			"count":3088,
+			"count":4084,
+			"normalized":true,
 			"type":"VEC4"
 		},
 		{
 			"bufferView":5,
-			"componentType":5126,
-			"count":3088,
+			"componentType":5123,
+			"count":4084,
+			"normalized":true,
 			"type":"VEC4"
 		},
 		{
 			"bufferView":6,
-			"componentType":5123,
-			"count":4518,
-			"type":"SCALAR"
+			"componentType":5121,
+			"count":4084,
+			"type":"VEC4"
 		},
 		{
 			"bufferView":7,
+			"componentType":5126,
+			"count":4084,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":8,
+			"componentType":5123,
+			"count":5964,
+			"type":"SCALAR"
+		},
+		{
+			"bufferView":9,
 			"componentType":5126,
 			"count":65,
 			"type":"MAT4"
@@ -1533,61 +1525,73 @@
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":37056,
+			"byteLength":49008,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":37056,
-			"byteOffset":37056,
+			"byteLength":49008,
+			"byteOffset":49008,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":24704,
-			"byteOffset":74112,
+			"byteLength":32672,
+			"byteOffset":98016,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":37056,
-			"byteOffset":98816,
+			"byteLength":32672,
+			"byteOffset":130688,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":12352,
-			"byteOffset":135872,
+			"byteLength":16336,
+			"byteOffset":163360,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":49408,
-			"byteOffset":148224,
+			"byteLength":32672,
+			"byteOffset":179696,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":9036,
-			"byteOffset":197632,
+			"byteLength":16336,
+			"byteOffset":212368,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":65344,
+			"byteOffset":228704,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":11928,
+			"byteOffset":294048,
 			"target":34963
 		},
 		{
 			"buffer":0,
 			"byteLength":4160,
-			"byteOffset":206668
+			"byteOffset":305976
 		}
 	],
 	"samplers":[
 		{
-			"magFilter":9729,
-			"minFilter":9987
+			"magFilter":9728,
+			"minFilter":9984
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":210828,
+			"byteLength":310136,
 			"uri":"Player_PS1.bin"
 		}
 	]

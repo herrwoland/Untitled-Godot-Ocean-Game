@@ -25,6 +25,7 @@ MCPScreenshot="*res://addons/godot_mcp/mcp_screenshot_service.gd"
 MCPInputService="*res://addons/godot_mcp/mcp_input_service.gd"
 MCPGameInspector="*res://addons/godot_mcp/mcp_game_inspector_service.gd"
 ImGuiRoot="*uid://dugmpnsxaagba"
+Console="*uid://ouiu5xh1cs8n"
 
 [beckett]
 
@@ -59,7 +60,7 @@ movie_writer/mjpeg_quality=1.0
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg", "res://addons/imgui-godot/plugin.cfg", "res://addons/terrain_3d/plugin.cfg")
+enabled=PackedStringArray("res://addons/console/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/imgui-godot/plugin.cfg", "res://addons/terrain_3d/plugin.cfg")
 
 [filesystem]
 
