@@ -71,6 +71,8 @@ const BodyRig := preload('res://assets/player/body_rig.gd')
 @export_range(0.0, 1.0, 0.01) var carry_reach_open := 0.15
 ## How quickly (per second) the hands close round it once it is there, or open again.
 @export var carry_close_speed := 4.0
+## Seconds an item takes to go from where it flies up to into the hand that takes it.
+@export var carry_take_time := 0.4
 ## How far out (m) from the item's sides the hands hold one that has no Grip_L / Grip_R markers.
 @export var carry_side_gap := 0.02
 @export_group('')
@@ -107,6 +109,7 @@ var _carried: Node3D # the item in our hands, its grips per hand (left, right) a
 var _grips: Array[Node3D] = [null, null]
 var _carried_box := AABB() # in the item's own space
 var _carry_close := 0.0 # how closed the hands are round it now
+var _carry_hang := 0.0 # how far it has been taken onto the hand (see _carry())
 
 ## Rigs the body for `p` (the Player: its Head turns it, its Camera3D is the eyes).
 func setup(p) -> void:
@@ -301,6 +304,7 @@ func _carry(delta: float) -> void:
 		return
 	if item != _carried:
 		_carried = item
+		_carry_hang = 0.0
 		_grips = [item.find_child('Grip_L', true, false) as Node3D, item.find_child('Grip_R', true, false) as Node3D]
 		_carried_box = AABB()
 		for m: MeshInstance3D in item.find_children('*', 'MeshInstance3D', true, false): # not its label
@@ -329,11 +333,15 @@ func _carry(delta: float) -> void:
 	_carry_close = move_toward(_carry_close, close_to, carry_close_speed * delta)
 	_rig.item_frame_l = to_sk.basis * (_grips[0] if _grips[0] else item).global_basis
 	_rig.item_frame_r = to_sk.basis * (_grips[1] if _grips[1] else item).global_basis
-	# held fast, it hangs from a hand (the right, if it has a grip for it): the socket is only where
-	# that hand reaches for, and the item goes wherever the hand got to
-	if not _rig.settling and (_grips[0] or _grips[1]):
+	# it hangs from a hand (the right, if it has a grip for it): the socket is only where that hand
+	# reaches for, and the item goes wherever the hand got to. Eased onto the hand as it comes up
+	# into it: switched over once it had arrived, an item held beyond the arm's reach jumped back
+	# into the hand, and the other hand jumped with it.
+	if _grips[0] or _grips[1]:
+		_carry_hang = move_toward(_carry_hang, 1.0, delta / maxf(carry_take_time, 0.01))
 		_rig.carried_item = item
 		_rig.anchor = '_r' if _grips[1] else '_l'
+		_rig.hang = smoothstep(0.0, 1.0, _carry_hang)
 	var down := Vector3.DOWN * 0.6
 	if targets[0] != Vector3.INF:
 		_rig.hand_l = to_sk * targets[0]
