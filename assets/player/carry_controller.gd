@@ -12,6 +12,9 @@ extends Node
 @export var socket: Node3D
 ## Where held items sit while swimming (falls back to `socket` if unset).
 @export var swim_socket: Node3D
+## How far (degrees) below level the held item goes down with the view. Looking lower, it stays
+## there and the view looks on past it, at the feet; followed all the way down, it went into the body.
+@export_range(0.0, 90.0, 1.0) var max_look_down := 35.0
 
 const FOLLOW_STIFFNESS := 18.0 # higher = snappier follow
 const DROP_CLEAR_TIME := 0.6 # seconds a dropped item ignores the player while it falls clear
@@ -73,7 +76,7 @@ func _process(delta: float) -> void:
 	if target != _target:
 		# picked up, or changing sockets: glide in from where it is, relative to the socket, so
 		# however the deck moves us the glide only ever closes the gap
-		_off = target.global_transform.affine_inverse() * carried.global_transform
+		_off = _held_at(target).affine_inverse() * carried.global_transform
 		_target = target
 		_gliding = true
 	if _gliding:
@@ -81,4 +84,20 @@ func _process(delta: float) -> void:
 		if _off.origin.length() < SETTLED and _off.basis.get_rotation_quaternion().get_angle() < SETTLED:
 			_off = Transform3D.IDENTITY
 			_gliding = false
-	carried.global_transform = target.global_transform * _off # held: it goes wherever we go
+	carried.global_transform = _held_at(target) * _off # held: it goes wherever we go
+
+## Where `socket` holds the item: where it is, but never lower than max_look_down below level. Looking
+## farther down, it is turned back up about the eyes by the difference.
+func _held_at(socket_node: Node3D) -> Transform3D:
+	var at := socket_node.global_transform
+	var camera := player.get(&'camera') as Camera3D
+	if camera == null:
+		return at
+	var eyes := camera.global_transform
+	var look := -eyes.basis.z.normalized()
+	var below := -asin(clampf(look.y, -1.0, 1.0)) - deg_to_rad(max_look_down)
+	if below <= 0.0:
+		return at
+	var across := eyes.basis.x.normalized() # the view turns down about this; back up by `below`
+	var up := Transform3D(Basis(across, below), Vector3.ZERO)
+	return Transform3D(Basis.IDENTITY, eyes.origin) * up * Transform3D(Basis.IDENTITY, -eyes.origin) * at

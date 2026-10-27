@@ -68,6 +68,12 @@ const SECOND_HAND_EASE := 0.85 # of its reach, how far the second hand takes hol
 var carried_item: Node3D
 var anchor := '_r'
 var hang := 1.0
+## How far (0..1) the back and collarbones are held out of the clip's swing from step to step: the
+## arms reach from the shoulders, so as a walk turns and rocks the back, all the hands hold swings.
+var steady_shoulders := 0.0
+const STEADY := [&'spine_01', &'spine_02', &'spine_03', &'clavicle_l', &'clavicle_r']
+const STEADY_SMOOTH := 0.35 # s: longer than a step, so a stride's swing is smoothed away
+var _steady_q := {} # per bone: its turn, smoothed
 var _pull := Vector3.ZERO # the chest drawn toward the handles (see _process_modification)
 var _clip_hand := {} # per side: the hand's turn as the clip posed it, this frame
 var _lock := {} # per side: the hand's turn relative to its spoke, as it was near home
@@ -89,6 +95,18 @@ func _process_modification() -> void:
 	var sk := get_skeleton()
 	if sk == null:
 		return
+	# first, before the look and the lean turn them: the back and collarbones steadied (see
+	# steady_shoulders). Each is turned toward its own pose smoothed over STEADY_SMOOTH, so they keep
+	# the walk's lean but not its swing from step to step.
+	var dt := get_process_delta_time()
+	for name: StringName in STEADY:
+		var c := sk.find_bone(name)
+		if c < 0:
+			continue
+		var q := sk.get_bone_pose_rotation(c)
+		_steady_q[name] = q if not _steady_q.has(name) else (_steady_q[name] as Quaternion).slerp(q, 1.0 - exp(-dt / STEADY_SMOOTH))
+		if steady_shoulders > 0.001:
+			sk.set_bone_pose_rotation(c, q.slerp(_steady_q[name], steady_shoulders))
 	if lean.length() > 0.0001:
 		# in the skeleton's space the body faces +Z: about +X leans it forward, about +Z to its right
 		for bone_name: StringName in LEAN:
