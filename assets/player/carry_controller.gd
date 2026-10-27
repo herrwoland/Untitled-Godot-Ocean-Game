@@ -13,8 +13,12 @@ extends Node
 
 const FOLLOW_STIFFNESS := 18.0 # higher = snappier follow
 const DROP_CLEAR_TIME := 0.6 # seconds a dropped item ignores the player while it falls clear
+const SETTLED := 0.005 # m (and radians): near enough the socket to be held fast to it
 
 var carried: RigidBody3D = null
+var _target: Node3D # the socket it was last going to
+var _gliding := false # still on its way into the hands
+var _off := Transform3D.IDENTITY # where it is from the socket while it glides in
 
 func _ready() -> void:
 	add_to_group(&'carry_controller')
@@ -26,6 +30,7 @@ func pick_up(item: RigidBody3D) -> void:
 	if carried:
 		drop()
 	carried = item
+	_target = null # glides in from where it lies
 	item.on_picked_up()
 
 func drop() -> void:
@@ -50,13 +55,24 @@ func drop() -> void:
 func reset_day() -> void:
 	carried = null # items themselves are restaged by the mission controller
 
-func _physics_process(delta: float) -> void:
+## Every drawn frame, not every physics step, and before the Body (an earlier sibling), so the
+## hands find it where it is drawn. Chasing the socket on physics steps with a lag, it swung
+## about in the hands as a rocking deck carried us.
+func _process(delta: float) -> void:
 	if not carried:
 		return
-	# Smoothly chase the socket; exponential decay keeps it framerate-stable,
-	# and makes the move between the two sockets a glide rather than a jump.
 	var target := socket
 	if swim_socket and &'state' in player and player.state == 1: # Player State.SWIM
 		target = swim_socket
-	var weight := 1.0 - exp(-FOLLOW_STIFFNESS * delta)
-	carried.global_transform = carried.global_transform.interpolate_with(target.global_transform, weight)
+	if target != _target:
+		# picked up, or changing sockets: glide in from where it is, relative to the socket, so
+		# however the deck moves us the glide only ever closes the gap
+		_off = target.global_transform.affine_inverse() * carried.global_transform
+		_target = target
+		_gliding = true
+	if _gliding:
+		_off = _off.interpolate_with(Transform3D.IDENTITY, 1.0 - exp(-FOLLOW_STIFFNESS * delta))
+		if _off.origin.length() < SETTLED and _off.basis.get_rotation_quaternion().get_angle() < SETTLED:
+			_off = Transform3D.IDENTITY
+			_gliding = false
+	carried.global_transform = target.global_transform * _off # held: it goes wherever we go
