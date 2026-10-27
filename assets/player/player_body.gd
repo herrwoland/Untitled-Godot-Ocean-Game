@@ -12,7 +12,8 @@ class_name PlayerBody extends Node3D
 ##  - It plays the clip for what the player is doing (see _pick()).
 ##  - It has a facing of its own: standing, the view can swing round some way before the feet follow,
 ##    the rest of the turn taken by the back and neck (see body_rig.gd); walking or swimming it turns
-##    with the view; at the helm it faces the wheel with its hands on two spokes.
+##    with the view; at the helm it faces the wheel with its hands on two spokes. Swimming under the
+##    water it lies along the view, head first (see _swim_tilt()), so the strokes are out in front.
 ##  - Carrying something, its hands hold it at the item's grip markers (see _carry()).
 ##  - Under the water it is lit like it is that deep (see _depth_tint()), and swimming at the surface
 ##    its hands splash where they come down through the waves (see _hand_splashes()).
@@ -42,6 +43,9 @@ const WATER_MAT := preload('res://assets/water/mat_water.tres') # its underwater
 @export var jog_pace := 3.4
 @export var sprint_pace := 6.0
 @export var swim_pace := 1.5
+## Seconds the body takes to lie along the view when it starts swimming under the water, and to
+## stand back up when it stops (or comes up to the surface).
+@export var swim_lean_time := 0.4
 ## How quickly the light falling on the body fades with its depth, as a share of the water's own
 ## absorption (the colour it takes from what you see through it): red goes first, then the rest,
 ## so deep down the body is a dark shape like everything else. 0 = lit as on the surface.
@@ -139,6 +143,12 @@ var _hand_was := [INF, INF] # how far each hand was above the water last frame
 var _hand_falling := [false, false] # ...and whether it was coming down
 var _hand_rest := [0.0, 0.0] # s until each can splash again
 var _hand_fx: Array[GPUParticles3D] = []
+var _lying := 0.0 # 0 = upright, 1 = lying along the view, swimming under the water (see _swim_tilt())
+# Lying along the view, the camera sits at a Marker3D named SwimAnchor anywhere under the model
+# (eg. a child of Body/Model in player.tscn) instead of at the eyes: placed on the standing body
+# relative to its head, it goes where the head goes in any clip. Without one, the eyes stay at the
+# camera.
+var _anchor_in_head := Vector3.INF # the SwimAnchor, in the head bone's space (INF: none)
 
 ## Rigs the body for `p` (the Player: its Head turns it, its Camera3D is the eyes).
 func setup(p) -> void:
@@ -148,6 +158,9 @@ func setup(p) -> void:
 	_head_bone = _skel.find_bone(HEAD_BONES[0])
 	var eye_point := _rest_eyes()
 	_eye_in_head = (_skel.global_transform * _skel.get_bone_global_rest(_head_bone)).affine_inverse() * eye_point
+	var anchor := _model.find_child('SwimAnchor', true, false) as Node3D
+	if anchor:
+		_anchor_in_head = (_skel.global_transform * _skel.get_bone_global_rest(_head_bone)).affine_inverse() * anchor.global_position
 	# scaled so its eyes stand where the camera does above the feet
 	var camera: Camera3D = player.camera
 	var eye_height: float = camera.global_position.y - player.global_position.y
@@ -326,15 +339,40 @@ func _process(delta: float) -> void:
 		return
 	_leave_helm()
 	_face(yaw, delta)
-	_model.global_basis = Basis(Vector3.UP, _yaw + PI).scaled(_model.scale)
+	var tilt := _swim_tilt(delta)
+	_model.global_basis = (tilt * Basis(Vector3.UP, _yaw + PI)).scaled(_model.scale)
 	_rig.twist = clampf(angle_difference(_yaw, yaw), -deg_to_rad(max_twist), deg_to_rad(max_twist))
 	# and moved so its eyes are at the camera, a touch behind it
 	var camera: Camera3D = player.camera
 	var eyes := _skel.global_transform * _skel.get_bone_global_pose(_head_bone) * _eye_in_head
-	var back := Basis(Vector3.UP, yaw) * Vector3(0.0, 0.0, eye_back)
+	var back := tilt * Basis(Vector3.UP, yaw) * Vector3(0.0, 0.0, eye_back)
+	if _anchor_in_head != Vector3.INF and _lying > 0.0: # lying, the anchor is what sits at the camera
+		var anchor := _skel.global_transform * _skel.get_bone_global_pose(_head_bone) * _anchor_in_head
+		eyes = eyes.lerp(anchor, smoothstep(0.0, 1.0, _lying))
 	_model.global_position += camera.global_position + back - eyes
 	_carry(delta)
 	_hand_splashes(delta)
+
+## Swimming under the water (the eyes under, not afloat), the body lies along the view like a diver,
+## head first, its strokes out in front of the eyes. The swim clip already lies flat, head forward,
+## so it is only pitched with the view: not at all looking level, head down looking straight down.
+## Not stroking, or with the head out of the water, it levels out again as the clip goes back to the
+## upright swim idle. Eased both ways (swim_lean_time).
+func _swim_tilt(delta: float) -> Basis:
+	var p = player
+	var water = p.water
+	var under := false
+	if p.state == p.State.SWIM and p._float_rest == Vector2.INF and water:
+		var eyes: Vector3 = p.camera.global_position
+		under = eyes.y < water.get_wave_height(eyes) and not (water.has_method(&'is_water_hole') and water.is_water_hole(eyes))
+	var lie: bool = under and p.swim_stroke.length() > 0.3
+	_lying = move_toward(_lying, 1.0 if lie else 0.0, delta / maxf(swim_lean_time, 0.01))
+	if _lying <= 0.0:
+		return Basis.IDENTITY
+	var facing := Basis(Vector3.UP, _yaw + PI) * Vector3.BACK # the model faces +Z
+	var axis := Vector3.UP.cross(facing).normalized() # turns its up toward where it faces
+	var pitch: float = p.camera.rotation.x # < 0 looking down
+	return Basis(axis, smoothstep(0.0, 1.0, _lying) * -pitch)
 
 ## The sunlight reaching the body has come down through the water over it, losing its red first and
 ## then the rest (the water's underwater_absorption, depth_dimming of it), so deep down it is a dark
