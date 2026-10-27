@@ -68,6 +68,7 @@ signal coughed(severity: float)
 @onready var _intake: Area3D = $Intake
 
 var fuel := 0.0
+var infinite_fuel := false # dev console: the furnace never burns down
 var _flare := 0.0 # 1 right after a cell goes in, settling to 0
 var _gasp := 0.0 # 1 right at a cough, recovering to 0
 var _cough_timer := 0.0
@@ -120,7 +121,7 @@ func _on_intake_body_entered(body: Node3D) -> void:
 		add_cell()
 
 func _process(delta: float) -> void:
-	if fuel > 0.0:
+	if fuel > 0.0 and not infinite_fuel:
 		set_fuel(fuel - max_fuel / maxf(full_burn_time, 0.01) * delta)
 	_flare = move_toward(_flare, 0.0, delta / maxf(flare_time, 0.01))
 	_gasp = move_toward(_gasp, 0.0, delta / 0.45)

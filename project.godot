@@ -26,6 +26,7 @@ MCPInputService="*res://addons/godot_mcp/mcp_input_service.gd"
 MCPGameInspector="*res://addons/godot_mcp/mcp_game_inspector_service.gd"
 ImGuiRoot="*uid://dugmpnsxaagba"
 Console="*uid://ouiu5xh1cs8n"
+DevCommands="*res://assets/scripts/core/dev_commands.gd"
 
 [beckett]
 
