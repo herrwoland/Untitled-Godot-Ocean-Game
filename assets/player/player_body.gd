@@ -13,6 +13,7 @@ class_name PlayerBody extends Node3D
 ##  - It has a facing of its own: standing, the view can swing round some way before the feet follow,
 ##    the rest of the turn taken by the back and neck (see body_rig.gd); walking or swimming it turns
 ##    with the view; at the helm it faces the wheel with its hands on two spokes.
+##  - Carrying something, its hands hold it at the item's grip markers (see _carry()).
 
 ## Every .glb/.gltf in here is a set of clips on the body's rig. The standard library loads first, the
 ## rest after it by name, so a clip of the same name in a later file replaces the earlier one.
@@ -61,6 +62,11 @@ const BodyRig := preload('res://assets/player/body_rig.gd')
 @export var sway_hz := 1.1
 @export_range(0.05, 1.0, 0.01) var sway_damping := 0.55
 @export var sway_max := 14.0
+@export_group('Carrying')
+## How closed the hands are round a carried item (0 = open, 1 = the wheel's grip).
+@export_range(0.0, 1.0, 0.01) var carry_grip := 0.6
+## How far out (m) from the item's sides the hands hold one that has no Grip_L / Grip_R markers.
+@export var carry_side_gap := 0.02
 @export_group('')
 
 var player # the Player (player.gd): its state, Head and Camera3D
@@ -91,6 +97,9 @@ const SWAY_SMOOTH := 0.12 # s: how long the deck's motion is smoothed over befor
 var _arm_reach := 0.0 # m from the shoulder a hand can hold something (see _hands())
 var _pivot: Node3D # what carries the camera (the camera shake's pivot, else the camera)
 var _pivot_rest := Vector3.ZERO
+var _carried: Node3D # the item in our hands, its grips per hand (left, right) and its size
+var _grips: Array[Node3D] = [null, null]
+var _carried_box := AABB() # in the item's own space
 
 ## Rigs the body for `p` (the Player: its Head turns it, its Camera3D is the eyes).
 func setup(p) -> void:
@@ -269,6 +278,50 @@ func _process(delta: float) -> void:
 	var eyes := _skel.global_transform * _skel.get_bone_global_pose(_head_bone) * _eye_in_head
 	var back := Basis(Vector3.UP, yaw) * Vector3(0.0, 0.0, eye_back)
 	_model.global_position += camera.global_position + back - eyes
+	_carry()
+
+## Carrying: each hand holds the item at its own grip, the item's Grip_L / Grip_R marker (at any
+## depth, so empties from Blender work too); a hand the item has no grip for is left to its clip. An
+## item with neither marker is held by its sides, with both hands.
+func _carry() -> void:
+	var item: Node3D = player.carry_controller.carried
+	if item == null or not is_instance_valid(item):
+		_carried = null
+		return
+	if item != _carried:
+		_carried = item
+		_grips = [item.find_child('Grip_L', true, false) as Node3D, item.find_child('Grip_R', true, false) as Node3D]
+		_carried_box = AABB()
+		for m: MeshInstance3D in item.find_children('*', 'MeshInstance3D', true, false): # not its label
+			var box := item.global_transform.affine_inverse() * m.global_transform * m.get_aabb()
+			_carried_box = box if _carried_box.size == Vector3.ZERO else _carried_box.merge(box)
+	var right := -_model.global_basis.x.normalized() # the model faces +Z, so its +X is the body's left
+	var targets := [Vector3.INF, Vector3.INF]
+	if _grips[0] or _grips[1]:
+		for k in 2:
+			if _grips[k]:
+				targets[k] = _grips[k].global_position
+	else:
+		# its half width across the body: the box's reach along our right, in the item's own space
+		var r := item.global_basis.inverse() * right
+		var half := _carried_box.size * 0.5
+		var reach := absf(r.x) * half.x + absf(r.y) * half.y + absf(r.z) * half.z
+		var mid := item.global_transform * _carried_box.get_center()
+		var gap := right * (reach + carry_side_gap)
+		targets = [mid - gap, mid + gap]
+	var to_sk := _skel.global_transform.affine_inverse()
+	var down := Vector3.DOWN * 0.6
+	if targets[0] != Vector3.INF:
+		_rig.hand_l = to_sk * targets[0]
+		_rig.pole_l = to_sk * (targets[0] + down - right * 0.5)
+		_rig.grip_l = carry_grip
+	if targets[1] != Vector3.INF:
+		_rig.hand_r = to_sk * targets[1]
+		_rig.pole_r = to_sk * (targets[1] + down + right * 0.5)
+		_rig.grip_r = carry_grip
+	_rig.grip_depth = player.grip_depth
+	_rig.wrist = Vector3.ZERO # the helm's wrist and thumb tuning is for its spokes
+	_rig.thumb = Vector2.ZERO
 
 ## Where the body faces: the wheel at the helm; with the view while walking or swimming (quickly);
 ## standing, it lets the view swing free_look either way before the feet shuffle round after it.
@@ -530,6 +583,8 @@ func _pick(delta: float) -> Array:
 		_landing -= delta
 		return [&'Jump_Land', 1.0]
 	if speed < 0.3:
+		if p.carry_controller.is_carrying() and _anim.has_animation(&'Hold_Idle'):
+			return [&'Hold_Idle', 1.0] # how the body stands holding something (the hands still go to it)
 		return [&'Idle', 1.0]
 	if speed > p.walk_speed + 0.5:
 		return [&'Sprint', dir * clampf(speed / sprint_pace, 0.6, 2.0)]
