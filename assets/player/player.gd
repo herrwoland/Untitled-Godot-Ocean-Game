@@ -142,11 +142,13 @@ func _ready() -> void:
 	sonar.name = &'SonarPulse'
 	sonar.player = self
 	add_child(sonar)
-	if show_body:
-		var body := PlayerBody.new() # our own body: seen looking down, and in our shadow
-		body.name = &'Body'
-		add_child(body)
-		body.setup(self)
+	var body := get_node_or_null(^'Body') as PlayerBody # our own body: seen looking down, and in our shadow
+	if body:
+		if show_body:
+			move_child(body, -1) # after CameraShake, so the eyes place the camera last
+			body.setup(self)
+		else:
+			body.queue_free()
 	_head_base_y = head.position.y
 	floor_snap_length = 0.5 # a deck falling out of a wave can outrun gravity; stay stuck to it
 	# Muffle all audio while underwater via a low-pass filter on the Master bus.
