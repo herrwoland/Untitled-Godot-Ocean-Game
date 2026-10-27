@@ -73,6 +73,10 @@ const BodyRig := preload('res://assets/player/body_rig.gd')
 @export var carry_close_speed := 4.0
 ## Seconds an item takes to go from where it flies up to into the hand that takes it.
 @export var carry_take_time := 0.4
+## How still the back and shoulders are held while carrying, against the walk's swing from step to
+## step (they keep its lean): the arms reach from them, so swinging with the clip they swung the
+## hands and what they held up and down (0 = as the clip swings them, 1 = steadied fully).
+@export_range(0.0, 1.0, 0.01) var carry_steady := 0.9
 ## How far out (m) from the item's sides the hands hold one that has no Grip_L / Grip_R markers.
 @export var carry_side_gap := 0.02
 @export_group('')
@@ -110,6 +114,7 @@ var _grips: Array[Node3D] = [null, null]
 var _carried_box := AABB() # in the item's own space
 var _carry_close := 0.0 # how closed the hands are round it now
 var _carry_hang := 0.0 # how far it has been taken onto the hand (see _carry())
+var _steady := 0.0 # how still the shoulders are being held now (eased in and out)
 
 ## Rigs the body for `p` (the Player: its Head turns it, its Camera3D is the eyes).
 func setup(p) -> void:
@@ -275,6 +280,10 @@ func _process(delta: float) -> void:
 	_rig.carrying = false # until _carry() finds something in our hands
 	_rig.carried_item = null
 	_rig.thumb_grip = -1.0
+	# the shoulders held still while we carry (see carry_steady), eased in and out
+	var carrying: bool = player.carry_controller.is_carrying()
+	_steady = move_toward(_steady, carry_steady if carrying else 0.0, delta * 3.0)
+	_rig.steady_shoulders = _steady
 	# its own facing (never pitched); the model faces +Z, the view -Z
 	var yaw: float = (player.head as Node3D).global_rotation.y
 	var p = player
@@ -621,6 +630,8 @@ func _pick(delta: float) -> Array:
 		return [&'Idle', 1.0]
 	if speed > p.walk_speed + 0.5:
 		return [&'Sprint', dir * clampf(speed / sprint_pace, 0.6, 2.0)]
+	if p.carry_controller.is_carrying() and _anim.has_animation(&'Hold_Walk'):
+		return [&'Hold_Walk', dir * clampf(speed / walk_pace, 0.5, 2.0)] # a calmer walk, holding something
 	if speed > walk_pace * 1.6:
 		return [&'Jog_Fwd', dir * clampf(speed / jog_pace, 0.6, 2.0)]
 	return [&'Walk', dir * clampf(speed / walk_pace, 0.5, 2.0)]
