@@ -25,7 +25,7 @@ alignment = 1
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 theme_type_variation = &"TitleLabel"
-text = "Untitled Ocean Game"
+text = "Waiting Ocean"
 horizontal_alignment = 1
 
 [node name="PlayButton" type="Button" parent="VBoxContainer" unique_id=1084126824]

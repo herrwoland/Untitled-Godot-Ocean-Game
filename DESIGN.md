@@ -1,4 +1,4 @@
-# DESIGN — Untitled Ocean Delivery Game
+# DESIGN — Waiting Ocean
 
 A first-person, melancholic delivery game across five days on a hostile, indifferent sea.
 You are a small creature surviving a huge land. Every day the world gets stranger.

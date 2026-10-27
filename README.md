@@ -1,6 +1,13 @@
+# Waiting Ocean
+
+A first-person, melancholic delivery game across five days on a hostile, indifferent sea. See [DESIGN.md](DESIGN.md).
+
+---
+
+## Built on manickyoj's fork of GodotOceanWaves
+
 https://github.com/user-attachments/assets/b4ffb25d-0f35-4041-8af7-ab0d61d141c9
 
-# manickyoj's fork of GodotOceanWaves
 This fork aims to combining the best of the Godot ocean work from 2Retr0, krautdev, and Lucactus22.
 - From [2Retr0's repo](https://github.com/2Retr0/GodotOceanWaves) we take the original, beautiful FFT ocean wave implementation
 - From [krautdev](https://github.com/krautdev/GodotOceanWaves), I tried to take the depth-sampling work, but ran into issues getting it to run. Rather, I just took the depth color absorption addition to the filter
