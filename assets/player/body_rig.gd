@@ -53,6 +53,11 @@ var settling := false
 var item_frame_l := Basis()
 var item_frame_r := Basis()
 var _on_item := {} # per side: the hand's turn relative to its grip
+## Once it is held (not settling), the item hangs from the `anchor` hand ('_l' or '_r'): the rig
+## moves it so its grip sits on that palm, wherever the arm could reach, and it never leaves the
+## hand. Null while it glides in, or held by its sides.
+var carried_item: Node3D
+var anchor := '_r'
 var _pull := Vector3.ZERO # the chest drawn toward the handles (see _process_modification)
 var _clip_hand := {} # per side: the hand's turn as the clip posed it, this frame
 var _lock := {} # per side: the hand's turn relative to its spoke, as it was near home
@@ -113,12 +118,20 @@ func _process_modification() -> void:
 	elif _pull.length() > 0.0001:
 		_hold_on(sk, _pull)
 	var miss := Vector3.ZERO
-	if hand_l != Vector3.INF:
-		var m := _grip(sk, '_l', hand_l, pole_l)
+	# a carried item hangs from its anchor hand: that hand reaches first, the item is moved onto its
+	# palm wherever it got to, and the other hand holds on where the item now is
+	var sides := ['_l', '_r'] if carried_item == null or anchor == '_l' else ['_r', '_l']
+	var shift := Vector3.ZERO # how far the item was moved onto the anchor hand (skeleton space)
+	for side: String in sides:
+		var target := hand_l if side == '_l' else hand_r
+		if target == Vector3.INF:
+			continue
+		target += shift
+		var m := _grip(sk, side, target, pole_l if side == '_l' else pole_r)
 		if m.length() > miss.length(): miss = m
-	if hand_r != Vector3.INF:
-		var m := _grip(sk, '_r', hand_r, pole_r)
-		if m.length() > miss.length(): miss = m
+		if carried_item and side == anchor:
+			shift = -m # the palm, from where the grip was
+			carried_item.global_position += sk.global_basis * shift
 	_pull = (_pull + miss * PULL_GAIN) * PULL_LET_GO
 	_close(sk, fingers_l, grip_l)
 	_close(sk, fingers_r, grip_r)
