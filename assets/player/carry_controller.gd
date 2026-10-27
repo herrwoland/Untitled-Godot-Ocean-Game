@@ -26,6 +26,10 @@ func _ready() -> void:
 func is_carrying() -> bool:
 	return carried != null
 
+## Whether the carried item is still on its way into the hands (picked up, or changing sockets).
+func is_settling() -> bool:
+	return _gliding
+
 func pick_up(item: RigidBody3D) -> void:
 	if carried:
 		drop()

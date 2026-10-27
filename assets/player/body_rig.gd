@@ -44,6 +44,15 @@ var home_r := Vector3.ZERO
 ## The wrists' extra turn once a hand is turning with its spoke (radians, like `wrist`), faded in
 ## with the lock.
 var lock_wrist := Vector3.ZERO
+## Carrying: each hand's grip on the item (the grip marker's turn, in the skeleton's space). While the
+## item is still `settling` into the hands, each hand's turn on its grip is noted as the arm leaves
+## it; once it is held, the hand keeps that turn on the item, so the wrist doesn't roll on it as the
+## body turns under the view (only the elbow and forearm give).
+var carrying := false
+var settling := false
+var item_frame_l := Basis()
+var item_frame_r := Basis()
+var _on_item := {} # per side: the hand's turn relative to its grip
 var _pull := Vector3.ZERO # the chest drawn toward the handles (see _process_modification)
 var _clip_hand := {} # per side: the hand's turn as the clip posed it, this frame
 var _lock := {} # per side: the hand's turn relative to its spoke, as it was near home
@@ -87,6 +96,8 @@ func _process_modification() -> void:
 		_lock.erase('_l')
 	if hand_r == Vector3.INF:
 		_lock.erase('_r')
+	if not carrying:
+		_on_item.clear()
 	# the hands as the clip left them: each reach below starts from here (the wrist turn is laid on
 	# once per reach, never on top of the last one)
 	_clip_hand.clear()
@@ -162,6 +173,7 @@ func _grip(sk: Skeleton3D, side: String, grip: Vector3, pole: Vector3) -> Vector
 	for pass_i in MAX_PASSES:
 		_reach(sk, upper, lower, hand, aim, pole)
 		_lock_to_spoke(sk, h, side, grip, shoulder)
+		_lock_to_item(sk, h, side)
 		aim += grip - _palm(sk, hand, knuckle)
 	return grip - _palm(sk, hand, knuckle) # what it could not reach
 
@@ -198,6 +210,19 @@ func _lock_to_spoke(sk: Skeleton3D, h: int, side: String, grip: Vector3, shoulde
 		var m := 1.0 if side == '_l' else -1.0
 		q = q * Quaternion.from_euler(Vector3(lock_wrist.x, lock_wrist.y * m, lock_wrist.z * m) * w)
 	g.basis = Basis(q).scaled(g.basis.get_scale())
+	sk.set_bone_global_pose(h, g)
+
+## Keeps the hand's turn on a carried item as it was when the item came to rest in the hands (see
+## `carrying`).
+func _lock_to_item(sk: Skeleton3D, h: int, side: String) -> void:
+	if h < 0 or not carrying:
+		return
+	var frame: Basis = (item_frame_l if side == '_l' else item_frame_r).orthonormalized()
+	var g := sk.get_bone_global_pose(h)
+	if settling or not _on_item.has(side):
+		_on_item[side] = frame.inverse() * g.basis.orthonormalized()
+		return
+	g.basis = (frame * (_on_item[side] as Basis)).scaled(g.basis.get_scale())
 	sk.set_bone_global_pose(h, g)
 
 ## Where the palm is: halfway from the wrist to the knuckles.
