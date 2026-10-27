@@ -17,8 +17,8 @@
 [ext_resource type="PackedScene" uid="uid://txhlxyoayl6x" path="res://assets/models/player/body_ps1/Player_PS1.gltf" id="32_bodymodel"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
-radius = 0.4
-height = 1.8
+radius = 0.3310547
+height = 2.219336
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_vlpqo"]
 shader = ExtResource("2_m2mll")
@@ -142,7 +142,7 @@ socket = NodePath("../Head/Camera3D/CarrySocket")
 swim_socket = NodePath("../Head/Camera3D/SwimCarrySocket")
 
 [node name="Collider" type="CollisionShape3D" parent="." unique_id=401350848]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.109668, 0)
 shape = SubResource("CapsuleShape3D_player")
 
 [node name="Head" type="Node3D" parent="." unique_id=1836985834]
@@ -311,4 +311,4 @@ script = ExtResource("31_body")
 model = NodePath("Model")
 
 [node name="Model" parent="Body" unique_id=1293847562 instance=ExtResource("32_bodymodel")]
-transform = Transform3D(-1.240994, 0, 0, 0, 1.240994, 0, 0, 0, -1.240994, 0, 0, 0.182506)
+transform = Transform3D(-1.240994, 0, 0, 0, 1.240994, 0, 0, 0, -1.240994, 0, -0.021485, -0.039421648)
