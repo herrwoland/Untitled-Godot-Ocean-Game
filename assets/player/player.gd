@@ -8,7 +8,7 @@ enum State { WALK, SWIM, PILOT, OPERATE, CLIMB }
 @export var water: Node
 @export var walk_speed: float = 5.0
 @export var sprint_speed: float = 8.5
-@export var swim_speed: float = 3.5
+@export var swim_speed: float = 1.75
 @export var jump_velocity: float = 4.5
 ## Our own body (PlayerBody): seen looking down and in our shadow.
 @export var show_body := true
@@ -112,6 +112,9 @@ var _ears_underwater: bool = false
 var _submerged_at_msec: int = 0 # when the ears last went under, for the surfacing gasp
 var _float_rest := Vector2.INF # afloat: the piece of water we ride (Water.surface_rest); INF = not afloat
 var _float_roll := 0.0 # the view's roll from the wave we are riding
+## Swimming: the way and speed we are swimming under our own power (m/s), up and down included;
+## zero while only sinking or treading water. The body strokes by it (see player_body.gd).
+var swim_stroke := Vector3.ZERO
 
 const GASP_AFTER_SECONDS := 4.0 # dives shorter than this surface without a gasp
 
@@ -532,6 +535,7 @@ func _process_swim(delta: float) -> void:
 	if Input.is_action_pressed(&'swim_up') and water.has_method(&'surface_point'):
 		var afloat_feet := surface_y + float_eye_height - _head_base_y
 		if _float_rest != Vector2.INF or global_position.y >= afloat_feet - 0.05:
+			swim_stroke = move_dir * swim_speed # treading water is not a stroke, the waves' motion neither
 			_float_on_surface(delta, move_dir)
 			_roll_with_wave(delta, true)
 			surface_ripples.global_position = Vector3(global_position.x, surface_y, global_position.z)
@@ -544,10 +548,13 @@ func _process_swim(delta: float) -> void:
 
 	# The player constantly sinks; swim_up (space) is required to rise or stay afloat,
 	# swim_down speeds up the sinking.
+	swim_stroke = Vector3(velocity.x, 0.0, velocity.z) # sinking is no stroke
 	if Input.is_action_pressed(&'swim_up'):
 		velocity.y = swim_speed
+		swim_stroke.y = swim_speed
 	elif Input.is_action_pressed(&'swim_down'):
 		velocity.y = -swim_speed
+		swim_stroke.y = -swim_speed
 	else:
 		velocity.y = -sink_speed
 
@@ -634,6 +641,7 @@ func _check_exit_swim() -> void:
 	var surface_y: float = water.get_wave_height(global_position)
 	if is_on_floor() and surface_y - global_position.y < swim_exit_depth:
 		state = State.WALK
+		swim_stroke = Vector3.ZERO
 		surface_ripples.emitting = false
 		_float_rest = Vector2.INF
 		_float_roll = 0.0

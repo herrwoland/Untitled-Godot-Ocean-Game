@@ -14,6 +14,8 @@ class_name PlayerBody extends Node3D
 ##    the rest of the turn taken by the back and neck (see body_rig.gd); walking or swimming it turns
 ##    with the view; at the helm it faces the wheel with its hands on two spokes.
 ##  - Carrying something, its hands hold it at the item's grip markers (see _carry()).
+##  - Under the water it is lit like it is that deep (see _depth_tint()), and swimming at the surface
+##    its hands splash where they come down through the waves (see _hand_splashes()).
 
 ## Every .glb/.gltf in here is a set of clips on the body's rig. The standard library loads first, the
 ## rest after it by name, so a clip of the same name in a later file replaces the earlier one.
@@ -22,6 +24,7 @@ const BASE_ANIMATIONS := 'UAL1_Standard.glb'
 ## Bones whose skin is cut from the visible copy (and everything below them).
 const HEAD_BONES := ['Head']
 const BodyRig := preload('res://assets/player/body_rig.gd')
+const WATER_MAT := preload('res://assets/water/mat_water.tres') # its underwater_absorption, see _depth_tint()
 
 ## The rigged model, a child of this node in player.tscn (swap it there for a resculpted body). It is
 ## scaled, turned and placed from code every frame, so its transform in the scene is only a preview.
@@ -39,6 +42,19 @@ const BodyRig := preload('res://assets/player/body_rig.gd')
 @export var jog_pace := 3.4
 @export var sprint_pace := 6.0
 @export var swim_pace := 1.5
+## How quickly the light falling on the body fades with its depth, as a share of the water's own
+## absorption (the colour it takes from what you see through it): red goes first, then the rest,
+## so deep down the body is a dark shape like everything else. 0 = lit as on the surface.
+@export_range(0.0, 2.0, 0.01) var depth_dimming := 1.0
+@export_group('Hand Splashes')
+## Swimming at the surface, each hand splashes where it comes down through the waves: the
+## Player's HeadSplash, copied, with this share of its particles.
+@export_range(0.0, 1.0, 0.01) var hand_splash_amount := 0.5
+## How close (m) above the waves a hand must come down for its stroke to splash: the swim clip
+## carries the hands high, and they only just reach the water (going through it always splashes).
+@export var hand_splash_reach := 0.2
+## Seconds before the same hand can splash again (the waves bob round it as it sweeps through).
+@export var hand_splash_rest := 0.35
 ## How far (degrees) the view can turn from where the body faces before the feet follow.
 @export var free_look := 50.0
 ## How far (degrees) the back and neck turn toward the view; past that only the eyes go on.
@@ -115,6 +131,14 @@ var _carried_box := AABB() # in the item's own space
 var _carry_close := 0.0 # how closed the hands are round it now
 var _carry_hang := 0.0 # how far it has been taken onto the hand (see _carry())
 var _steady := 0.0 # how still the shoulders are being held now (eased in and out)
+var _tinted: Array[StandardMaterial3D] = [] # the seen copy's materials, tinted by depth (see _depth_tint())
+var _albedo: Array[Color] = [] # ...and their own colours
+var _tint := Color.WHITE
+var _hand_bones := [-1, -1] # left, right
+var _hand_was := [INF, INF] # how far each hand was above the water last frame
+var _hand_falling := [false, false] # ...and whether it was coming down
+var _hand_rest := [0.0, 0.0] # s until each can splash again
+var _hand_fx: Array[GPUParticles3D] = []
 
 ## Rigs the body for `p` (the Player: its Head turns it, its Camera3D is the eyes).
 func setup(p) -> void:
@@ -143,6 +167,7 @@ func setup(p) -> void:
 	_skel.add_child(_rig) # runs after the clip has posed the skeleton
 	_rig.fingers_l = _held_fingers(&'Driving', '_l')
 	_rig.fingers_r = _held_fingers(&'Driving', '_r')
+	_hand_bones = [_skel.find_bone('hand_l'), _skel.find_bone('hand_r')]
 	_find_pivot.call_deferred() # after CameraShake has slipped its pivot in (deferred from its _ready)
 
 func _find_pivot() -> void:
@@ -224,6 +249,13 @@ func _split_head() -> void:
 			seen.name = StringName(m.name + '_Seen')
 			seen.mesh = _without(m, cut)
 			seen.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			for k in seen.mesh.get_surface_count(): # its own materials, to tint by depth
+				var mat := seen.get_active_material(k) as StandardMaterial3D
+				if mat:
+					mat = mat.duplicate() as StandardMaterial3D
+					seen.set_surface_override_material(k, mat)
+					_tinted.append(mat)
+					_albedo.append(mat.albedo_color)
 			m.get_parent().add_child(seen)
 			seen.skeleton = seen.get_path_to(_skel)
 
@@ -277,6 +309,7 @@ func _process(delta: float) -> void:
 	if player == null:
 		return
 	_animate(delta)
+	_depth_tint(delta)
 	_rig.carrying = false # until _carry() finds something in our hands
 	_rig.carried_item = null
 	_rig.thumb_grip = -1.0
@@ -301,6 +334,66 @@ func _process(delta: float) -> void:
 	var back := Basis(Vector3.UP, yaw) * Vector3(0.0, 0.0, eye_back)
 	_model.global_position += camera.global_position + back - eyes
 	_carry(delta)
+	_hand_splashes(delta)
+
+## The sunlight reaching the body has come down through the water over it, losing its red first and
+## then the rest (the water's underwater_absorption, depth_dimming of it), so deep down it is a dark
+## shape. The underwater screen effect only takes away what is lost between the body and the eyes,
+## a few centimeters, so without this it stayed lit like on the surface (the sun dims a little with
+## depth too, see the Water's depth_darkening; this is on top of that). Measured at the chest.
+func _depth_tint(delta: float) -> void:
+	var water = player.water
+	if _tinted.is_empty() or water == null or not water.has_method(&'get_wave_height'):
+		return
+	var chest: Vector3 = player.global_position + Vector3.UP * 1.0
+	var depth := maxf(water.get_wave_height(chest) - chest.y, 0.0) * depth_dimming
+	if depth > 0.0 and water.has_method(&'is_water_hole') and water.is_water_hole(chest):
+		depth = 0.0 # in a dry hull or shaft
+	var target := Color.WHITE
+	if depth > 0.0:
+		var a = WATER_MAT.get_shader_parameter(&'underwater_absorption')
+		if a == null:
+			a = RenderingServer.shader_get_parameter_default(WATER_MAT.shader.get_rid(), &'underwater_absorption')
+		if a is Vector3:
+			target = Color(exp(-a.x * depth), exp(-a.y * depth), exp(-a.z * depth))
+	# eased, so going under or surfacing doesn't snap it (and the waves washing over the chest don't flicker it)
+	var k := 1.0 - exp(-delta * 6.0)
+	_tint = Color(lerpf(_tint.r, target.r, k), lerpf(_tint.g, target.g, k), lerpf(_tint.b, target.b, k))
+	for i in _tinted.size():
+		var c := _albedo[i]
+		_tinted[i].albedo_color = Color(c.r * _tint.r, c.g * _tint.g, c.b * _tint.b, c.a)
+
+## Swimming at the surface (the head above it): a small splash where a hand comes down onto the
+## waves, at the bottom of its stroke (within hand_splash_reach of them) or going through. Copies of the Player's HeadSplash, one per hand, so tuning that tunes these.
+func _hand_splashes(delta: float) -> void:
+	var p = player
+	var water = p.water
+	var template: GPUParticles3D = p.head_splash
+	if template == null or water == null or _hand_bones[0] < 0 or _hand_bones[1] < 0:
+		return
+	if _hand_fx.is_empty():
+		for k in 2:
+			var fx := template.duplicate() as GPUParticles3D
+			fx.name = &'HandSplashL' if k == 0 else &'HandSplashR'
+			fx.amount = maxi(int(template.amount * hand_splash_amount), 1)
+			fx.emitting = false
+			p.add_child(fx)
+			_hand_fx.append(fx)
+	var stroking: bool = p.state == p.State.SWIM and p.swim_stroke.length() > 0.3 			and p.camera.global_position.y > water.get_wave_height(p.camera.global_position)
+	for k in 2:
+		_hand_rest[k] = maxf(_hand_rest[k] - delta, 0.0)
+		var hand := _skel.global_transform * _skel.get_bone_global_pose(_hand_bones[k]).origin
+		var surface_y: float = water.get_wave_height(hand)
+		var above := hand.y - surface_y
+		var was: float = _hand_was[k]
+		var through: bool = was > 0.0 and above <= 0.0
+		var bottomed: bool = _hand_falling[k] and above > was and was < hand_splash_reach
+		if stroking and (through or bottomed) and _hand_rest[k] <= 0.0:
+			_hand_fx[k].global_position = Vector3(hand.x, surface_y, hand.z)
+			_hand_fx[k].restart()
+			_hand_rest[k] = hand_splash_rest
+		_hand_falling[k] = stroking and above < was
+		_hand_was[k] = above if stroking else INF
 
 ## Carrying: each hand holds the item at its own grip, the item's Grip_L / Grip_R marker (at any
 ## depth, so empties from Blender work too); a hand the item has no grip for is left to its clip. An
@@ -608,8 +701,11 @@ func _pick(delta: float) -> Array:
 	if p.state == p.State.PILOT:
 		return [&'Idle', 1.0] # standing at the wheel; the hands and back are posed by the rig
 	if p.state == p.State.SWIM:
-		if speed > 0.3:
-			return [&'Swim_Fwd', clampf(speed / swim_pace, 0.5, 2.0)]
+		# by the stroke, not how we move: rising or diving under our own power is swimming, and
+		# being rocked by the waves or sinking is not
+		var stroke: float = p.swim_stroke.length()
+		if stroke > 0.3:
+			return [&'Swim_Fwd', clampf(stroke / swim_pace, 0.5, 2.0)]
 		return [&'Swim_Idle', 1.0]
 	if p.state != p.State.WALK:
 		return [&'Idle', 1.0] # at a station, on a ladder

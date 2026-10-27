@@ -161,13 +161,29 @@ float vnoise(vec2 p) {
 	           mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
-vec3 blurred(vec2 uv, float radius_px) {
+// The scene at `uv` seen through the water in front of it: absorbed over the distance to what
+// is there and veiled by `fog` over the same stretch (`exit_dist`: where the ray leaves through
+// the surface). Each sample is fogged by its own distance, before any blurring: blurred first,
+// a near object's edge took in the bare scene behind it (the sky, unfogged) while its own short
+// distance kept the fog off, and something close, like your own body, had a rim of sky round it.
+// One pixel each, colour and depth, not filtered: a filtered colour mixes in the pixel behind
+// the edge, which a filtered depth doesn't account for.
+vec3 through_water(vec2 uv, float exit_dist, vec3 fog) {
+	ivec2 px = clamp(ivec2(uv * pc.size), ivec2(0), ivec2(pc.size) - 1);
+	float depth = texelFetch(depth_tex, px, 0).r;
+	float hit = depth <= 0.0 ? 1e4 : length(view_pos(uv, depth)); // depth 0 = sky.
+	float dist = min(hit, max(exit_dist, 0.0));
+	vec3 c = texelFetch(source_tex, px, 0).rgb;
+	return c * exp(-p.absorption.rgb * dist) + fog * (1.0 - exp(-dist / max(p.effect2.z, 1.0)));
+}
+
+vec3 blurred(vec2 uv, float radius_px, float exit_dist, vec3 fog) {
 	vec2 r = radius_px / pc.size;
-	vec3 c = textureLod(source_tex, uv, 0.0).rgb * 0.4;
-	c += textureLod(source_tex, uv + vec2( r.x,  r.y), 0.0).rgb * 0.15;
-	c += textureLod(source_tex, uv + vec2(-r.x,  r.y), 0.0).rgb * 0.15;
-	c += textureLod(source_tex, uv + vec2( r.x, -r.y), 0.0).rgb * 0.15;
-	c += textureLod(source_tex, uv + vec2(-r.x, -r.y), 0.0).rgb * 0.15;
+	vec3 c = through_water(uv, exit_dist, fog) * 0.4;
+	c += through_water(uv + vec2( r.x,  r.y), exit_dist, fog) * 0.15;
+	c += through_water(uv + vec2(-r.x,  r.y), exit_dist, fog) * 0.15;
+	c += through_water(uv + vec2( r.x, -r.y), exit_dist, fog) * 0.15;
+	c += through_water(uv + vec2(-r.x, -r.y), exit_dist, fog) * 0.15;
 	return c;
 }
 
@@ -464,11 +480,6 @@ void main() {
 		float exit_dist = view_dir.y > 1e-4 ? lens / view_dir.y : 1e4;
 		float dist = min(hit, max(exit_dist, 0.0));
 
-		// Wobble and blur come from the lens being in the water, so they fade in as it goes
-		// under. What the water does to the light does not fade: the path above already says
-		// how much water there was. Fading that too lets you see clear to the sea floor for
-		// the moment you are only a few centimeters down.
-		vec3 under = mix(scene, blurred(suv, p.effect.z), wet);
 		// Light fades with depth. The scattered light you see along a view comes from the water
 		// it passes through (out to about the silhouette range), so looking up you see shallower,
 		// brighter water - a faint glow overhead even when deep - and looking down, only black.
@@ -477,10 +488,14 @@ void main() {
 		fog *= mix(p.fog_gradient.x, p.fog_gradient.y, view_dir.y * 0.5 + 0.5);
 		// Detail and colour are absorbed quickly (absorption), but the light scattered into the
 		// view builds up over a much longer range (silhouette range). So a distant creature is
-		// lost as a lit object yet still blocks the glow behind it: a dark shape in the murk.
-		vec3 transmittance = exp(-p.absorption.rgb * dist);
-		float scattered = 1.0 - exp(-dist / max(p.effect2.z, 1.0));
-		under = under * transmittance + fog * scattered;
+		// lost as a lit object yet still blocks the glow behind it: a dark shape in the murk
+		// (see through_water()).
+		// Wobble and blur come from the lens being in the water, so they fade in as it goes
+		// under. What the water does to the light does not fade: the path above already says
+		// how much water there was. Fading that too lets you see clear to the sea floor for
+		// the moment you are only a few centimeters down.
+		vec3 under = blurred(suv, p.effect.z, exit_dist, fog);
+		if (wet < 1.0) under = mix(through_water(uv, exit_dist, fog), under, wet);
 		// Lamps and glowing things light up the water around them, over the same stretch of it.
 		if (p.glow_info.x > 0.5) under += underwater_glow(p.cam_to_world[3].xyz, view_dir, dist) * p.glow_info.y;
 
