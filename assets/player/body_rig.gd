@@ -62,11 +62,12 @@ var _reach_len := {} # per side: how far from the shoulder the palm can be (skel
 var _second_on: Node3D # the item the second hand took hold of, and where on it (its own space)
 var _second_at := Vector3.ZERO
 const SECOND_HAND_EASE := 0.85 # of its reach, how far the second hand takes hold: room to sway in
-## Once it is held (not settling), the item hangs from the `anchor` hand ('_l' or '_r'): the rig
-## moves it so its grip sits on that palm, wherever the arm could reach, and it never leaves the
-## hand. Null while it glides in, or held by its sides.
+## The item hangs from the `anchor` hand ('_l' or '_r'): the rig moves it so its grip sits on that
+## palm, wherever the arm could reach, and it never leaves the hand. `hang` (0..1) eases it there
+## from where it glides as it is taken. Null when held by its sides.
 var carried_item: Node3D
 var anchor := '_r'
+var hang := 1.0
 var _pull := Vector3.ZERO # the chest drawn toward the handles (see _process_modification)
 var _clip_hand := {} # per side: the hand's turn as the clip posed it, this frame
 var _lock := {} # per side: the hand's turn relative to its spoke, as it was near home
@@ -141,8 +142,10 @@ func _process_modification() -> void:
 			# where it holds the item is picked once, as it takes hold, and kept: its own grip if it
 			# reaches it, else (a long item held at its two ends) the nearest place toward the anchor
 			# that it does reach. Picked afresh each frame it slid up and down the item as we turned.
-			if _second_on != carried_item:
-				_second_on = carried_item
+			# (while it is still coming up into the hands that place follows it, so taking hold
+			# is one smooth move)
+			if settling or _second_on != carried_item:
+				_second_on = null if settling else carried_item
 				var shoulder := sk.get_bone_global_pose(sk.find_bone('upperarm' + side)).origin
 				var t := _within_reach(target, anchor_at, shoulder, _reach_of(sk, side) * SECOND_HAND_EASE)
 				_second_at = carried_item.global_transform.affine_inverse() * (sk.global_transform * target.lerp(anchor_at, t))
@@ -150,7 +153,7 @@ func _process_modification() -> void:
 		var m := _grip(sk, side, target, pole_l if side == '_l' else pole_r)
 		if m.length() > miss.length(): miss = m
 		if carried_item and side == anchor:
-			shift = -m # the palm, from where the grip was
+			shift = -m * hang # the palm, from where the grip was (eased onto it as it is taken)
 			anchor_at = target + shift
 			carried_item.global_position += sk.global_basis * shift
 	_pull = (_pull + miss * PULL_GAIN) * PULL_LET_GO
@@ -264,18 +267,21 @@ func _lock_to_item(sk: Skeleton3D, h: int, side: String) -> void:
 	g.basis = (frame * (_marker_to_hand[side] as Basis)).scaled(g.basis.get_scale())
 	sk.set_bone_global_pose(h, g)
 
-## How far (0..1) from `from` toward `to` the first point within `reach` of `shoulder` lies (1 when
-## none is: `to` itself).
+## How far (0..1) from `from` toward `to` the first point within `reach` of `shoulder` lies; when
+## none is, the point nearest the shoulder (where the first one appears as the item turns, so the
+## hand never jumps between the two).
 static func _within_reach(from: Vector3, to: Vector3, shoulder: Vector3, reach: float) -> float:
 	var f := from - shoulder
 	if f.length() <= reach:
 		return 0.0
 	var d := to - from
 	var a := d.length_squared()
+	if a < 0.000001:
+		return 0.0
 	var b := f.dot(d)
 	var disc := b * b - a * (f.length_squared() - reach * reach)
-	if a < 0.000001 or disc < 0.0:
-		return 1.0
+	if disc < 0.0:
+		return clampf(-b / a, 0.0, 1.0)
 	return clampf((-b - sqrt(disc)) / a, 0.0, 1.0)
 
 ## How far from its shoulder a hand can hold something: the arm and a palm, a little short of
