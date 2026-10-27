@@ -32,7 +32,13 @@ surface_material_override/0 = SubResource("Mat_package")
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.25490713, 0)
 pixel_size = 0.0015
 modulate = Color(0.95, 0.9, 0.8, 1)
-text = "XXXXXXXXXXXXXXXX
+text = "TTTTT
 "
 font_size = 28
 outline_size = 0
+
+[node name="Grip_R" type="Marker3D" parent="." unique_id=409864187]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25002253, -0.2540109, -0.112890065)
+
+[node name="Grip_L" type="Marker3D" parent="." unique_id=1931020898]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.24774957, 0, 0.15796879)

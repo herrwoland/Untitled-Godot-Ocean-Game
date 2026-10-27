@@ -3,7 +3,15 @@
 [ext_resource type="Script" uid="uid://bv6xfyp34pabi" path="res://scenes/boat/navigation_lock.gd" id="1_g4jx6"]
 [ext_resource type="PackedScene" uid="uid://vsd5ua4dkfw4" path="res://assets/models/boat/speed_control.glb" id="1_osmcr"]
 [ext_resource type="Script" uid="uid://bu5ui6qwq1aas" path="res://assets/scripts/interactables/pull_interactable.gd" id="2_pull"]
+[ext_resource type="Texture2D" uid="uid://drgfexjenyjm6" path="res://assets/blender/textures/texture_speedmeter_2.png" id="3_ba5a1"]
 [ext_resource type="AudioStream" uid="uid://yo0kw0tjq0kt" path="res://assets/SFX/CASHREG.WAV" id="4_jn3mm"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_p0ton"]
+resource_name = "Material_"
+cull_mode = 2
+albedo_texture = ExtResource("3_ba5a1")
+texture_filter = 2
+metadata/_gltf_primary_texture_coord = 0
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_5s6u7"]
 height = 1.65271
@@ -14,7 +22,10 @@ script = ExtResource("1_g4jx6")
 
 [node name="speed_control" parent="." unique_id=787396856 instance=ExtResource("1_osmcr")]
 
-[node name="navigation_handle" parent="speed_control/navigation_shaft" parent_id_path=PackedInt32Array(787396856, 120176441) index="11" unique_id=207339840]
+[node name="navigation_face" parent="speed_control/navigation_shaft" parent_id_path=PackedInt32Array(787396856, 1039177206) index="10" unique_id=1686361230]
+surface_material_override/0 = SubResource("StandardMaterial3D_p0ton")
+
+[node name="navigation_handle" parent="speed_control/navigation_shaft" parent_id_path=PackedInt32Array(787396856, 1039177206) index="11" unique_id=457001783]
 transform = Transform3D(2.5199013, -1.4548657, 0, 1.4548657, 2.5199013, 0, 0, 0, 2.9097314, 0, 9.845195, 0.035521235)
 
 [node name="interactable" type="Area3D" parent="speed_control/navigation_shaft/navigation_handle" index="0" unique_id=376514721]
