@@ -263,6 +263,7 @@ func _process(delta: float) -> void:
 		return
 	_animate(delta)
 	_rig.carrying = false # until _carry() finds something in our hands
+	_rig.carried_item = null
 	# its own facing (never pitched); the model faces +Z, the view -Z
 	var yaw: float = (player.head as Node3D).global_rotation.y
 	var p = player
@@ -316,6 +317,11 @@ func _carry() -> void:
 	_rig.settling = player.carry_controller.is_settling()
 	_rig.item_frame_l = to_sk.basis * (_grips[0] if _grips[0] else item).global_basis
 	_rig.item_frame_r = to_sk.basis * (_grips[1] if _grips[1] else item).global_basis
+	# held fast, it hangs from a hand (the right, if it has a grip for it): the socket is only where
+	# that hand reaches for, and the item goes wherever the hand got to
+	if not _rig.settling and (_grips[0] or _grips[1]):
+		_rig.carried_item = item
+		_rig.anchor = '_r' if _grips[1] else '_l'
 	var down := Vector3.DOWN * 0.6
 	if targets[0] != Vector3.INF:
 		_rig.hand_l = to_sk * targets[0]

@@ -5,6 +5,8 @@ extends Node
 ## Move/tilt the CarrySocket marker in the editor to adjust where held items
 ## sit — bring it closer to make paper readable. While swimming they move to
 ## SwimCarrySocket instead, low and out of the way of the view.
+## An item with grip markers is only placed here: the body's hand reaches for it and then carries it
+## (see body_rig.gd's `carried_item`), so it ends up wherever the hand could reach.
 
 @export var player: CharacterBody3D
 @export var socket: Node3D
