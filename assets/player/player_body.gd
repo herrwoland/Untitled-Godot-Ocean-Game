@@ -100,7 +100,7 @@ func setup(p) -> void:
 	# scaled so its eyes stand where the camera does above the feet
 	var camera: Camera3D = player.camera
 	var eye_height: float = camera.global_position.y - player.global_position.y
-	var model_eyes := eye_point.y - _model.global_position.y
+	var model_eyes := (_model.global_transform.affine_inverse() * eye_point).y # unscaled, whatever the scene's preview
 	_model.scale = Vector3.ONE * (eye_height / maxf(model_eyes, 0.1))
 	_split_head()
 	_anim = AnimationPlayer.new()
@@ -116,6 +116,9 @@ func setup(p) -> void:
 	_skel.add_child(_rig) # runs after the clip has posed the skeleton
 	_rig.fingers_l = _held_fingers(&'Driving', '_l')
 	_rig.fingers_r = _held_fingers(&'Driving', '_r')
+	_find_pivot.call_deferred() # after CameraShake has slipped its pivot in (deferred from its _ready)
+
+func _find_pivot() -> void:
 	var cam_parent: Node3D = player.camera.get_parent()
 	_pivot = cam_parent if cam_parent.name == &'ShakePivot' else player.camera
 	_pivot_rest = _pivot.position
@@ -146,7 +149,7 @@ func _rest_eyes() -> Vector3:
 		if m.name.to_lower().begins_with('eyes'):
 			return (m.global_transform * m.get_aabb()).get_center()
 	var head := _skel.global_transform * _skel.get_bone_global_rest(_head_bone)
-	return head.origin + Vector3(0.0, 0.08, 0.1)
+	return head.origin + _model.global_basis * Vector3(0.0, 0.08, 0.1) # the model's own up and front
 
 ## The clips, with their tracks pointed at this model's skeleton (same rig, same bone names).
 func _library_for(skel_path: NodePath) -> AnimationLibrary:

@@ -311,3 +311,4 @@ script = ExtResource("31_body")
 model = NodePath("Model")
 
 [node name="Model" parent="Body" unique_id=1293847562 instance=ExtResource("32_bodymodel")]
+transform = Transform3D(-1.240994, 0, 0, 0, 1.240994, 0, 0, 0, -1.240994, 0, 0, 0.182506)
