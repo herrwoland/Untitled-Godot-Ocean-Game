@@ -1,9 +1,10 @@
 [gd_scene format=3 uid="uid://c2631fb6nwhgq"]
 
 [ext_resource type="Script" uid="uid://b77ymr5bqjqwr" path="res://assets/scripts/interactables/carryable.gd" id="1_carry"]
+[ext_resource type="PackedScene" uid="uid://clbl6hh6ygdco" path="res://assets/models/boat/paper.glb" id="2_djuke"]
 
 [sub_resource type="BoxShape3D" id="Shape_letter"]
-size = Vector3(0.4, 0.06, 0.5)
+size = Vector3(0.4, 0.06279053, 0.7459717)
 
 [sub_resource type="BoxMesh" id="Mesh_letter"]
 size = Vector3(0.35, 0.02, 0.45)
@@ -20,14 +21,19 @@ item_name = "The Letter"
 mission_role = 1
 
 [node name="Shape" type="CollisionShape3D" parent="." unique_id=1308572286]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.012427979, -6.1035156e-05)
 shape = SubResource("Shape_letter")
 
+[node name="paper" parent="." unique_id=1410211048 instance=ExtResource("2_djuke")]
+transform = Transform3D(1.9831207, 0, 0, 0, 1.9831207, 0, 0, 0, 1.9831207, 0, 0, 0)
+
 [node name="Mesh" type="MeshInstance3D" parent="." unique_id=824924090]
+visible = false
 mesh = SubResource("Mesh_letter")
 surface_material_override/0 = SubResource("Mat_letter")
 
 [node name="ItemLabel" type="Label3D" parent="." unique_id=1417095983]
-transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.015, 0)
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.028549805, -0.023857713)
 pixel_size = 0.0012
 modulate = Color(0.1, 0.08, 0.06, 1)
 text = "TT"
@@ -35,4 +41,4 @@ font_size = 24
 outline_size = 0
 
 [node name="Grip_R" type="Marker3D" parent="." unique_id=1809995283]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17701459, 0.0006043911, 0.104308635)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2615035, 0.0006043911, 0.17823651)

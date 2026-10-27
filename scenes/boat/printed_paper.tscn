@@ -31,4 +31,4 @@ autowrap_mode = 2
 width = 250.0
 
 [node name="Grip_R" type="Marker3D" parent="." unique_id=1074546862]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.10401666, -0.2540109, -0.043255858)
+transform = Transform3D(1, 0, 0, 0, -0.52230006, 0.85276175, 0, -0.85276175, -0.52230006, 0.12324971, 0, 0.1357454)

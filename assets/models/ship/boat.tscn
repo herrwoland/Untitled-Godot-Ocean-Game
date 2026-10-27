@@ -31,6 +31,10 @@
 [ext_resource type="PackedScene" uid="uid://llkihp2ykkjx" path="res://scenes/boat/furnace_fire.tscn" id="22_fire"]
 [ext_resource type="AudioStream" uid="uid://bc4wbp8p8ucln" path="res://assets/SFX/Ambient_engine.wav" id="23_mnqxs"]
 [ext_resource type="PackedScene" uid="uid://b0ovts5skp0ft" path="res://scenes/boat/mailbox.tscn" id="24_printer"]
+[ext_resource type="PackedScene" uid="uid://dyl6q4htclj81" path="res://scenes/boat/printed_paper.tscn" id="32_rgqoc"]
+[ext_resource type="PackedScene" uid="uid://cjj8nicps025" path="res://scenes/boat/fuel.tscn" id="33_mys2b"]
+[ext_resource type="PackedScene" uid="uid://k7f1jdao3vrq" path="res://assets/models/package.tscn" id="34_nm172"]
+[ext_resource type="PackedScene" uid="uid://c2631fb6nwhgq" path="res://assets/models/letter.tscn" id="35_ggm0m"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_82xsv"]
 size = Vector3(42.12262, 8.062927, 13.075356)
@@ -781,6 +785,20 @@ throw_direction = Vector3(0, 1, -0.7)
 
 [node name="dispenser" parent="dispenser" unique_id=1913581995 instance=ExtResource("17_duxm1")]
 transform = Transform3D(-6.556708e-08, 0, -1.5, 0, 1.5, 0, 1.5, 0, -6.556708e-08, 0.4131676, 0.08029997, 1.6674869)
+
+[node name="debug" type="Node3D" parent="." unique_id=1764294055]
+
+[node name="printed_paper" parent="debug" unique_id=1154759652 instance=ExtResource("32_rgqoc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2463466, 3.779363, 0.19110997)
+
+[node name="fuel" parent="debug" unique_id=1066468725 instance=ExtResource("33_mys2b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.14304173, 3.9866328, -0.53132343)
+
+[node name="Package" parent="debug" unique_id=24465826 instance=ExtResource("34_nm172")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.79605484, 4.0306826, -0.94590384)
+
+[node name="Letter" parent="debug" unique_id=2033292068 instance=ExtResource("35_ggm0m")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.23719883, 3.7866719, 1.2031796)
 
 [editable path="lights/steering_hinge/steering"]
 [editable path="boat"]

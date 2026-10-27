@@ -1,6 +1,9 @@
 [gd_scene format=3 uid="uid://cjj8nicps025"]
 
 [ext_resource type="Script" uid="uid://b77ymr5bqjqwr" path="res://assets/scripts/interactables/carryable.gd" id="1_carry"]
+[ext_resource type="PackedScene" uid="uid://dikiqg7sut8oq" path="res://assets/models/ship/fuel-cell.glb" id="2_4mseo"]
+[ext_resource type="Texture2D" uid="uid://5bdy6v0yu0ip" path="res://assets/models/ship/fuel-cell_glass_texture.png" id="3_a7875"]
+[ext_resource type="Texture2D" uid="uid://dsj45klhw2bt0" path="res://assets/models/ship/fuel-cell_room_PaintedMetal03_1K_BaseColor_red.png" id="4_naibd"]
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_dly7x"]
 radius = 0.20996094
@@ -12,6 +15,26 @@ rings = 2
 albedo_color = Color(0.32, 0.27, 0.2, 1)
 metallic = 0.4
 roughness = 0.7
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6cbb0"]
+resource_name = "glass_window"
+render_priority = 1
+transparency = 4
+cull_mode = 2
+albedo_color = Color(1, 1, 1, 0.2)
+albedo_texture = ExtResource("3_a7875")
+roughness = 0.0
+texture_filter = 2
+metadata/_gltf_primary_texture_coord = 0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_u0phb"]
+resource_name = "red metal"
+render_priority = 1
+cull_mode = 2
+albedo_texture = ExtResource("4_naibd")
+roughness = 0.5
+texture_filter = 2
+metadata/_gltf_primary_texture_coord = 0
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_5s6u7"]
 radius = 0.2836914
@@ -26,15 +49,27 @@ item_name = "Fuel cell"
 
 [node name="Mesh" type="MeshInstance3D" parent="." unique_id=175840446]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0)
+visible = false
 mesh = SubResource("CapsuleMesh_dly7x")
 surface_material_override/0 = SubResource("StandardMaterial3D_fuel")
+
+[node name="fuel-cell" parent="." unique_id=504071826 instance=ExtResource("2_4mseo")]
+transform = Transform3D(0.41858017, 0, 0, 0, 0.41858017, 0, 0, 0, 0.41858017, 0, 0, 0)
+
+[node name="fuel_cell_1" parent="fuel-cell" index="0" unique_id=879445332]
+surface_material_override/0 = SubResource("StandardMaterial3D_6cbb0")
+
+[node name="fuel_cell_2" parent="fuel-cell" index="1" unique_id=976838733]
+surface_material_override/0 = SubResource("StandardMaterial3D_u0phb")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1352280723]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 6.503078e-10, -0.014877319)
 shape = SubResource("CapsuleShape3D_5s6u7")
 
 [node name="Grip_R" type="Marker3D" parent="." unique_id=768763352]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.11486864, -0.09321134, 0.38342384)
+transform = Transform3D(1, 0, 0, 0, -0.5223, 0.8527617, 0, -0.8527617, -0.5223, 0.22356099, -0.13142262, 0.11100721)
 
 [node name="Grip_L" type="Marker3D" parent="." unique_id=154496574]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.014281098, -0.17935324, -0.40637574)
+transform = Transform3D(0.9523873, -0.091076985, -0.29097036, -0.039351776, -0.9830779, 0.17891042, -0.30234116, -0.15894169, -0.93985474, -0.22209735, -0.13607538, 0.05747521)
+
+[editable path="fuel-cell"]
