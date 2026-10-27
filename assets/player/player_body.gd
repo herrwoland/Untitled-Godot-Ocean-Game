@@ -14,7 +14,10 @@ class_name PlayerBody extends Node3D
 ##    the rest of the turn taken by the back and neck (see body_rig.gd); walking or swimming it turns
 ##    with the view; at the helm it faces the wheel with its hands on two spokes.
 
-const ANIMATIONS := preload('res://assets/models/player/animations/UAL1_Standard.glb')
+## Every .glb/.gltf in here is a set of clips on the body's rig. The standard library loads first, the
+## rest after it by name, so a clip of the same name in a later file replaces the earlier one.
+const ANIMATIONS_DIR := 'res://assets/models/player/animations/'
+const BASE_ANIMATIONS := 'UAL1_Standard.glb'
 ## Bones whose skin is cut from the visible copy (and everything below them).
 const HEAD_BONES := ['Head']
 const BodyRig := preload('res://assets/player/body_rig.gd')
@@ -151,19 +154,36 @@ func _rest_eyes() -> Vector3:
 	var head := _skel.global_transform * _skel.get_bone_global_rest(_head_bone)
 	return head.origin + _model.global_basis * Vector3(0.0, 0.08, 0.1) # the model's own up and front
 
-## The clips, with their tracks pointed at this model's skeleton (same rig, same bone names).
+## The clips of every file in ANIMATIONS_DIR, with their tracks pointed at this model's skeleton
+## (same rig, same bone names).
 func _library_for(skel_path: NodePath) -> AnimationLibrary:
-	var src: Node = ANIMATIONS.instantiate()
-	var player_src: AnimationPlayer = src.find_children('*', 'AnimationPlayer', true, false)[0]
+	var files: Array[String] = []
+	for f in ResourceLoader.list_directory(ANIMATIONS_DIR): # sees imported files in exports too
+		if f != BASE_ANIMATIONS and f.get_extension().to_lower() in ['glb', 'gltf']:
+			files.append(f)
+	files.sort()
+	files.push_front(BASE_ANIMATIONS)
 	var lib := AnimationLibrary.new()
-	for clip in player_src.get_animation_list():
-		var a := player_src.get_animation(clip).duplicate() as Animation
-		for t in a.get_track_count():
-			var path := a.track_get_path(t)
-			if path.get_subname_count() > 0: # a bone: Skeleton3D:bone
-				a.track_set_path(t, NodePath(str(skel_path) + ':' + path.get_concatenated_subnames()))
-		lib.add_animation(clip, a)
-	src.free()
+	for f in files:
+		var scene := load(ANIMATIONS_DIR + f) as PackedScene
+		if scene == null:
+			push_warning('PlayerBody: %s is not an imported scene.' % f)
+			continue
+		var src := scene.instantiate()
+		var players := src.find_children('*', 'AnimationPlayer', true, false)
+		if players.is_empty():
+			push_warning('PlayerBody: %s has no animations.' % f)
+		for player_src: AnimationPlayer in players:
+			for clip in player_src.get_animation_list():
+				var a := player_src.get_animation(clip).duplicate() as Animation
+				for t in a.get_track_count():
+					var path := a.track_get_path(t)
+					if path.get_subname_count() > 0: # a bone: Skeleton3D:bone
+						a.track_set_path(t, NodePath(str(skel_path) + ':' + path.get_concatenated_subnames()))
+				if lib.has_animation(clip):
+					lib.remove_animation(clip)
+				lib.add_animation(clip, a)
+		src.free()
 	return lib
 
 ## The copy you see loses its head (and eyes, brows, hair); the full one only casts the shadow.
