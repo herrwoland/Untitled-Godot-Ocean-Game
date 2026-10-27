@@ -44,15 +44,24 @@ var home_r := Vector3.ZERO
 ## The wrists' extra turn once a hand is turning with its spoke (radians, like `wrist`), faded in
 ## with the lock.
 var lock_wrist := Vector3.ZERO
-## Carrying: each hand's grip on the item (the grip marker's turn, in the skeleton's space). While the
-## item is still `settling` into the hands, each hand's turn on its grip is noted as the arm leaves
-## it; once it is held, the hand keeps that turn on the item, so the wrist doesn't roll on it as the
-## body turns under the view (only the elbow and forearm give).
+## Carrying: each hand's grip on the item (the grip marker's turn, in the skeleton's space). The hand
+## is turned by its marker, so it holds the item the same way however it was picked up, and the
+## wrist doesn't roll on it as the body turns under the view (only the elbow and forearm give): the
+## fingers point along the marker's +Y, the thumb along its +Z, and the palm faces its -X on the
+## right hand, +X on the left (toward the item's middle, for grips on its right and left sides).
+## `settling`: the item is still gliding into the hands.
 var carrying := false
 var settling := false
 var item_frame_l := Basis()
 var item_frame_r := Basis()
-var _on_item := {} # per side: the hand's turn relative to its grip
+## The thumbs' closing while carrying, apart from the fingers (see grip_l); below 0 they close with
+## the fingers (the wheel's grip, the thumb wrapped round its spoke).
+var thumb_grip := -1.0
+var _marker_to_hand := {} # per side: the hand's rest turn, from its marker's axes (see item_frame_l)
+var _reach_len := {} # per side: how far from the shoulder the palm can be (skeleton space)
+var _second_on: Node3D # the item the second hand took hold of, and where on it (its own space)
+var _second_at := Vector3.ZERO
+const SECOND_HAND_EASE := 0.85 # of its reach, how far the second hand takes hold: room to sway in
 ## Once it is held (not settling), the item hangs from the `anchor` hand ('_l' or '_r'): the rig
 ## moves it so its grip sits on that palm, wherever the arm could reach, and it never leaves the
 ## hand. Null while it glides in, or held by its sides.
@@ -101,8 +110,6 @@ func _process_modification() -> void:
 		_lock.erase('_l')
 	if hand_r == Vector3.INF:
 		_lock.erase('_r')
-	if not carrying:
-		_on_item.clear()
 	# the hands as the clip left them: each reach below starts from here (the wrist turn is laid on
 	# once per reach, never on top of the last one)
 	_clip_hand.clear()
@@ -118,19 +125,33 @@ func _process_modification() -> void:
 	elif _pull.length() > 0.0001:
 		_hold_on(sk, _pull)
 	var miss := Vector3.ZERO
+	if carried_item == null:
+		_second_on = null
 	# a carried item hangs from its anchor hand: that hand reaches first, the item is moved onto its
 	# palm wherever it got to, and the other hand holds on where the item now is
 	var sides := ['_l', '_r'] if carried_item == null or anchor == '_l' else ['_r', '_l']
 	var shift := Vector3.ZERO # how far the item was moved onto the anchor hand (skeleton space)
+	var anchor_at := Vector3.INF # the anchor's grip, on its palm
 	for side: String in sides:
 		var target := hand_l if side == '_l' else hand_r
 		if target == Vector3.INF:
 			continue
 		target += shift
+		if carried_item and side != anchor and anchor_at != Vector3.INF:
+			# where it holds the item is picked once, as it takes hold, and kept: its own grip if it
+			# reaches it, else (a long item held at its two ends) the nearest place toward the anchor
+			# that it does reach. Picked afresh each frame it slid up and down the item as we turned.
+			if _second_on != carried_item:
+				_second_on = carried_item
+				var shoulder := sk.get_bone_global_pose(sk.find_bone('upperarm' + side)).origin
+				var t := _within_reach(target, anchor_at, shoulder, _reach_of(sk, side) * SECOND_HAND_EASE)
+				_second_at = carried_item.global_transform.affine_inverse() * (sk.global_transform * target.lerp(anchor_at, t))
+			target = sk.global_transform.affine_inverse() * (carried_item.global_transform * _second_at)
 		var m := _grip(sk, side, target, pole_l if side == '_l' else pole_r)
 		if m.length() > miss.length(): miss = m
 		if carried_item and side == anchor:
 			shift = -m # the palm, from where the grip was
+			anchor_at = target + shift
 			carried_item.global_position += sk.global_basis * shift
 	_pull = (_pull + miss * PULL_GAIN) * PULL_LET_GO
 	_close(sk, fingers_l, grip_l)
@@ -225,18 +246,46 @@ func _lock_to_spoke(sk: Skeleton3D, h: int, side: String, grip: Vector3, shoulde
 	g.basis = Basis(q).scaled(g.basis.get_scale())
 	sk.set_bone_global_pose(h, g)
 
-## Keeps the hand's turn on a carried item as it was when the item came to rest in the hands (see
-## `carrying`).
+## Turns the hand on a carried item as its grip marker says (see `carrying`).
 func _lock_to_item(sk: Skeleton3D, h: int, side: String) -> void:
 	if h < 0 or not carrying:
 		return
+	if not _marker_to_hand.has(side):
+		# the hand at rest, as a marker's axes: the fingers (+Y), the thumb's side of the palm (+Z),
+		# and +X = Y x Z, which comes out the back of the right hand and the palm of the left
+		var o := func(n: String) -> Vector3: return sk.get_bone_global_rest(sk.find_bone(n + side)).origin
+		var fingers: Vector3 = (o.call('middle_01') - o.call('hand')).normalized()
+		var thumb_side: Vector3 = o.call('index_01') - o.call('pinky_01')
+		thumb_side = (thumb_side - fingers * thumb_side.dot(fingers)).normalized()
+		var rest_marker := Basis(fingers.cross(thumb_side), fingers, thumb_side)
+		_marker_to_hand[side] = rest_marker.inverse() * sk.get_bone_global_rest(h).basis.orthonormalized()
 	var frame: Basis = (item_frame_l if side == '_l' else item_frame_r).orthonormalized()
 	var g := sk.get_bone_global_pose(h)
-	if settling or not _on_item.has(side):
-		_on_item[side] = frame.inverse() * g.basis.orthonormalized()
-		return
-	g.basis = (frame * (_on_item[side] as Basis)).scaled(g.basis.get_scale())
+	g.basis = (frame * (_marker_to_hand[side] as Basis)).scaled(g.basis.get_scale())
 	sk.set_bone_global_pose(h, g)
+
+## How far (0..1) from `from` toward `to` the first point within `reach` of `shoulder` lies (1 when
+## none is: `to` itself).
+static func _within_reach(from: Vector3, to: Vector3, shoulder: Vector3, reach: float) -> float:
+	var f := from - shoulder
+	if f.length() <= reach:
+		return 0.0
+	var d := to - from
+	var a := d.length_squared()
+	var b := f.dot(d)
+	var disc := b * b - a * (f.length_squared() - reach * reach)
+	if a < 0.000001 or disc < 0.0:
+		return 1.0
+	return clampf((-b - sqrt(disc)) / a, 0.0, 1.0)
+
+## How far from its shoulder a hand can hold something: the arm and a palm, a little short of
+## straight (skeleton space).
+func _reach_of(sk: Skeleton3D, side: String) -> float:
+	if not _reach_len.has(side):
+		var o := func(n: String) -> Vector3: return sk.get_bone_global_rest(sk.find_bone(n + side)).origin
+		_reach_len[side] = (o.call('upperarm').distance_to(o.call('lowerarm')) + o.call('lowerarm').distance_to(o.call('hand'))
+				+ o.call('hand').distance_to(o.call('middle_01')) * grip_depth) * 0.95
+	return _reach_len[side]
 
 ## Where the palm is: halfway from the wrist to the knuckles.
 func _palm(sk: Skeleton3D, hand_name: StringName, knuckle_name: StringName) -> Vector3:
@@ -259,7 +308,10 @@ func _close(sk: Skeleton3D, fingers: Dictionary, weight: float) -> void:
 		return
 	for b: int in fingers:
 		var open := sk.get_bone_rest(b).basis.get_rotation_quaternion()
-		sk.set_bone_pose_rotation(b, open.slerp(fingers[b], weight))
+		var w := weight
+		if thumb_grip >= 0.0 and sk.get_bone_name(b).begins_with('thumb'):
+			w = thumb_grip
+		sk.set_bone_pose_rotation(b, open.slerp(fingers[b], w))
 
 ## Upper arm and forearm turned so the hand lands on `target`, the elbow toward `pole`.
 func _reach(sk: Skeleton3D, upper_name: StringName, lower_name: StringName, hand_name: StringName, target: Vector3, pole: Vector3) -> void:

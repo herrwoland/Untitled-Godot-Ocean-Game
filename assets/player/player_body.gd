@@ -64,7 +64,13 @@ const BodyRig := preload('res://assets/player/body_rig.gd')
 @export var sway_max := 14.0
 @export_group('Carrying')
 ## How closed the hands are round a carried item (0 = open, 1 = the wheel's grip).
-@export_range(0.0, 1.0, 0.01) var carry_grip := 0.6
+@export_range(0.0, 1.0, 0.01) var carry_grip := 0.5
+## How closed the thumbs are (0 = open, as in the rest pose; 1 = wrapped round like the fingers).
+@export_range(0.0, 1.0, 0.01) var carry_thumb := 0.15
+## How open the hands are while an item comes up into them, reaching to take it.
+@export_range(0.0, 1.0, 0.01) var carry_reach_open := 0.15
+## How quickly (per second) the hands close round it once it is there, or open again.
+@export var carry_close_speed := 4.0
 ## How far out (m) from the item's sides the hands hold one that has no Grip_L / Grip_R markers.
 @export var carry_side_gap := 0.02
 @export_group('')
@@ -100,6 +106,7 @@ var _pivot_rest := Vector3.ZERO
 var _carried: Node3D # the item in our hands, its grips per hand (left, right) and its size
 var _grips: Array[Node3D] = [null, null]
 var _carried_box := AABB() # in the item's own space
+var _carry_close := 0.0 # how closed the hands are round it now
 
 ## Rigs the body for `p` (the Player: its Head turns it, its Camera3D is the eyes).
 func setup(p) -> void:
@@ -264,6 +271,7 @@ func _process(delta: float) -> void:
 	_animate(delta)
 	_rig.carrying = false # until _carry() finds something in our hands
 	_rig.carried_item = null
+	_rig.thumb_grip = -1.0
 	# its own facing (never pitched); the model faces +Z, the view -Z
 	var yaw: float = (player.head as Node3D).global_rotation.y
 	var p = player
@@ -280,15 +288,16 @@ func _process(delta: float) -> void:
 	var eyes := _skel.global_transform * _skel.get_bone_global_pose(_head_bone) * _eye_in_head
 	var back := Basis(Vector3.UP, yaw) * Vector3(0.0, 0.0, eye_back)
 	_model.global_position += camera.global_position + back - eyes
-	_carry()
+	_carry(delta)
 
 ## Carrying: each hand holds the item at its own grip, the item's Grip_L / Grip_R marker (at any
 ## depth, so empties from Blender work too); a hand the item has no grip for is left to its clip. An
 ## item with neither marker is held by its sides, with both hands.
-func _carry() -> void:
+func _carry(delta: float) -> void:
 	var item: Node3D = player.carry_controller.carried
 	if item == null or not is_instance_valid(item):
 		_carried = null
+		_carry_close = 0.0
 		return
 	if item != _carried:
 		_carried = item
@@ -312,9 +321,12 @@ func _carry() -> void:
 		var gap := right * (reach + carry_side_gap)
 		targets = [mid - gap, mid + gap]
 	var to_sk := _skel.global_transform.affine_inverse()
-	# each hand keeps its hold on the item once it is in them (see body_rig.gd's `carrying`)
+	# each hand turned on the item by its grip marker (see body_rig.gd's `carrying`)
 	_rig.carrying = true
 	_rig.settling = player.carry_controller.is_settling()
+	# open, reaching to take it while it comes up into the hands; closing round it once it is there
+	var close_to := carry_reach_open if _rig.settling else carry_grip
+	_carry_close = move_toward(_carry_close, close_to, carry_close_speed * delta)
 	_rig.item_frame_l = to_sk.basis * (_grips[0] if _grips[0] else item).global_basis
 	_rig.item_frame_r = to_sk.basis * (_grips[1] if _grips[1] else item).global_basis
 	# held fast, it hangs from a hand (the right, if it has a grip for it): the socket is only where
@@ -326,14 +338,15 @@ func _carry() -> void:
 	if targets[0] != Vector3.INF:
 		_rig.hand_l = to_sk * targets[0]
 		_rig.pole_l = to_sk * (targets[0] + down - right * 0.5)
-		_rig.grip_l = carry_grip
+		_rig.grip_l = _carry_close
 	if targets[1] != Vector3.INF:
 		_rig.hand_r = to_sk * targets[1]
 		_rig.pole_r = to_sk * (targets[1] + down + right * 0.5)
-		_rig.grip_r = carry_grip
+		_rig.grip_r = _carry_close
 	_rig.grip_depth = player.grip_depth
 	_rig.wrist = Vector3.ZERO # the helm's wrist and thumb tuning is for its spokes
 	_rig.thumb = Vector2.ZERO
+	_rig.thumb_grip = _carry_close / maxf(carry_grip, 0.01) * carry_thumb
 
 ## Where the body faces: the wheel at the helm; with the view while walking or swimming (quickly);
 ## standing, it lets the view swing free_look either way before the feet shuffle round after it.
