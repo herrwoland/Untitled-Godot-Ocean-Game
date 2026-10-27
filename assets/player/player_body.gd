@@ -14,12 +14,14 @@ class_name PlayerBody extends Node3D
 ##    the rest of the turn taken by the back and neck (see body_rig.gd); walking or swimming it turns
 ##    with the view; at the helm it faces the wheel with its hands on two spokes.
 
-const BODY_SCENE := preload('res://assets/models/player/body_ps1/Player_PS1.gltf')
 const ANIMATIONS := preload('res://assets/models/player/animations/UAL1_Standard.glb')
 ## Bones whose skin is cut from the visible copy (and everything below them).
 const HEAD_BONES := ['Head']
 const BodyRig := preload('res://assets/player/body_rig.gd')
 
+## The rigged model, a child of this node in player.tscn (swap it there for a resculpted body). It is
+## scaled, turned and placed from code every frame, so its transform in the scene is only a preview.
+@export var model: Node3D
 ## How far behind the eyes the camera sits (m): a little, so the inside of the face never shows at
 ## the edges of the view.
 @export var eye_back := 0.08
@@ -87,11 +89,10 @@ var _arm_reach := 0.0 # m from the shoulder a hand can hold something (see _hand
 var _pivot: Node3D # what carries the camera (the camera shake's pivot, else the camera)
 var _pivot_rest := Vector3.ZERO
 
-## Builds the body for `p` (the Player: its Head turns it, its Camera3D is the eyes).
+## Rigs the body for `p` (the Player: its Head turns it, its Camera3D is the eyes).
 func setup(p) -> void:
 	player = p
-	_model = BODY_SCENE.instantiate()
-	add_child(_model)
+	_model = model
 	_skel = _model.find_children('*', 'Skeleton3D', true, false)[0]
 	_head_bone = _skel.find_bone(HEAD_BONES[0])
 	var eye_point := _rest_eyes()

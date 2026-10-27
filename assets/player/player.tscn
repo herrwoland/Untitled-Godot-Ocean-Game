@@ -13,6 +13,8 @@
 [ext_resource type="AudioStream" uid="uid://bqna1awhgx7lx" path="res://assets/SFX/water_whoosh.ogg" id="12_0eov8"]
 [ext_resource type="AudioStream" uid="uid://irhowonj638h" path="res://assets/SFX/gasp1.ogg" id="13_g7aau"]
 [ext_resource type="Script" uid="uid://f1i0c0keg8l6" path="res://assets/scripts/world/bubble_emitter.gd" id="30_bubbles"]
+[ext_resource type="Script" uid="uid://cumskilsm6ar" path="res://assets/player/player_body.gd" id="31_body"]
+[ext_resource type="PackedScene" uid="uid://txhlxyoayl6x" path="res://assets/models/player/body_ps1/Player_PS1.gltf" id="32_bodymodel"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
 radius = 0.4
@@ -303,3 +305,9 @@ bus = &"SFX"
 stream = ExtResource("13_g7aau")
 pitch_scale = 0.8
 bus = &"SFX"
+
+[node name="Body" type="Node3D" parent="." unique_id=1293847561 node_paths=PackedStringArray("model")]
+script = ExtResource("31_body")
+model = NodePath("Model")
+
+[node name="Model" parent="Body" unique_id=1293847562 instance=ExtResource("32_bodymodel")]
