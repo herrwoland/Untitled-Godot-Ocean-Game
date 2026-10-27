@@ -31,6 +31,7 @@ var _gasped := false
 @export var flash_start_intensity: float = 0.4 # fraction of the effect ramp where the red flash begins
 
 var breath: float
+var infinite_breath := false # dev console: the air never runs down
 var _died := false
 var _drown_time := -1.0 # Seconds since drowning began (< 0 = not drowning).
 var _drown_start_pitch := 0.0
@@ -58,7 +59,7 @@ func _process(delta: float) -> void:
 	if _drown_time >= 0.0:
 		_process_drowning(delta)
 		return
-	if player._ears_underwater:
+	if player._ears_underwater and not infinite_breath:
 		breath = maxf(breath - delta, 0.0)
 	else:
 		breath = minf(breath + recover_rate * delta, max_breath)

@@ -100,7 +100,9 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&'toggle_fullscreen'):
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_WINDOWED else DisplayServer.WINDOW_MODE_WINDOWED)
 	elif event.is_action_pressed(&'ui_cancel'):
-		if settings_menu.visible:
+		if Console.is_visible():
+			pass # the console closes on Esc itself
+		elif settings_menu.visible:
 			settings_menu._on_back_pressed()
 		elif not game_started:
 			pass
